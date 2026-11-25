@@ -1,6 +1,7 @@
 import { useEffect, useId, useState } from 'react';
-import { useIntl } from 'react-intl';
+import { defineMessages, useIntl, type MessageDescriptor } from 'react-intl';
 import { fetchCurrentUser } from '../../api/auth';
+import { authMessages } from '../../api/authMessages';
 import { roleName } from '../../data/seededRoles';
 import {
   getUser,
@@ -27,8 +28,65 @@ import {
 } from '../../ui';
 import { MIN_LENGTH } from '../settings/ChangePasswordModal';
 
+const messages = defineMessages<'groups' | 'allGroups' | 'noGroups' | 'configurations' | 'allConfigurations' | 'noConfigurations' | 'limited' | 'noneSelected' | 'loading' | 'ruleMatch' | 'errMismatch' | 'errShort' | 'needCurrent' | 'needCurrentToSave' | 'newTitle' | 'editTitle' | 'description' | 'cancel' | 'save' | 'login' | 'name' | 'email' | 'role' | 'selectRole' | 'password' | 'passwordHelpNew' | 'passwordHelpEdit' | 'confirm' | 'showConfirm' | 'current' | 'currentHelpNew' | 'currentHelpEdit' | 'showCurrent'>({
+  groups: { id: 'users.editor.groups', defaultMessage: 'Device groups' },
+  allGroups: { id: 'users.editor.allGroups', defaultMessage: 'All device groups' },
+  noGroups: { id: 'users.editor.noGroups', defaultMessage: 'No device groups to choose from.' },
+  configurations: { id: 'users.editor.configurations', defaultMessage: 'Configurations' },
+  allConfigurations: { id: 'users.editor.allConfigurations', defaultMessage: 'All configurations' },
+  noConfigurations: { id: 'users.editor.noConfigurations', defaultMessage: 'No configurations to choose from.' },
+  limited: {
+    id: 'users.editor.limited',
+    defaultMessage: 'Your own access is limited, so you can give only what you have.',
+  },
+  noneSelected: { id: 'users.editor.noneSelected', defaultMessage: 'With none selected, this account reaches none.' },
+  loading: { id: 'users.editor.loading', defaultMessage: 'Loading the account and its access options' },
+  ruleMatch: { id: 'users.editor.ruleMatch', defaultMessage: 'Both passwords match' },
+  errMismatch: { id: 'users.editor.errMismatch', defaultMessage: 'The passwords do not match.' },
+  errShort: { id: 'users.editor.errShort', defaultMessage: 'Use a password of at least {min} characters.' },
+  needCurrent: { id: 'users.editor.needCurrent', defaultMessage: 'Enter your current password.' },
+  needCurrentToSave: {
+    id: 'users.editor.needCurrentToSave',
+    defaultMessage: 'Enter your current password to save this change.',
+  },
+  newTitle: { id: 'users.editor.newTitle', defaultMessage: 'New user' },
+  editTitle: { id: 'users.editor.editTitle', defaultMessage: 'Edit {login}' },
+  description: {
+    id: 'users.editor.description',
+    defaultMessage: 'Set the account’s role and the devices and configurations it can access.',
+  },
+  cancel: { id: 'users.editor.cancel', defaultMessage: 'Cancel' },
+  save: { id: 'users.editor.save', defaultMessage: 'Save user' },
+  login: { id: 'users.editor.login', defaultMessage: 'Login' },
+  name: { id: 'users.editor.name', defaultMessage: 'Name' },
+  email: { id: 'users.editor.email', defaultMessage: 'Email' },
+  role: { id: 'users.editor.role', defaultMessage: 'Role' },
+  selectRole: { id: 'users.editor.selectRole', defaultMessage: 'Select a role' },
+  password: { id: 'users.editor.password', defaultMessage: 'Password' },
+  passwordHelpNew: {
+    id: 'users.editor.passwordHelpNew',
+    defaultMessage: 'The server’s password reset policy applies at first sign-in.',
+  },
+  passwordHelpEdit: {
+    id: 'users.editor.passwordHelpEdit',
+    defaultMessage:
+      'Leave both password fields blank to keep the current password. Setting a password ends the account’s existing sessions.',
+  },
+  confirm: { id: 'users.editor.confirm', defaultMessage: 'Confirm password' },
+  showConfirm: { id: 'users.editor.showConfirm', defaultMessage: 'Show password confirmation' },
+  current: { id: 'users.editor.current', defaultMessage: 'Your current password' },
+  currentHelpNew: { id: 'users.editor.currentHelpNew', defaultMessage: 'Needed to create an account.' },
+  currentHelpEdit: {
+    id: 'users.editor.currentHelpEdit',
+    defaultMessage: 'Needed to change another account’s email or password.',
+  },
+  showCurrent: { id: 'users.editor.showCurrent', defaultMessage: 'Show your current password' },
+}) as Record<'groups' | 'allGroups' | 'noGroups' | 'configurations' | 'allConfigurations' | 'noConfigurations' | 'limited' | 'noneSelected' | 'loading' | 'ruleMatch' | 'errMismatch' | 'errShort' | 'needCurrent' | 'needCurrentToSave' | 'newTitle' | 'editTitle' | 'description' | 'cancel' | 'save' | 'login' | 'name' | 'email' | 'role' | 'selectRole' | 'password' | 'passwordHelpNew' | 'passwordHelpEdit' | 'confirm' | 'showConfirm' | 'current' | 'currentHelpNew' | 'currentHelpEdit' | 'showCurrent', MessageDescriptor>;
+
 export function AccessPicker({
   label,
+  allLabel,
+  emptyLabel,
   all,
   allLocked = false,
   allStored = false,
@@ -38,6 +96,10 @@ export function AccessPicker({
   onSelect,
 }: {
   label: string;
+  /** The "all" checkbox's label ("All device groups"). */
+  allLabel: string;
+  /** Shown when there is nothing to choose from ("No device groups to choose from."). */
+  emptyLabel: string;
   all: boolean;
   /** The caller doesn't reach all of these themselves, so the server would refuse to grant it. */
   allLocked?: boolean;
@@ -48,6 +110,7 @@ export function AccessPicker({
   selected: AccessItem[];
   onSelect: (items: AccessItem[]) => void;
 }) {
+  const intl = useIntl();
   // Keep a selected item even if a list no longer returns it; editing a name must not silently broaden access.
   const choices = [...items, ...selected.filter((s) => !items.some((i) => i.id === s.id))];
   return (
@@ -59,10 +122,10 @@ export function AccessPicker({
         // Never a checked box greyed out: a stored "all" can still be cleared, and checked again in the same edit
         disabled={allLocked && !all && !allStored}
         onChange={(e) => onAll(e.target.checked)}
-        label={`All ${label.toLowerCase()}`}
+        label={allLabel}
       />
       {allLocked && !all && !allStored ? (
-        <p className="v2-users-help">Your own access is limited, so you can give only what you have.</p>
+        <p className="v2-users-help">{intl.formatMessage(messages.limited)}</p>
       ) : null}
       {!all && (
         <>
@@ -80,7 +143,7 @@ export function AccessPicker({
             ))}
           </div>
           <p className="v2-users-help">
-            {choices.length ? 'With none selected, this account reaches none.' : `No ${label.toLowerCase()} to choose from.`}
+            {choices.length ? intl.formatMessage(messages.noneSelected) : emptyLabel}
           </p>
         </>
       )}
@@ -90,9 +153,10 @@ export function AccessPicker({
 
 /** Placeholder for the form while the account and its access options load. */
 function FormSkeleton({ fields }: { fields: number }) {
+  const intl = useIntl();
   return (
     <div className="v2-users-loading" role="status">
-      <span className="v2-visually-hidden">Loading the account and its access options</span>
+      <span className="v2-visually-hidden">{intl.formatMessage(messages.loading)}</span>
       {Array.from({ length: fields }, (_, i) => (
         <div key={i} className="v2-users-loading__field" aria-hidden="true">
           <Skeleton width="25%" />
@@ -174,9 +238,10 @@ export function UserEditor({
         setReady(true);
       })
       .catch((e) => {
-        if (!controller.signal.aborted) setError(managementError(e));
+        if (!controller.signal.aborted) setError(managementError(intl, e));
       });
     return () => controller.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [target]);
   const update = (patch: Partial<ManagedUser>) => setDraft((d) => d && { ...d, ...patch });
   // Change password's rules; an edit with both fields blank keeps the current password.
@@ -190,18 +255,22 @@ export function UserEditor({
   const needsCurrentPassword =
     target === 'new' || typed || askCurrent || (draft?.email ?? '').trim() !== storedEmail.trim();
   const rules: Rule[] = [
-    { key: 'len', label: `At least ${MIN_LENGTH} characters`, met: password ? longEnough : null },
-    { key: 'match', label: 'Both passwords match', met: confirmation ? matches : null },
+    { key: 'len', label: intl.formatMessage(authMessages.minLength, { min: MIN_LENGTH }), met: password ? longEnough : null },
+    { key: 'match', label: intl.formatMessage(messages.ruleMatch), met: confirmation ? matches : null },
   ];
   const submit = async () => {
     if (!draft || busy) return;
     setError('');
     if (!passwordValid) {
-      setError(longEnough ? 'The passwords do not match.' : `Use a password of at least ${MIN_LENGTH} characters.`);
+      setError(
+        longEnough
+          ? intl.formatMessage(messages.errMismatch)
+          : intl.formatMessage(messages.errShort, { min: MIN_LENGTH }),
+      );
       return;
     }
     if (needsCurrentPassword && !currentPassword) {
-      setError('Enter your current password.');
+      setError(intl.formatMessage(messages.needCurrent));
       return;
     }
     setBusy(true);
@@ -211,9 +280,9 @@ export function UserEditor({
     } catch (e) {
       if (e instanceof Error && e.message === 'error.password.wrong' && !needsCurrentPassword) {
         setAskCurrent(true);
-        setError('Enter your current password to save this change.');
+        setError(intl.formatMessage(messages.needCurrentToSave));
       } else {
-        setError(managementError(e));
+        setError(managementError(intl, e));
       }
     } finally {
       setBusy(false);
@@ -222,16 +291,20 @@ export function UserEditor({
   return (
     <Modal
       open={open}
-      title={target === 'new' ? 'New user' : `Edit ${target.login}`}
+      title={
+        target === 'new'
+          ? intl.formatMessage(messages.newTitle)
+          : intl.formatMessage(messages.editTitle, { login: target.login })
+      }
       onClose={() => {
         if (!busy) onClose();
       }}
       dismissOnBackdrop={false}
-      description="Set the account’s role and the devices and configurations it can access."
+      description={intl.formatMessage(messages.description)}
       footer={
         <>
           <Button size="lg" disabled={busy} onClick={onClose}>
-            Cancel
+            {intl.formatMessage(messages.cancel)}
           </Button>
           <Button
             size="lg"
@@ -242,7 +315,7 @@ export function UserEditor({
               !ready || !draft?.userRole?.id || !passwordValid || (needsCurrentPassword && !currentPassword) || busy
             }
           >
-            {busy ? 'Saving…' : 'Save user'}
+            {busy ? intl.formatMessage(authMessages.saving) : intl.formatMessage(messages.save)}
           </Button>
         </>
       }
@@ -264,7 +337,7 @@ export function UserEditor({
           }}
         >
           <fieldset disabled={busy} className="v2-users-fields">
-            <Field label="Login">
+            <Field label={intl.formatMessage(messages.login)}>
               <Input
                 value={draft.login}
                 required
@@ -273,10 +346,10 @@ export function UserEditor({
                 onChange={(e) => update({ login: e.target.value })}
               />
             </Field>
-            <Field label="Name">
+            <Field label={intl.formatMessage(messages.name)}>
               <Input value={draft.name ?? ''} maxLength={50} onChange={(e) => update({ name: e.target.value })} />
             </Field>
-            <Field label="Email">
+            <Field label={intl.formatMessage(messages.email)}>
               <Input
                 type="email"
                 maxLength={50}
@@ -284,14 +357,14 @@ export function UserEditor({
                 onChange={(e) => update({ email: e.target.value })}
               />
             </Field>
-            <Field label="Role">
+            <Field label={intl.formatMessage(messages.role)}>
               <Select
                 value={draft.userRole?.id ?? ''}
                 required
                 onChange={(e) => update({ userRole: roles.find((r) => r.id === Number(e.target.value))! })}
               >
                 <option value="" disabled>
-                  Select a role
+                  {intl.formatMessage(messages.selectRole)}
                 </option>
                 {roles.map((r) => (
                   <option key={r.id} value={r.id}>
@@ -301,11 +374,11 @@ export function UserEditor({
               </Select>
             </Field>
             <Field
-              label={target === 'new' ? 'Password' : 'New password'}
+              label={target === 'new' ? intl.formatMessage(messages.password) : intl.formatMessage(authMessages.newPassword)}
               help={
                 target === 'new'
-                  ? 'The server’s password reset policy applies at first sign-in.'
-                  : 'Leave both password fields blank to keep the current password. Setting a password ends the account’s existing sessions.'
+                  ? intl.formatMessage(messages.passwordHelpNew)
+                  : intl.formatMessage(messages.passwordHelpEdit)
               }
             >
               <PasswordInput
@@ -315,12 +388,12 @@ export function UserEditor({
                 onChange={(e) => setPassword(e.target.value)}
               />
             </Field>
-            <Field label="Confirm password">
+            <Field label={intl.formatMessage(messages.confirm)}>
               <PasswordInput
                 value={confirmation}
                 required={!!password}
                 autoComplete="new-password"
-                toggleLabel="Show password confirmation"
+                toggleLabel={intl.formatMessage(messages.showConfirm)}
                 aria-describedby={showRules ? rulesId : undefined}
                 onChange={(e) => setConfirmation(e.target.value)}
               />
@@ -328,24 +401,26 @@ export function UserEditor({
             {showRules && <RuleList id={rulesId} rules={rules} />}
             {needsCurrentPassword && (
               <Field
-                label="Your current password"
+                label={intl.formatMessage(messages.current)}
                 help={
                   target === 'new'
-                    ? 'Needed to create an account.'
-                    : 'Needed to change another account’s email or password.'
+                    ? intl.formatMessage(messages.currentHelpNew)
+                    : intl.formatMessage(messages.currentHelpEdit)
                 }
               >
                 <PasswordInput
                   value={currentPassword}
                   required
                   autoComplete="current-password"
-                  toggleLabel="Show your current password"
+                  toggleLabel={intl.formatMessage(messages.showCurrent)}
                   onChange={(e) => setCurrentPassword(e.target.value)}
                 />
               </Field>
             )}
             <AccessPicker
-              label="Device groups"
+              label={intl.formatMessage(messages.groups)}
+              allLabel={intl.formatMessage(messages.allGroups)}
+              emptyLabel={intl.formatMessage(messages.noGroups)}
               all={draft.allDevicesAvailable}
               allLocked={callerLimited.devices}
               allStored={storedAll.devices}
@@ -355,7 +430,9 @@ export function UserEditor({
               onSelect={(groups) => update({ groups })}
             />
             <AccessPicker
-              label="Configurations"
+              label={intl.formatMessage(messages.configurations)}
+              allLabel={intl.formatMessage(messages.allConfigurations)}
+              emptyLabel={intl.formatMessage(messages.noConfigurations)}
               all={draft.allConfigAvailable}
               allLocked={callerLimited.configs}
               allStored={storedAll.configs}
