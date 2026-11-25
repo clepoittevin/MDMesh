@@ -317,7 +317,7 @@ describe('KioskBackgroundPreview', () => {
     const list = screen.getByRole('list', { name: 'Screen shapes' });
     const buttons = within(list).getAllByRole('button');
     // The visible caption is the name: shape, readout and dim.
-    expect(buttons.map((b) => b.querySelector('.v2-kbg__shape-name')!.textContent)).toEqual(THUMBNAILS.map(viewLabel));
+    expect(buttons.map((b) => b.querySelector('.v2-kbg__shape-name')!.textContent)).toEqual(THUMBNAILS.map((t) => viewLabel(t)));
     await waitFor(() => expect(buttons[1].textContent).toMatch(/on plate/));
     expect(buttons[0].textContent).not.toMatch(/on plate/);
     expect(buttons[1].querySelector('.v2-kbg__caption')!.textContent).toMatch(/^Phone, landscape.*Text \d+\.\d:1 Pass \(on plate\)/);

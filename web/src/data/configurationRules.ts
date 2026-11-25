@@ -1,7 +1,9 @@
 // Product rules for configurations that the console's list and editor share. Pure functions; no React.
+import { defineMessage, type IntlShape } from 'react-intl';
 import type { Application } from '../api/applications';
 import type { ConfigApp, Configuration } from '../api/configurations';
 import type { ConfigSyncSummary } from '../api/configSync';
+import { EN_INTL } from './configIntl';
 
 // The seeded device-template defaults are locked: view-only, and used as bases
 // for new configs (start from scratch or from one of these). Both the fixed seed
@@ -28,7 +30,15 @@ export const hasNoPin = (c: Configuration) => c.kioskMode === true && !c.passwor
 /** The exit PIN rule, as the server checks it (KioskExitPin): 6 to 12 digits, or no PIN. */
 export const EXIT_PIN_MIN = 6;
 export const EXIT_PIN_MAX = 12;
-export const EXIT_PIN_RULE = `The exit PIN must be ${EXIT_PIN_MIN} to ${EXIT_PIN_MAX} digits, or empty for no exit on the device.`;
+export const exitPinRuleMessage = defineMessage<{ min: number; max: number }>({
+  id: 'configurations.rule.exitPin',
+  defaultMessage: 'The exit PIN must be {min} to {max} digits, or empty for no exit on the device.',
+});
+/** The rule in the console's language. */
+export const exitPinRule = (intl: IntlShape = EN_INTL): string =>
+  intl.formatMessage(exitPinRuleMessage, { min: EXIT_PIN_MIN, max: EXIT_PIN_MAX });
+/** The rule, in English. */
+export const EXIT_PIN_RULE = exitPinRule();
 
 const pinText = (pin: unknown): string => (pin == null ? '' : String(pin));
 
@@ -48,9 +58,9 @@ export const hasLegacyPin = (c: Configuration) => c.kioskMode === true && !exitP
  * Why a configuration can't be saved with `pin`, or null: a new or changed PIN must follow the rule, while the PIN
  * already saved (`stored`), kept as it is, may stay (the server checks the same).
  */
-export function exitPinProblem(pin: unknown, stored: unknown): string | null {
+export function exitPinProblem(pin: unknown, stored: unknown, intl: IntlShape = EN_INTL): string | null {
   if (exitPinValid(pin) || (stored != null && pinText(pin) === pinText(stored))) return null;
-  return EXIT_PIN_RULE;
+  return exitPinRule(intl);
 }
 
 /**

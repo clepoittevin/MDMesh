@@ -2,6 +2,8 @@
 // long. The controls only choose which rows show and in what order: every edit goes to the editor's draft by app id,
 // so what is saved, the changed count and the leave guard never depend on them.
 import { useRef, useState, type ReactNode } from 'react';
+import { defineMessages, useIntl, type MessageDescriptor } from 'react-intl';
+import { untyped } from '../../data/configIntl';
 import type { ConfigApp } from '../../api/configurations';
 import {
   AppTile,
@@ -31,7 +33,48 @@ const ACTION: Record<Exclude<StateFilter, 'all'>, number> = { install: 1, skip: 
 /** Sort by state in the filter's order: Install, Do not install, Remove, then anything else. */
 const STATE_RANK: Record<number, number> = { 1: 0, 0: 1, 2: 2 };
 
-const SORT_LABEL: Record<SortKey, string> = { name: 'Name', pkg: 'Package', state: 'On devices' };
+const messages = untyped(defineMessages({
+  sortName: { id: 'configEditor.apps.sortName', defaultMessage: 'Name' },
+  sortPackage: { id: 'configEditor.apps.sortPackage', defaultMessage: 'Package' },
+  sortState: { id: 'configEditor.apps.sortState', defaultMessage: 'On devices' },
+  colApp: { id: 'configEditor.apps.colApp', defaultMessage: 'App' },
+  colAction: { id: 'configEditor.apps.colAction', defaultMessage: 'On devices' },
+  colKiosk: { id: 'configEditor.apps.colKiosk', defaultMessage: 'Show in kiosk' },
+  colRemove: { id: 'configEditor.apps.colRemove', defaultMessage: 'Remove' },
+  removeApp: { id: 'configEditor.apps.removeApp', defaultMessage: 'Remove {name}' },
+  searchLabel: { id: 'configEditor.apps.searchLabel', defaultMessage: 'Search assigned apps' },
+  searchPlaceholder: { id: 'configEditor.apps.searchPlaceholder', defaultMessage: 'Search name or package' },
+  filterAll: { id: 'configEditor.apps.filterAll', defaultMessage: 'All' },
+  filterInstall: { id: 'configEditor.apps.filterInstall', defaultMessage: 'Install' },
+  filterSkip: { id: 'configEditor.apps.filterSkip', defaultMessage: 'Do not install' },
+  filterRemove: { id: 'configEditor.apps.filterRemove', defaultMessage: 'Remove' },
+  sort: { id: 'configEditor.apps.sort', defaultMessage: 'Sort' },
+  showing: { id: 'configEditor.apps.showing', defaultMessage: 'Showing {shown} of {total, plural, one {# apps} other {# apps}}' },
+  loading: { id: 'configEditor.apps.loading', defaultMessage: 'Loading the assigned apps…' },
+  tableLabel: { id: 'configEditor.apps.tableLabel', defaultMessage: 'Assigned apps' },
+  emptyTitle: { id: 'configEditor.apps.emptyTitle', defaultMessage: 'No apps yet' },
+  emptyBody: {
+    id: 'configEditor.apps.emptyBody',
+    defaultMessage: 'Added apps install on every device that uses this configuration.',
+  },
+  noMatch: { id: 'configEditor.apps.noMatch', defaultMessage: 'No apps match' },
+  clear: { id: 'configEditor.apps.clear', defaultMessage: 'Clear' },
+  actionLabel: { id: 'configEditor.apps.actionLabel', defaultMessage: 'What happens to {name}' },
+  actionInstall: { id: 'configEditor.apps.actionInstall', defaultMessage: 'Install' },
+  actionRemove: { id: 'configEditor.apps.actionRemove', defaultMessage: 'Remove' },
+  actionSkip: { id: 'configEditor.apps.actionSkip', defaultMessage: 'Do not install' },
+  kioskRemoved: { id: 'configEditor.apps.kioskRemoved', defaultMessage: 'Removed' },
+  kioskNotInstalled: { id: 'configEditor.apps.kioskNotInstalled', defaultMessage: 'Not installed' },
+  kioskShown: { id: 'configEditor.apps.kioskShown', defaultMessage: 'Shown' },
+  kioskHidden: { id: 'configEditor.apps.kioskHidden', defaultMessage: 'Hidden' },
+  kioskFor: { id: 'configEditor.apps.kioskFor', defaultMessage: 'in kiosk: {name}' },
+}));
+
+const SORT_LABEL: Record<SortKey, MessageDescriptor> = {
+  name: messages.sortName,
+  pkg: messages.sortPackage,
+  state: messages.sortState,
+};
 
 const actionOf = (a: ConfigApp) => a.action ?? 1;
 const nameOf = (a: ConfigApp) => a.name ?? a.pkg ?? `#${a.id}`;
@@ -67,6 +110,7 @@ export function AssignedApps({
   renderAppDetails,
   resetKey,
 }: AssignedAppsProps) {
+  const intl = useIntl();
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState<StateFilter>('all');
   const [sort, setSort] = useState<SortKey>('name');
@@ -135,21 +179,21 @@ export function AssignedApps({
 
   const edit = { readOnly, onAction, onKioskVisibility, onRemove };
   const columns: Column<ConfigApp>[] = [
-    { key: 'app', header: 'App', className: 'v2-cfged-apps__app', cell: (a) => <AppCell app={a} details={renderAppDetails?.(a)} /> },
-    { key: 'action', header: 'On devices', shrink: true, className: 'v2-cfged-apps__action', cell: (a) => <ActionCell app={a} {...edit} /> },
+    { key: 'app', header: intl.formatMessage(messages.colApp), className: 'v2-cfged-apps__app', cell: (a) => <AppCell app={a} details={renderAppDetails?.(a)} /> },
+    { key: 'action', header: intl.formatMessage(messages.colAction), shrink: true, className: 'v2-cfged-apps__action', cell: (a) => <ActionCell app={a} {...edit} /> },
     ...(kioskColumn
-      ? [{ key: 'kiosk', header: 'Show in kiosk', shrink: true, className: 'v2-cfged-apps__kiosk', cell: (a: ConfigApp) => <KioskCell app={a} {...edit} /> }]
+      ? [{ key: 'kiosk', header: intl.formatMessage(messages.colKiosk), shrink: true, className: 'v2-cfged-apps__kiosk', cell: (a: ConfigApp) => <KioskCell app={a} {...edit} /> }]
       : []),
     {
       key: 'rm',
-      header: 'Remove',
+      header: intl.formatMessage(messages.colRemove),
       headerHidden: true,
       shrink: true,
       className: 'v2-cfged-apps__rm',
       cell: (a) =>
         readOnly ? null : (
           <div className="v2-rowactions">
-            <IconButton size="xs" label={`Remove ${nameOf(a)}`} onClick={() => onRemove(a.id)}>
+            <IconButton size="xs" label={intl.formatMessage(messages.removeApp, { name: nameOf(a) })} onClick={() => onRemove(a.id)}>
               <IconClose />
             </IconButton>
           </div>
@@ -163,41 +207,41 @@ export function AssignedApps({
           <SearchInput
             ref={searchRef}
             className="v2-cfged-appsbar__search"
-            aria-label="Search assigned apps"
-            placeholder="Search name or package"
+            aria-label={intl.formatMessage(messages.searchLabel)}
+            placeholder={intl.formatMessage(messages.searchPlaceholder)}
             value={q}
             onChange={view(setQ, q)}
           />
           <Segmented<StateFilter>
-            aria-label="On devices"
+            aria-label={intl.formatMessage(messages.colAction)}
             value={filter}
             onChange={view(setFilter, filter)}
             options={[
-              { value: 'all', label: 'All', count: apps.length },
-              { value: 'install', label: 'Install', count: count('install') },
-              { value: 'skip', label: 'Do not install', count: count('skip') },
-              { value: 'remove', label: 'Remove', count: count('remove') },
+              { value: 'all', label: intl.formatMessage(messages.filterAll), count: apps.length },
+              { value: 'install', label: intl.formatMessage(messages.filterInstall), count: count('install') },
+              { value: 'skip', label: intl.formatMessage(messages.filterSkip), count: count('skip') },
+              { value: 'remove', label: intl.formatMessage(messages.filterRemove), count: count('remove') },
             ]}
           />
-          <LabelledSelect label="Sort" value={sort} onChange={(e) => view(setSort, sort)(e.target.value as SortKey)}>
+          <LabelledSelect label={intl.formatMessage(messages.sort)} value={sort} onChange={(e) => view(setSort, sort)(e.target.value as SortKey)}>
             {(Object.keys(SORT_LABEL) as SortKey[]).map((k) => (
               <option key={k} value={k}>
-                {SORT_LABEL[k]}
+                {intl.formatMessage(SORT_LABEL[k])}
               </option>
             ))}
           </LabelledSelect>
           <span className="v2-visually-hidden" aria-live="polite">
-            {filtering ? `Showing ${rows.length} of ${apps.length} apps` : ''}
+            {filtering ? intl.formatMessage(messages.showing, { shown: rows.length, total: apps.length }) : ''}
           </span>
         </div>
       ) : null}
       {!ready && !error ? (
         <div className="v2-cfged-apps__loading">
-          <SkeletonRows count={3} compact label="Loading the assigned apps…" />
+          <SkeletonRows count={3} compact label={intl.formatMessage(messages.loading)} />
         </div>
       ) : (
         <Table<ConfigApp>
-          aria-label="Assigned apps"
+          aria-label={intl.formatMessage(messages.tableLabel)}
           className="v2-cfged-apps"
           columns={columns}
           rows={rows}
@@ -206,17 +250,17 @@ export function AssignedApps({
           rowPad={10}
           empty={
             apps.length === 0 ? (
-              <EmptyState bare title="No apps yet">
-                Added apps install on every device that uses this configuration.
+              <EmptyState bare title={intl.formatMessage(messages.emptyTitle)}>
+                {intl.formatMessage(messages.emptyBody)}
               </EmptyState>
             ) : (
               <EmptyState
                 bare
                 icon={<IconSearch />}
-                title="No apps match"
+                title={intl.formatMessage(messages.noMatch)}
                 action={
                   <Button size="sm" onClick={clear}>
-                    Clear
+                    {intl.formatMessage(messages.clear)}
                   </Button>
                 }
               />
@@ -248,34 +292,38 @@ function AppCell({ app: a, details }: { app: ConfigApp; details?: ReactNode }) {
 }
 
 function ActionCell({ app: a, readOnly, onAction }: { app: ConfigApp } & EditProps) {
+  const intl = useIntl();
   return (
     <Select
       size="sm"
-      aria-label={`What happens to ${nameOf(a)}`}
+      aria-label={intl.formatMessage(messages.actionLabel, { name: nameOf(a) })}
       value={actionOf(a)}
       disabled={readOnly}
       onChange={(e) => onAction(a.id, Number(e.target.value))}
     >
-      <option value={1}>Install</option>
-      <option value={2}>Remove</option>
-      <option value={0}>Do not install</option>
+      <option value={1}>{intl.formatMessage(messages.actionInstall)}</option>
+      <option value={2}>{intl.formatMessage(messages.actionRemove)}</option>
+      <option value={0}>{intl.formatMessage(messages.actionSkip)}</option>
     </Select>
   );
 }
 
 /** Show in kiosk: whether this installed app appears and launches in kiosk mode. */
 function KioskCell({ app: a, readOnly, onKioskVisibility }: { app: ConfigApp } & EditProps) {
+  const intl = useIntl();
   const name = nameOf(a);
   const action = actionOf(a);
   const shown = a.showIcon !== false;
-  const kioskText = action !== 1 ? (action === 2 ? 'Removed' : 'Not installed') : shown ? 'Shown' : 'Hidden';
+  const kioskText = intl.formatMessage(
+    action !== 1 ? (action === 2 ? messages.kioskRemoved : messages.kioskNotInstalled) : shown ? messages.kioskShown : messages.kioskHidden,
+  );
   return (
     <Checkbox
       className={`v2-cfged-app__kiosk is-${action !== 1 ? 'off' : shown ? 'on' : 'hidden'}`}
       label={
         <>
           {kioskText}
-          <span className="v2-visually-hidden"> in kiosk: {name}</span>
+          <span className="v2-visually-hidden"> {intl.formatMessage(messages.kioskFor, { name })}</span>
         </>
       }
       checked={action === 1 && shown}
