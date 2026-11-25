@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { useIntl } from 'react-intl';
 import { managementError, saveRole, type Permission, type UserRole } from '../../api/users';
+import { isSeededRole, roleName } from '../../data/seededRoles';
 import { Button, Callout, Checkbox, Field, Input, Modal, SearchInput, Textarea } from '../../ui';
 
 export function RoleEditor({
@@ -16,6 +18,7 @@ export function RoleEditor({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const intl = useIntl();
   const [draft, setDraft] = useState<UserRole>(
     target === 'new'
       ? { name: '', description: '', permissions: [] }
@@ -40,7 +43,7 @@ export function RoleEditor({
   return (
     <Modal
       open={open}
-      title={target === 'new' ? 'New role' : `Edit ${target.name}`}
+      title={target === 'new' ? 'New role' : `Edit ${roleName(intl, target)}`}
       dismissOnBackdrop={false}
       description="Permission changes apply to every user with this role on their next server request."
       onClose={() => {
@@ -71,7 +74,18 @@ export function RoleEditor({
         }}
       >
         <fieldset disabled={busy} className="v2-users-fields">
-          <Field label="Role name">
+          <Field
+            label="Role name"
+            help={
+              target !== 'new' && isSeededRole(target)
+                ? intl.formatMessage({
+                    id: 'roles.editor.seededHint',
+                    defaultMessage:
+                      'Name from the original Russian setup, shown as “{shown}” in the console. Keep it: server updates find this role by it.',
+                  }, { shown: roleName(intl, target) })
+                : undefined
+            }
+          >
             <Input
               value={draft.name}
               required

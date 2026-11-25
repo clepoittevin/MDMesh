@@ -1,0 +1,125 @@
+{
+  "app.notFound.empty": {
+    "defaultMessage": "Rien à cette adresse"
+  },
+  "app.notFound.home": {
+    "defaultMessage": "Aller à la vue d’ensemble"
+  },
+  "app.notFound.subtitle": {
+    "defaultMessage": "Il n’y a rien à cette adresse. Vérifiez le lien, ou repartez de la vue d’ensemble."
+  },
+  "app.notFound.title": {
+    "defaultMessage": "Page introuvable"
+  },
+  "configEditor.enrollment.qrDuplicates": {
+    "defaultMessage": "{keys} : utilisez plutôt le réglage ci-dessus. Une fois défini, il l’emporte sur cette entrée."
+  },
+  "configEditor.enrollment.qrInvalid": {
+    "defaultMessage": "JSON pas encore valide. Il est enregistré tel quel ; la page Enrôlement l’ignore jusqu’à ce qu’il soit corrigé."
+  },
+  "configEditor.enrollment.qrLong": {
+    "defaultMessage": "Ces entrées sont longues ({bytes} octets) : le QR code d’enrôlement devient dense, et risque de ne pas tenir du tout."
+  },
+  "configEditor.enrollment.qrSettingInvalid": {
+    "defaultMessage": "« {value} » n’est pas une valeur acceptée par Android ici : elle est retirée du code. Choisissez-en une dans la liste."
+  },
+  "configEditor.enrollment.qrUnusedInvalid": {
+    "defaultMessage": "{keys} : ignoré. La valeur n’est pas du type attendu par cette entrée."
+  },
+  "configEditor.enrollment.qrUnusedProtected": {
+    "defaultMessage": "{keys} : ignoré. MDMesh les définit lui-même."
+  },
+  "configEditor.enrollment.qrUnusedUnsupported": {
+    "defaultMessage": "{keys} : ignoré. MDMesh ne transmet que ces entrées de configuration initiale : {known}."
+  },
+  "configEditor.enrollment.qrUnusedWifi": {
+    "defaultMessage": "{keys} : ignoré. Le Wi-Fi vient du Wi-Fi de configuration ci-dessus et de la page Enrôlement."
+  },
+  "configEditor.enrollment.setupScreens": {
+    "defaultMessage": "Écrans de configuration initiale"
+  },
+  "configEditor.enrollment.setupScreensHelp": {
+    "defaultMessage": "Android les applique pendant la configuration initiale de l’appareil."
+  },
+  "enroll.qrSize.dense": {
+    "defaultMessage": "Ce code contient {bytes} octets : il est dense, et la caméra de configuration de certains appareils peut avoir du mal à le lire. Une adresse de serveur ou un Wi-Fi plus courts, ou moins de paramètres QR supplémentaires, l’allègent."
+  },
+  "enroll.qrSize.tooLarge": {
+    "defaultMessage": "Ce code contiendrait {bytes} octets, plus qu’un QR code ne peut en porter ({max}). L’adresse du serveur (présente deux fois dans le code) ou le Wi-Fi est trop longue : raccourcissez-les."
+  },
+  "enroll.qrSize.tooLargeFrame": {
+    "defaultMessage": "Pas de QR code : il serait trop grand pour être lu."
+  },
+  "enroll.setup.hiddenWifi": {
+    "defaultMessage": "Wi-Fi masqué"
+  },
+  "enroll.setup.label": {
+    "defaultMessage": "Configuration initiale"
+  },
+  "enroll.setup.mobileData": {
+    "defaultMessage": "données mobiles"
+  },
+  "enroll.setup.notLoaded": {
+    "defaultMessage": "Non ajouté : la configuration n’a pas pu être chargée, le code ne contient donc aucune de ses entrées"
+  },
+  "enroll.setup.nothing": {
+    "defaultMessage": "Rien d’ajouté"
+  },
+  "enroll.setup.others": {
+    "defaultMessage": "{count, plural, one {# autre entrée} other {# autres entrées}}"
+  },
+  "enroll.setup.protectedLeftOut": {
+    "defaultMessage": "{summary} ({count} protégées retirées)"
+  },
+  "enroll.setup.serverDefault": {
+    "defaultMessage": "Non ajouté : choisissez une configuration pour ajouter ses entrées (la page ne peut pas savoir laquelle est celle par défaut du serveur)"
+  },
+  "enroll.setup.skipIntro": {
+    "defaultMessage": "écrans d’introduction passés"
+  },
+  "enroll.setup.unreadable": {
+    "defaultMessage": "{summary} (autres paramètres QR supplémentaires retirés : {error})"
+  },
+  "enroll.setup.unsupported": {
+    "defaultMessage": "{count, plural, one {# entrée retirée} other {# entrées retirées}} : entrée que MDMesh ne transmet pas, ou valeur du mauvais type"
+  },
+  "enroll.setup.wifiLeftOut": {
+    "defaultMessage": "{count, plural, one {# entrée Wi-Fi retirée} other {# entrées Wi-Fi retirées}} : le Wi-Fi vient de cette page (et du Wi-Fi de configuration de la configuration)"
+  },
+  "roles.editor.seededHint": {
+    "defaultMessage": "Nom issu de l’installation d’origine (en russe), affiché « {shown} » dans la console. Gardez-le : les mises à jour du serveur retrouvent ce rôle par ce nom."
+  },
+  "roles.seeded.admin": {
+    "defaultMessage": "Administrateur"
+  },
+  "roles.seeded.admin.description": {
+    "defaultMessage": "Administre une organisation"
+  },
+  "roles.seeded.observer": {
+    "defaultMessage": "Observateur"
+  },
+  "roles.seeded.observer.description": {
+    "defaultMessage": "Voit les appareils sans pouvoir les modifier"
+  },
+  "roles.seeded.superAdmin": {
+    "defaultMessage": "Super-administrateur"
+  },
+  "roles.seeded.superAdmin.description": {
+    "defaultMessage": "Gère toutes les organisations de ce serveur"
+  },
+  "roles.seeded.user": {
+    "defaultMessage": "Utilisateur"
+  },
+  "roles.seeded.user.description": {
+    "defaultMessage": "Gère les appareils d’une organisation"
+  },
+  "settings.language.auto": {
+    "defaultMessage": "Navigateur"
+  },
+  "settings.language.help": {
+    "defaultMessage": "« Navigateur » suit la langue de votre navigateur. Enregistré dans ce navigateur uniquement ; la page se recharge."
+  },
+  "settings.language.label": {
+    "defaultMessage": "Langue"
+  }
+}

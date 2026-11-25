@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
+import { useIntl } from 'react-intl';
 import { useAuth } from '../../auth/AuthContext';
+import { roleDescription, roleName } from '../../data/seededRoles';
 import {
   deleteRole,
   deleteUser,
@@ -86,6 +88,7 @@ export function UsersSection({
   headingId: string;
 }) {
   const { user } = useAuth();
+  const intl = useIntl();
   const toast = useToast();
   const [data, setData] = useState<Snapshot | null>(null);
   const [revision, setRevision] = useState(0);
@@ -208,7 +211,7 @@ export function UsersSection({
   };
   const roleActions = (r: UserRole): MenuItem[] => [
     { key: 'edit', label: 'Edit', textValue: 'Edit', onSelect: () => editRole(r) },
-    { key: 'delete', label: 'Delete', textValue: 'Delete', danger: true, onSelect: () => askDelete('role', r.id!, r.name) },
+    { key: 'delete', label: 'Delete', textValue: 'Delete', danger: true, onSelect: () => askDelete('role', r.id!, roleName(intl, r)) },
   ];
 
   const usersTable = data ? (
@@ -243,7 +246,7 @@ export function UsersSection({
           ),
         },
         { key: 'email', header: 'Email', className: 'v2-users-col', cell: (u) => (u.email ? <Clip text={u.email} /> : '—') },
-        { key: 'role', header: 'Role', className: 'v2-users-col', cell: (u) => <Clip text={u.userRole?.name || '—'} /> },
+        { key: 'role', header: 'Role', className: 'v2-users-col', cell: (u) => <Clip text={(u.userRole && roleName(intl, u.userRole)) || '—'} /> },
         {
           key: 'access',
           header: 'Access',
@@ -275,15 +278,20 @@ export function UsersSection({
       className="v2-users-table"
       empty={<EmptyState bare title={needle ? 'No matching roles' : 'No editable roles yet'} />}
       rowKey={(r) => r.id!}
-      rows={data.roles.filter((r) => `${r.name} ${r.description ?? ''}`.toLowerCase().includes(needle))}
+      rows={data.roles.filter((r) =>
+        `${r.name} ${roleName(intl, r)} ${roleDescription(intl, r)}`.toLowerCase().includes(needle),
+      )}
       onRowClick={(r) => editRole(r)}
       columns={[
-        { key: 'name', header: 'Role', className: 'v2-users-col', cell: (r) => <Clip text={r.name} /> },
+        { key: 'name', header: 'Role', className: 'v2-users-col', cell: (r) => <Clip text={roleName(intl, r)} /> },
         {
           key: 'description',
           header: 'Description',
           className: 'v2-users-col v2-users-col--wide',
-          cell: (r) => (r.description ? <Clip text={r.description} /> : '—'),
+          cell: (r) => {
+            const description = roleDescription(intl, r);
+            return description ? <Clip text={description} /> : '—';
+          },
         },
         {
           key: 'permissions',
@@ -298,7 +306,7 @@ export function UsersSection({
           headerHidden: true,
           shrink: true,
           align: 'right',
-          cell: (r) => <RowActions name={r.name} items={roleActions(r)} />,
+          cell: (r) => <RowActions name={roleName(intl, r)} items={roleActions(r)} />,
         },
       ]}
     />

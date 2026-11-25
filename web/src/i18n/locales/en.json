@@ -86,5 +86,41 @@
   },
   "enroll.setup.wifiLeftOut": {
     "defaultMessage": "{count, plural, one {# Wi-Fi entry left out} other {# Wi-Fi entries left out}}: Wi-Fi comes from this page (and the configuration's setup Wi-Fi)"
+  },
+  "roles.editor.seededHint": {
+    "defaultMessage": "Name from the original Russian setup, shown as “{shown}” in the console. Keep it: server updates find this role by it."
+  },
+  "roles.seeded.admin": {
+    "defaultMessage": "Admin"
+  },
+  "roles.seeded.admin.description": {
+    "defaultMessage": "Administers one organization"
+  },
+  "roles.seeded.observer": {
+    "defaultMessage": "Observer"
+  },
+  "roles.seeded.observer.description": {
+    "defaultMessage": "Sees the devices without changing them"
+  },
+  "roles.seeded.superAdmin": {
+    "defaultMessage": "Super admin"
+  },
+  "roles.seeded.superAdmin.description": {
+    "defaultMessage": "Manages every organization on this server"
+  },
+  "roles.seeded.user": {
+    "defaultMessage": "User"
+  },
+  "roles.seeded.user.description": {
+    "defaultMessage": "Manages the devices of one organization"
+  },
+  "settings.language.auto": {
+    "defaultMessage": "Browser"
+  },
+  "settings.language.help": {
+    "defaultMessage": "Browser follows your browser’s language. Saved in this browser only; the page reloads."
+  },
+  "settings.language.label": {
+    "defaultMessage": "Language"
   }
 }

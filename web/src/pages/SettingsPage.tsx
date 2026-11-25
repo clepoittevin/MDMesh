@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useIntl, type IntlShape } from 'react-intl';
 import { Link } from 'react-router';
 import { useAuth } from '../auth/AuthContext';
 import type { AuthUser } from '../api/auth';
@@ -7,6 +8,8 @@ import { listConfigurations, type ConfigurationSummary } from '../api/configurat
 import type { UpdateStatus } from '../api/updates';
 import { getManagementCapabilities, managementError, type ManagementCapabilities } from '../api/users';
 import { useTheme, type ThemePreference } from '../ui/theme';
+import { roleName } from '../data/seededRoles';
+import { CATALOGS, LANGUAGE_NAMES, SOURCE_LOCALE, storeLocale, storedLocale } from '../i18n/locales';
 import { paths } from '../routes';
 import {
   Button,
@@ -49,15 +52,10 @@ const THEME_OPTIONS: ReadonlyArray<{ value: ThemePreference; label: string }> = 
   { value: 'system', label: 'Match system' },
 ];
 
-function roleLabel(u: AuthUser | null): string {
+function roleLabel(intl: IntlShape, u: AuthUser | null): string {
   if (!u) return '—';
-  if (u.superAdmin || u.userRole?.superAdmin) return 'Super admin';
-  if (u.userRole?.id === 2) return 'Admin';
-  if (u.userRole?.id === 3) return 'User';
-  // A custom role keeps its name when it is plain text; the seeded names are Russian (Headwind's seed).
-  const name = u.userRole?.name?.trim();
-  if (name && /^[\x20-\x7E]+$/.test(name)) return name;
-  return u.userRole ? 'Custom role' : '—';
+  if (u.superAdmin || u.userRole?.superAdmin) return intl.formatMessage({ id: 'roles.seeded.superAdmin', defaultMessage: 'Super admin' });
+  return u.userRole ? roleName(intl, u.userRole) || '—' : '—';
 }
 
 function readDefaultConfig(): string {
@@ -117,6 +115,16 @@ function ConnectionValue({ conn, onRetry }: { conn: Connection; onRetry: () => v
 export function SettingsPage() {
   const { user, signOut } = useAuth();
   const { preference, setPreference } = useTheme();
+  const intl = useIntl();
+  const languageOptions = [
+    { value: '', label: intl.formatMessage({ id: 'settings.language.auto', defaultMessage: 'Browser' }) },
+    ...[SOURCE_LOCALE, ...Object.keys(CATALOGS).filter((c) => LANGUAGE_NAMES[c])].map((c) => ({
+      value: c,
+      label: LANGUAGE_NAMES[c] ?? c,
+    })),
+  ];
+  const storedLanguage = storedLocale();
+  const language = storedLanguage && languageOptions.some((o) => o.value === storedLanguage) ? storedLanguage : '';
   const sup = useSupervisor(5 * 60 * 1000);
   const ro = useActiveRollout();
   const { conn, recheck } = useConnection();
@@ -242,7 +250,7 @@ export function SettingsPage() {
             { key: 'name', label: 'Name', value: user?.name || user?.login || '—' },
             { key: 'login', label: 'Login', value: user?.login || '—' },
             { key: 'email', label: 'Email', value: user?.email || '—' },
-            { key: 'role', label: 'Role', value: roleLabel(user) },
+            { key: 'role', label: 'Role', value: roleLabel(intl, user) },
           ]}
         />
       </Card>
@@ -357,6 +365,30 @@ export function SettingsPage() {
             options={THEME_OPTIONS}
             value={preference}
             onChange={(v) => setPreference(v)}
+          />
+        </div>
+        <div className="v2-settings-pref">
+          <div className="v2-settings-pref__text">
+            <span id="v2-settings-language" className="v2-settings-pref__label">
+              {intl.formatMessage({ id: 'settings.language.label', defaultMessage: 'Language' })}
+            </span>
+            <span id="v2-settings-language-help" className="v2-settings-pref__help">
+              {intl.formatMessage({
+                id: 'settings.language.help',
+                defaultMessage: 'Browser follows your browser’s language. Saved in this browser only; the page reloads.',
+              })}
+            </span>
+          </div>
+          <Segmented
+            className="v2-settings-pref__control"
+            aria-labelledby="v2-settings-language"
+            aria-describedby="v2-settings-language-help"
+            options={languageOptions}
+            value={language}
+            onChange={(v) => {
+              storeLocale(v || null);
+              window.location.reload();
+            }}
           />
         </div>
       </Card>

@@ -1,5 +1,7 @@
 import { useEffect, useId, useState } from 'react';
+import { useIntl } from 'react-intl';
 import { fetchCurrentUser } from '../../api/auth';
+import { roleName } from '../../data/seededRoles';
 import {
   getUser,
   listAccessConfigurations,
@@ -115,6 +117,7 @@ export function UserEditor({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const intl = useIntl();
   const [draft, setDraft] = useState<ManagedUser | null>(
     target === 'new'
       ? {
@@ -292,7 +295,7 @@ export function UserEditor({
                 </option>
                 {roles.map((r) => (
                   <option key={r.id} value={r.id}>
-                    {r.name}
+                    {roleName(intl, r)}
                   </option>
                 ))}
               </Select>
