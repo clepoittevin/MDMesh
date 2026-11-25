@@ -9,7 +9,8 @@ import { addressProblem, wifiProblem } from '../enroll/checks';
 import {
   agentApkUrl,
   buildProvisioningPayload,
-  parseExtraQrParameters,
+  configurationQrExtras,
+  summarizeQrExtras,
   serverBaseUrl,
   type WifiSecurity,
 } from '../enroll/provisioning';
@@ -452,9 +453,20 @@ export function EnrollPage() {
   );
   const address = useMemo(() => addressProblem(serverBaseUrl(), serverSetting), [serverSetting]);
   const expired = !!token?.expiresAt && token.expiresAt <= now;
-  // The chosen configuration's Extra QR parameters (Advanced section): added to the code, protected entries aside.
-  const qrExtras = useMemo(() => parseExtraQrParameters(selected?.qrParameters), [selected]);
-  const extraCount = Object.keys(qrExtras.entries).length;
+  // The chosen configuration's setup entries (Enrollment section): added to the code, protected entries aside.
+  const qrExtras = useMemo(() => configurationQrExtras(selected), [selected]);
+  const extrasText = useMemo(() => {
+    const sum = summarizeQrExtras(qrExtras.entries);
+    const parts = [
+      sum.locale,
+      sum.timeZone,
+      sum.skipIntro ? 'intro screens skipped' : null,
+      sum.mobileData ? 'mobile data' : null,
+      sum.hiddenWifi ? 'hidden Wi-Fi' : null,
+      sum.others > 0 ? `${sum.others} other ${sum.others === 1 ? 'entry' : 'entries'}` : null,
+    ].filter((x): x is string => !!x);
+    return parts.join(' · ');
+  }, [qrExtras]);
   const payload = useMemo(
     () =>
       token
@@ -488,13 +500,15 @@ export function EnrollPage() {
     ...(withWifi && wifiOn
       ? [{ key: 'wifi', label: 'Joins Wi-Fi', value: wifiIssue ? 'Not in the code (see Wi-Fi above)' : ssid || 'No network name yet' }]
       : []),
-    ...(qrExtras.error || extraCount > 0 || qrExtras.ignored.length > 0
+    ...(qrExtras.error || extrasText || qrExtras.ignored.length > 0
       ? [{
           key: 'qrExtras',
-          label: 'Extra QR entries',
+          label: 'Setup',
           value: qrExtras.error
-            ? `None added: ${qrExtras.error}`
-            : `${extraCount} from the configuration${qrExtras.ignored.length ? ` (${qrExtras.ignored.length} protected left out)` : ''}`,
+            ? `Extra QR parameters left out: ${qrExtras.error}`
+            : qrExtras.ignored.length
+              ? `${extrasText || 'Nothing added'} (${qrExtras.ignored.length} protected left out)`
+              : extrasText || 'Nothing added',
         }]
       : []),
     { key: 'use', label: 'Use', value: usesText(token?.maxUses ?? uses) },

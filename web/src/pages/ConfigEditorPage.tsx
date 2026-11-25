@@ -86,6 +86,8 @@ import { kioskColours, type FitMode } from '../data/kioskScrim';
 import { KioskPlacement } from './configurations/KioskPlacement';
 import { KioskGallery } from './configurations/KioskGallery';
 import { AgentTag, AppSelect, FieldControl, FieldHelp } from './configurations/controls';
+import { joinQrParameters, parseExtraQrParameters, settingsInRest, splitQrParameters } from '../enroll/provisioning';
+
 import { AppPickerModal, CopyConfigModal, DeleteConfigModal, KioskConfirmModal } from './configurations/modals';
 import { devicesBlockingDelete, plural, usedByLine, wipedOnly, wipedOnlyLine } from './configurations/sync';
 import { WATCH_MS, type ConfigWatch } from './configurations/watch';
@@ -279,7 +281,18 @@ const LAYOUT: Record<'kiosk' | 'network' | 'security' | 'enrollment', Item[]> = 
   ],
   network: ['wifi', 'wifiRadio', 'bluetooth', 'locationServices', 'requestUpdates', 'connectivityMode'],
   security: ['camera', 'usbStorage', 'disableScreenshots', 'disableFactoryReset', 'disableSafeBoot'],
-  enrollment: ['wifiSSID', 'wifiPassword', 'wifiSecurityType'],
+  enrollment: [
+    'wifiSSID',
+    'wifiPassword',
+    'wifiSecurityType',
+    'qrWifiHidden',
+    { eyebrow: 'Setup screens', help: 'Android applies these while the device sets itself up.' },
+    'qrSkipEducation',
+    'qrLocale',
+    'qrTimeZone',
+    'mobileEnrollment',
+    'qrParameters',
+  ],
 };
 for (const [sec, items] of Object.entries(LAYOUT) as Array<[keyof typeof LAYOUT, Item[]]>) {
   const placed = new Set(items.filter((i): i is string => typeof i === 'string'));
@@ -323,9 +336,39 @@ function appPermissionsSignature(c: Configuration): string {
     .join(',');
 }
 
+/** A setup setting kept in the Extra QR parameters (null when unset, as Android's default). */
+function qrSettingOf(c: Configuration, qrKey: string): unknown {
+  const v = splitQrParameters(c.qrParameters).settings[qrKey];
+  return v == null || v === false || v === '' ? null : v;
+}
+
+/** The Extra QR parameters other than the setup settings, as the editor's field shows them. */
+function qrRestOf(c: Configuration): string {
+  return splitQrParameters(c.qrParameters).rest;
+}
+
+/** The Extra QR parameters with one part replaced; back to unset when nothing is left and nothing was stored. */
+function withQr(d: Configuration, change: { setting?: [string, unknown]; rest?: string }): unknown {
+  const split = splitQrParameters(d.qrParameters);
+  const settings = { ...split.settings };
+  if (change.setting) settings[change.setting[0]] = change.setting[1];
+  const text = joinQrParameters(settings, change.rest ?? split.rest);
+  return text === '' && d.qrParameters == null ? null : text;
+}
+
 function changedKeys(before: Configuration, after: Configuration): Set<string> {
   const out = new Set<string>();
-  for (const f of CONFIG_FIELDS) if (norm(before[f.key]) !== norm(after[f.key])) out.add(f.key);
+  for (const f of CONFIG_FIELDS) {
+    // A setting kept in the Extra QR parameters changes when its entry does; the parameters themselves count as
+    // changed only for their other entries, so one switch is one change.
+    if (f.key === 'qrParameters') {
+      if (norm(qrRestOf(before) || null) !== norm(qrRestOf(after) || null)) out.add(f.key);
+      continue;
+    }
+    const was = f.qrKey ? qrSettingOf(before, f.qrKey) : before[f.key];
+    const is = f.qrKey ? qrSettingOf(after, f.qrKey) : after[f.key];
+    if (norm(was) !== norm(is)) out.add(f.key);
+  }
   // The background image picker is a managed asset control rather than a generic CONFIG_FIELDS control.
   // Its identity must still participate in the editor's dirty state and save/apply flow.
   if (norm(before.backgroundImageFileId) !== norm(after.backgroundImageFileId)
@@ -436,6 +479,9 @@ function Editor({
   }, [appsSource, appsAttempt]);
 
   const set = useCallback((key: string, value: unknown) => setDraft((d) => {
+    const qrKey = FIELD[key]?.qrKey;
+    if (qrKey) return { ...d, qrParameters: withQr(d, { setting: [qrKey, value] }) };
+    if (key === 'qrParameters') return { ...d, qrParameters: withQr(d, { rest: value == null ? '' : String(value) }) };
     if (key === 'locationServices') {
       return { ...d, locationServices: value, locationServicesAction: locationServicesAction(value) };
     }
@@ -638,11 +684,28 @@ function Editor({
         : null;
 
   const row = (key: string, opts: { divider?: boolean } = {}) => {
-    const def = FIELD[key];
-    if (!def) return null;
+    const field = FIELD[key];
+    if (!field) return null;
+    // A setting kept in the Extra QR parameters reads its entry there, and waits while that text can't be read.
+    // The setup settings read their entry in the Extra QR parameters, whose own field shows only the other entries.
+    const value = field.qrKey ? qrSettingOf(draft, field.qrKey) : key === 'qrParameters' ? qrRestOf(draft) : draft[key];
+    const stored = field.qrKey ? qrSettingOf(baseline, field.qrKey) : key === 'qrParameters' ? qrRestOf(baseline) || null : baseline[key];
+    // An entry typed by hand that the list doesn't offer stays selectable as itself.
+    const def =
+      field.qrKey && field.options && typeof value === 'string' && value && !field.options.some((o) => o.value === value)
+        ? { ...field, options: [{ value, label: value }, ...field.options] }
+        : field;
     // A PIN that stops the save stays editable with kiosk off, so it can be fixed or cleared without turning kiosk on.
     const off = def.kioskOnly === true && !kioskOn && !(key === 'password' && pinProblem != null);
     const help = HELP[key] ?? def.help;
+    let qrNote: { tone: 'alert' | 'warn'; text: string } | null = null;
+    if (key === 'qrParameters') {
+      const rest = qrRestOf(draft);
+      const parsed = parseExtraQrParameters(rest);
+      const dupes = settingsInRest(rest);
+      if (parsed.error) qrNote = { tone: 'alert', text: 'Not valid JSON yet. It is saved as typed; the Enroll page leaves it out until it is fixed.' };
+      else if (dupes.length) qrNote = { tone: 'warn', text: `${dupes.join(', ')}: use the setting above instead. Once that is set, it wins over this entry.` };
+    }
     // The PIN callout asks for a new PIN, which a disabled row (kiosk off) cannot take; the nav still flags it.
     const showPinWarn = key === 'password' && pinWarn != null && (readOnly || !off);
     return (
@@ -667,14 +730,18 @@ function Editor({
             <Callout tone={pinProblem ? 'alert' : 'warn'} icon={<IconWarning size={16} />}>
               {pinWarn}
             </Callout>
+          ) : qrNote ? (
+            <Callout tone={qrNote.tone} icon={<IconWarning size={16} />}>
+              {qrNote.text}
+            </Callout>
           ) : undefined
         }
       >
         {({ labelId, helpId }) => (
           <FieldControl
             def={def}
-            value={draft[key]}
-            stored={baseline[key]}
+            value={value}
+            stored={stored}
             onChange={(v) => set(key, v)}
             disabled={readOnly}
             labelId={labelId}
@@ -833,10 +900,11 @@ function Editor({
     items.map((it) => {
       if (typeof it === 'string') return row(it);
       const help = it.kiosk ? (kioskOn ? 'Only applies in kiosk mode' : 'Turn on kiosk mode to change these') : it.help;
+      const eyebrow = it.eyebrow;
       return (
-        <div key={it.eyebrow} className="v2-cfged-eyebrow">
+        <div key={eyebrow} className="v2-cfged-eyebrow">
           <Eyebrow as="h3" help={help}>
-            {it.eyebrow}
+            {eyebrow}
           </Eyebrow>
         </div>
       );
