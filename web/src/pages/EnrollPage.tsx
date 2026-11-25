@@ -10,6 +10,8 @@ import {
   agentApkUrl,
   buildProvisioningPayload,
   configurationQrExtras,
+  extrasInCode,
+  wifiExtrasLeftOut,
   summarizeQrExtras,
   serverBaseUrl,
   type WifiSecurity,
@@ -68,6 +70,8 @@ interface Minted {
   maxUses: number;
   /** The server applied the chosen devices and validity; false: it predates them, and made a single-use 24 h code. */
   limitsApplied: boolean;
+  /** The configuration choice it was made for: the code shows only with that configuration's setup entries. */
+  cfgId: string;
 }
 
 /**
@@ -368,7 +372,7 @@ export function EnrollPage() {
       const devices = typeof res.maxUses === 'number' ? res.maxUses : 1;
       if (res.token) {
         const createdAt = typeof res.createdAt === 'number' ? res.createdAt : undefined;
-        const next = { value: res.token, expiresAt: res.expiresAt, createdAt, maxUses: devices, limitsApplied: applied };
+        const next = { value: res.token, expiresAt: res.expiresAt, createdAt, maxUses: devices, limitsApplied: applied, cfgId: id };
         shown.current = next;
         setToken(next);
         if (createdAt != null) setSince((s) => s ?? createdAt);
@@ -456,7 +460,9 @@ export function EnrollPage() {
   // The chosen configuration's setup entries (Enrollment section): added to the code, protected entries aside.
   const qrExtras = useMemo(() => configurationQrExtras(selected), [selected]);
   const extrasText = useMemo(() => {
-    const sum = summarizeQrExtras(qrExtras.entries);
+    // What goes in the code (Wi-Fi entries only with the page's own network), as buildProvisioningPayload adds it.
+    const sum = summarizeQrExtras(extrasInCode(qrExtras.entries, wifiInCode));
+    const wifiLeftOut = wifiExtrasLeftOut(qrExtras.entries, wifiInCode).length;
     const parts = [
       sum.locale,
       sum.timeZone,
@@ -464,19 +470,24 @@ export function EnrollPage() {
       sum.mobileData ? 'mobile data' : null,
       sum.hiddenWifi ? 'hidden Wi-Fi' : null,
       sum.others > 0 ? `${sum.others} other ${sum.others === 1 ? 'entry' : 'entries'}` : null,
+      wifiLeftOut > 0
+        ? `${wifiLeftOut} Wi-Fi ${wifiLeftOut === 1 ? 'entry' : 'entries'} left out: only a hidden network or a proxy, and only with the Wi-Fi chosen here`
+        : null,
     ].filter((x): x is string => !!x);
     return parts.join(' · ');
-  }, [qrExtras]);
+  }, [qrExtras, wifiInCode]);
+  // A code goes only with the setup entries of the configuration it was made for: right after another configuration is
+  // chosen, the old code is still here for a render while the new configuration's entries already are.
   const payload = useMemo(
     () =>
-      token
+      token && token.cfgId === cfgId
         ? buildProvisioningPayload(
             token.value,
             wifiInCode ? { ssid: wifiSsid, password: wifiPass, security: wifiSec } : undefined,
             qrExtras.entries,
           )
         : null,
-    [token, wifiInCode, wifiSsid, wifiPass, wifiSec, qrExtras],
+    [token, cfgId, wifiInCode, wifiSsid, wifiPass, wifiSec, qrExtras],
   );
 
   let expiresValue: ReactNode = busy ? (
@@ -500,12 +511,22 @@ export function EnrollPage() {
     ...(withWifi && wifiOn
       ? [{ key: 'wifi', label: 'Joins Wi-Fi', value: wifiIssue ? 'Not in the code (see Wi-Fi above)' : ssid || 'No network name yet' }]
       : []),
-    ...(qrExtras.error || extrasText || qrExtras.ignored.length > 0
+    // Without the chosen configuration's settings (server default, or the list didn't load), the code has none: say so.
+    ...(!selected
+      ? [{
+          key: 'qrExtras',
+          label: 'Setup',
+          value: cfgId
+            ? "Not added: the configuration didn't load, so the code has none of its setup entries"
+            : "Not added: choose a configuration to add its setup entries (the page can't tell which one is the server default)",
+        }]
+      : []),
+    ...(selected && (qrExtras.error || extrasText || qrExtras.ignored.length > 0)
       ? [{
           key: 'qrExtras',
           label: 'Setup',
           value: qrExtras.error
-            ? `Extra QR parameters left out: ${qrExtras.error}`
+            ? `${extrasText || 'Nothing added'} (other Extra QR parameters left out: ${qrExtras.error})`
             : qrExtras.ignored.length
               ? `${extrasText || 'Nothing added'} (${qrExtras.ignored.length} protected left out)`
               : extrasText || 'Nothing added',
