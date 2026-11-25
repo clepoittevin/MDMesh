@@ -1,5 +1,6 @@
 import { useId, useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
+import { FormattedMessage, defineMessages, useIntl, type MessageDescriptor } from 'react-intl';
 import {
   ACTION_TEMPLATES,
   CLEAR_PIN_LOCKOUT_AGENT,
@@ -46,13 +47,171 @@ import {
   LinkButton,
   type Column,
 } from '../ui';
-import { capitalise, commandStatus, configNeedsPanel, fmtWhen, isoTime, shortRevision } from './deviceDetailFormat';
+import { capitalise, commandStatus, configNeedsPanel, fmtWhen, isoTime, powerLabel, shortRevision } from './deviceDetailFormat';
 import type { DeviceView } from '../api/devices';
 import { classifyOutcome, outcomeSummary, unsupportedOutcomeReason, type Outcome } from '../data/configOutcomes';
 import { commandDetail, commandName, commandTime } from '../data/deviceActivity';
 import { parseOutcomes } from '../api/configSync';
 import { fmtDateTime } from '../ui/format';
 import { versionAtLeast } from '../data/kiosk';
+
+const messagesRaw = defineMessages({
+  failedPrefix: { id: 'deviceDetail.config.failedPrefix', defaultMessage: 'Failed:' },
+  itsConfiguration: { id: 'deviceDetail.config.itsConfiguration', defaultMessage: 'Its configuration' },
+  noneTitle: { id: 'deviceDetail.config.noneTitle', defaultMessage: 'No configuration' },
+  noneText: {
+    id: 'deviceDetail.config.noneText',
+    defaultMessage: 'This device has no configuration, so nothing is enforced on it.',
+  },
+  revision: { id: 'deviceDetail.config.revision', defaultMessage: 'Revision' },
+  revisionApplied: { id: 'deviceDetail.config.revisionApplied', defaultMessage: 'Revision {rev} · applied {when}' },
+  revisionOnly: { id: 'deviceDetail.config.revisionOnly', defaultMessage: 'Revision {rev}' },
+  revisionExpectedReports: {
+    id: 'deviceDetail.config.revisionExpectedReports',
+    defaultMessage: 'Expected revision {rev} · device reports {applied} ({when})',
+  },
+  revisionExpectedReportsNoTime: {
+    id: 'deviceDetail.config.revisionExpectedReportsNoTime',
+    defaultMessage: 'Expected revision {rev} · device reports {applied}',
+  },
+  revisionExpectedNone: {
+    id: 'deviceDetail.config.revisionExpectedNone',
+    defaultMessage: 'Expected revision {rev} · device reports none yet',
+  },
+  editNamed: { id: 'deviceDetail.config.editNamed', defaultMessage: 'Edit {name}' },
+  editDefault: { id: 'deviceDetail.config.editDefault', defaultMessage: 'Edit configuration' },
+  inSyncTitle: { id: 'deviceDetail.config.inSyncTitle', defaultMessage: 'Configuration in sync' },
+  inSyncText: { id: 'deviceDetail.config.inSyncText', defaultMessage: '{name} is applied on this device.' },
+  showSettings: {
+    id: 'deviceDetail.config.showSettings',
+    defaultMessage: 'Show {count, plural, one {# setting} other {# settings}}',
+  },
+  outOfSyncTitle: { id: 'deviceDetail.config.outOfSyncTitle', defaultMessage: 'Configuration out of sync' },
+  outOfSyncText: {
+    id: 'deviceDetail.config.outOfSyncText',
+    defaultMessage: 'The device runs an older revision of {name}. It applies the current one at its next check-in.',
+  },
+  agentTooOldTitle: { id: 'deviceDetail.config.agentTooOldTitle', defaultMessage: 'Agent too old for configurations' },
+  agentTooOldText: {
+    id: 'deviceDetail.config.agentTooOldText',
+    defaultMessage:
+      'Update the agent (<link>Settings → Updates</link>) to enable configuration enforcement.',
+  },
+  partialTitle: { id: 'deviceDetail.config.partialTitle', defaultMessage: 'Configuration didn’t fully apply' },
+  failedTitle: { id: 'deviceDetail.config.failedTitle', defaultMessage: 'Configuration didn’t apply' },
+  nameSummary: { id: 'deviceDetail.config.nameSummary', defaultMessage: '{name}: {summary}' },
+  failedToApply: { id: 'deviceDetail.config.failedToApply', defaultMessage: '{name} failed to apply.' },
+  failedToApplyDetail: {
+    id: 'deviceDetail.config.failedToApplyDetail',
+    defaultMessage: '{name} failed to apply: {detail}',
+  },
+  applyingTitle: { id: 'deviceDetail.config.applyingTitle', defaultMessage: 'Applying configuration' },
+  applyingText: { id: 'deviceDetail.config.applyingText', defaultMessage: '{name} is on its way to the device.' },
+  notReportedTitle: { id: 'deviceDetail.config.notReportedTitle', defaultMessage: 'Configuration not reported yet' },
+  notReportedText: {
+    id: 'deviceDetail.config.notReportedText',
+    defaultMessage: 'The device hasn’t reported which revision of {name} it runs.',
+  },
+  staleTitle: { id: 'deviceDetail.config.staleTitle', defaultMessage: 'Configuration out of date on the device' },
+  staleWithCause: {
+    id: 'deviceDetail.config.staleWithCause',
+    defaultMessage: '{cause} The device asked for {name} again; the server re-sends it.',
+  },
+  staleNoCause: {
+    id: 'deviceDetail.config.staleNoCause',
+    defaultMessage:
+      'The device asked for {name} again; the server re-sends it. If the device turned Wi-Fi back on to stay reachable after Wi-Fi radio turned it off, Wi-Fi stays on until {name} changes.',
+  },
+  deferredTitle: { id: 'deviceDetail.config.deferredTitle', defaultMessage: 'Some settings were deferred' },
+  deferredText: {
+    id: 'deviceDetail.config.deferredText',
+    defaultMessage:
+      '{name}: {summary} Deferred settings are tried again at the next configuration change, reboot or agent update.',
+  },
+  unsupportedTitle: { id: 'deviceDetail.config.unsupportedTitle', defaultMessage: 'Some settings aren’t supported' },
+  notDeviceOwner: {
+    id: 'deviceDetail.config.notDeviceOwner',
+    defaultMessage:
+      'This device’s agent isn’t the device owner, and most of these settings need device-owner mode.',
+  },
+  retryApply: { id: 'deviceDetail.config.retryApply', defaultMessage: 'Retry apply' },
+
+  remoteActions: { id: 'deviceDetail.actions.title', defaultMessage: 'Remote actions' },
+  messageTitle: { id: 'deviceDetail.actions.messageTitle', defaultMessage: 'Message' },
+  messageSub: { id: 'deviceDetail.actions.messageSub', defaultMessage: 'Get someone’s attention' },
+  sendAlert: { id: 'deviceDetail.actions.sendAlert', defaultMessage: 'Send alert' },
+  lockScreenMessage: { id: 'deviceDetail.actions.lockScreenMessage', defaultMessage: 'Lock-screen message' },
+  ring: { id: 'deviceDetail.actions.ring', defaultMessage: 'Ring' },
+  stopRinging: { id: 'deviceDetail.actions.stopRinging', defaultMessage: 'Stop ringing' },
+  kioskTitle: { id: 'deviceDetail.actions.kioskTitle', defaultMessage: 'Kiosk & apps' },
+  kioskSub: { id: 'deviceDetail.actions.kioskSub', defaultMessage: 'What runs on screen' },
+  returnToKiosk: { id: 'deviceDetail.actions.returnToKiosk', defaultMessage: 'Return to configured kiosk' },
+  returnToKioskTip: {
+    id: 'deviceDetail.actions.returnToKioskTip',
+    defaultMessage: 'Puts the device back into the kiosk its configuration defines.',
+  },
+  customKiosk: { id: 'deviceDetail.actions.customKiosk', defaultMessage: 'Custom kiosk' },
+  exitKiosk: { id: 'deviceDetail.actions.exitKiosk', defaultMessage: 'Exit kiosk' },
+  clearPinLockout: { id: 'deviceDetail.actions.clearPinLockout', defaultMessage: 'Clear PIN lockout' },
+  lockoutTooOld: {
+    id: 'deviceDetail.actions.lockoutTooOld',
+    defaultMessage: 'Clear PIN lockout needs agent {version} or later on the device.',
+  },
+  installConfigApps: { id: 'deviceDetail.actions.installConfigApps', defaultMessage: 'Install configuration apps' },
+  installConfigAppsTip: {
+    id: 'deviceDetail.actions.installConfigAppsTip',
+    defaultMessage:
+      'Sends every app the configuration marks Install again. Apps added to it install at the next check-in.',
+  },
+  deviceTitle: { id: 'deviceDetail.actions.deviceTitle', defaultMessage: 'Device' },
+  deviceSub: { id: 'deviceDetail.actions.deviceSub', defaultMessage: 'Interrupts the user' },
+  lock: { id: 'deviceDetail.actions.lock', defaultMessage: 'Lock' },
+  reboot: { id: 'deviceDetail.actions.reboot', defaultMessage: 'Reboot' },
+  powerTitle: { id: 'deviceDetail.actions.powerTitle', defaultMessage: 'Power use' },
+  powerSub: { id: 'deviceDetail.actions.powerSub', defaultMessage: 'How often it reports' },
+  connection: { id: 'deviceDetail.actions.connection', defaultMessage: 'Connection' },
+  waitingForDevice: { id: 'deviceDetail.actions.waitingForDevice', defaultMessage: 'Waiting for the device' },
+  configSetsConnectivity: {
+    id: 'deviceDetail.actions.configSetsConnectivity',
+    defaultMessage:
+      'This device’s configuration sets Connectivity: {mode}. A change here lasts until the configuration changes, the device restarts or the agent updates; to keep a mode, set it in the configuration.',
+  },
+  location: { id: 'deviceDetail.actions.location', defaultMessage: 'Location' },
+  locationAccurate: { id: 'deviceDetail.actions.locationAccurate', defaultMessage: 'Accurate' },
+  locationBatterySaver: { id: 'deviceDetail.actions.locationBatterySaver', defaultMessage: 'Battery-saver' },
+  locationSent: { id: 'deviceDetail.actions.locationSent', defaultMessage: 'Sent' },
+  locationUnknown: {
+    id: 'deviceDetail.actions.locationUnknown',
+    defaultMessage: 'The device doesn’t report its location mode; the last change was sent from this console.',
+  },
+  destructiveTitle: { id: 'deviceDetail.actions.destructiveTitle', defaultMessage: 'Destructive' },
+  destructiveSub: { id: 'deviceDetail.actions.destructiveSub', defaultMessage: 'Asks you to confirm' },
+  resetPasscode: { id: 'deviceDetail.actions.resetPasscode', defaultMessage: 'Reset passcode' },
+  factoryReset: { id: 'deviceDetail.actions.factoryReset', defaultMessage: 'Factory reset' },
+
+  targetDevice: { id: 'deviceDetail.dialog.targetDevice', defaultMessage: 'Device {number}' },
+  cancel: { id: 'deviceDetail.dialog.cancel', defaultMessage: 'Cancel' },
+  send: { id: 'deviceDetail.dialog.send', defaultMessage: 'Send' },
+  typeToConfirm: { id: 'deviceDetail.dialog.typeToConfirm', defaultMessage: 'Type {word} to confirm' },
+  interrupts: {
+    id: 'deviceDetail.dialog.interrupts',
+    defaultMessage: 'This interrupts whoever is using the device.',
+  },
+
+  showLess: { id: 'deviceDetail.commands.showLess', defaultMessage: 'show less' },
+  showMore: { id: 'deviceDetail.commands.showMore', defaultMessage: 'show more' },
+  colCommand: { id: 'deviceDetail.commands.colCommand', defaultMessage: 'Command' },
+  colStatus: { id: 'deviceDetail.commands.colStatus', defaultMessage: 'Status' },
+  colWhen: { id: 'deviceDetail.commands.colWhen', defaultMessage: 'When' },
+  count: { id: 'deviceDetail.commands.count', defaultMessage: '{count, plural, one {# command} other {# commands}}' },
+  loading: { id: 'deviceDetail.commands.loading', defaultMessage: 'Loading {title}' },
+  emptyTitle: { id: 'deviceDetail.commands.emptyTitle', defaultMessage: 'No commands yet' },
+  emptyText: {
+    id: 'deviceDetail.commands.emptyText',
+    defaultMessage: 'Actions you send to this device show up here with their result.',
+  },
+});
+const messages: Record<keyof typeof messagesRaw, MessageDescriptor> = messagesRaw;
 
 export const TEMPLATE: Record<string, CommandTemplateExt> = Object.fromEntries(ACTION_TEMPLATES.map((t) => [t.key, t]));
 
@@ -90,7 +249,9 @@ function OutcomeGrid({ list }: { list: Outcome[] }) {
           {o.kind === 'failed' && o.reason ? (
             // A failed key shows why in the value column ("Needs device owner").
             <span className="v2-device-cfg__oval">
-              <span className="v2-visually-hidden">Failed: </span>
+              <span className="v2-visually-hidden">
+                <FormattedMessage {...messages.failedPrefix} />{' '}
+              </span>
               {capitalise(o.reason)}
             </span>
           ) : (
@@ -126,6 +287,7 @@ export function ConfigPanel({
   events?: ReadonlyArray<DeviceEvent>;
 }) {
   const titleId = useId();
+  const intl = useIntl();
   const verdict = summarizeStatus(status);
   const parsed = parseOutcomes(status?.lastCommand?.detail);
   const outcomes = useMemo(() => Object.entries(parsed?.outcomes ?? {}).map(([k, v]) => {
@@ -135,7 +297,7 @@ export function ConfigPanel({
       : outcome;
   }), [parsed, androidSdkInt, isDeviceOwner]);
   const cfgId = status?.configurationId ?? null;
-  const name = configName ?? 'Its configuration';
+  const name = configName ?? intl.formatMessage(messages.itsConfiguration);
   const strongName = <strong>{name}</strong>;
 
   if (!status || cfgId == null) {
@@ -144,8 +306,8 @@ export function ConfigPanel({
         tone="idle"
         icon={<IconDashSmall size={14} />}
         titleId={titleId}
-        title="No configuration"
-        text="This device has no configuration, so nothing is enforced on it."
+        title={intl.formatMessage(messages.noneTitle)}
+        text={intl.formatMessage(messages.noneText)}
       />
     );
   }
@@ -163,38 +325,44 @@ export function ConfigPanel({
     ) : null;
   const rev = (r: string | null | undefined) => (
     <span className="v2-mono" title={r ?? undefined}>
-      {shortRevision(r)}
+      {shortRevision(r, intl)}
     </span>
   );
   const sameRevision = !!status.appliedRevision && status.appliedRevision === status.currentRevision;
   const revisionLine = (
     <details className="v2-device-cfg__rev">
-      <summary>Revision</summary>
+      <summary>{intl.formatMessage(messages.revision)}</summary>
       <p>
         {sameRevision ? (
-          <>
-            Revision {rev(status.currentRevision)}
-            {appliedWhen ? <> · applied {appliedWhen}</> : null}
-          </>
+          appliedWhen ? (
+            <FormattedMessage
+              {...messages.revisionApplied}
+              values={{ rev: rev(status.currentRevision), when: appliedWhen }}
+            />
+          ) : (
+            <FormattedMessage {...messages.revisionOnly} values={{ rev: rev(status.currentRevision) }} />
+          )
+        ) : status.appliedRevision ? (
+          appliedWhen ? (
+            <FormattedMessage
+              {...messages.revisionExpectedReports}
+              values={{ rev: rev(status.currentRevision), applied: rev(status.appliedRevision), when: appliedWhen }}
+            />
+          ) : (
+            <FormattedMessage
+              {...messages.revisionExpectedReportsNoTime}
+              values={{ rev: rev(status.currentRevision), applied: rev(status.appliedRevision) }}
+            />
+          )
         ) : (
-          <>
-            Expected revision {rev(status.currentRevision)} ·{' '}
-            {status.appliedRevision ? (
-              <>
-                device reports {rev(status.appliedRevision)}
-                {appliedWhen ? <> ({appliedWhen})</> : null}
-              </>
-            ) : (
-              'device reports none yet'
-            )}
-          </>
+          <FormattedMessage {...messages.revisionExpectedNone} values={{ rev: rev(status.currentRevision) }} />
         )}
       </p>
     </details>
   );
   const edit = (
     <ButtonLink to={paths.configuration(cfgId)}>
-      Edit {configName ?? 'configuration'}
+      {configName ? intl.formatMessage(messages.editNamed, { name: configName }) : intl.formatMessage(messages.editDefault)}
     </ButtonLink>
   );
 
@@ -205,14 +373,12 @@ export function ConfigPanel({
         tone="ok"
         icon={<IconCheckSmall size={14} />}
         titleId={titleId}
-        title="Configuration in sync"
-        text={<>{strongName} is applied on this device.</>}
+        title={intl.formatMessage(messages.inSyncTitle)}
+        text={<FormattedMessage {...messages.inSyncText} values={{ name: strongName }} />}
       >
         {outcomes.length ? (
           <details className="v2-device-cfg__more">
-            <summary>
-              Show {outcomes.length} setting{outcomes.length === 1 ? '' : 's'}
-            </summary>
+            <summary>{intl.formatMessage(messages.showSettings, { count: outcomes.length })}</summary>
             <OutcomeGrid list={outcomes} />
           </details>
         ) : null}
@@ -225,69 +391,54 @@ export function ConfigPanel({
   }
 
   let tone: PanelTone = 'warn';
-  let title = 'Configuration out of sync';
-  let text: ReactNode = (
-    <>
-      The device runs an older revision of {strongName}. It applies the current one at its next check-in.
-    </>
-  );
+  let title = intl.formatMessage(messages.outOfSyncTitle);
+  let text: ReactNode = <FormattedMessage {...messages.outOfSyncText} values={{ name: strongName }} />;
   if (!status.supported) {
-    title = 'Agent too old for configurations';
+    title = intl.formatMessage(messages.agentTooOldTitle);
     text = (
-      <>
-        Update the agent (<Link to={`${paths.settings}#updates`}>Settings → Updates</Link>) to enable configuration
-        enforcement.
-      </>
+      <FormattedMessage
+        {...messages.agentTooOldText}
+        values={{ link: (chunks) => <Link to={`${paths.settings}#updates`}>{chunks}</Link> }}
+      />
     );
   } else if (verdict.label === 'Apply failed' || failed > 0) {
     tone = 'alert';
-    title = outcomes.length && outcomes.some((o) => o.kind === 'applied') ? 'Configuration didn’t fully apply' : 'Configuration didn’t apply';
+    title = intl.formatMessage(
+      outcomes.length && outcomes.some((o) => o.kind === 'applied') ? messages.partialTitle : messages.failedTitle,
+    );
     text = outcomes.length ? (
-      <>
-        {strongName}: {outcomeSummary(outcomes)}
-      </>
+      <FormattedMessage {...messages.nameSummary} values={{ name: strongName, summary: outcomeSummary(outcomes) }} />
+    ) : status.lastCommand?.detail ? (
+      <FormattedMessage
+        {...messages.failedToApplyDetail}
+        values={{ name: strongName, detail: status.lastCommand.detail }}
+      />
     ) : (
-      <>
-        {strongName} failed to apply{status.lastCommand?.detail ? `: ${status.lastCommand.detail}` : '.'}
-      </>
+      <FormattedMessage {...messages.failedToApply} values={{ name: strongName }} />
     );
   } else if (verdict.label === 'Applying…') {
     tone = 'idle';
-    title = 'Applying configuration';
-    text = <>{strongName} is on its way to the device.</>;
+    title = intl.formatMessage(messages.applyingTitle);
+    text = <FormattedMessage {...messages.applyingText} values={{ name: strongName }} />;
   } else if (verdict.label === 'Not reported yet') {
     tone = 'idle';
-    title = 'Configuration not reported yet';
-    text = <>The device hasn’t reported which revision of {strongName} it runs.</>;
+    title = intl.formatMessage(messages.notReportedTitle);
+    text = <FormattedMessage {...messages.notReportedText} values={{ name: strongName }} />;
   } else if (verdict.label === DEVICE_RESET_LABEL) {
-    title = 'Configuration out of date on the device';
+    title = intl.formatMessage(messages.staleTitle);
     const cause = staleCause(events, status);
     text = cause ? (
-      <>
-        {cause} The device asked for {strongName} again; the server re-sends it.
-      </>
+      <FormattedMessage {...messages.staleWithCause} values={{ cause, name: strongName }} />
     ) : (
-      <>
-        The device asked for {strongName} again; the server re-sends it. If the device turned Wi-Fi back on to stay
-        reachable after Wi-Fi radio turned it off, Wi-Fi stays on until {strongName} changes.
-      </>
+      <FormattedMessage {...messages.staleNoCause} values={{ name: strongName }} />
     );
   } else if (verdict.label === SOME_DEFERRED_LABEL) {
-    title = 'Some settings were deferred';
-    text = (
-      <>
-        {strongName}: {outcomeSummary(outcomes)} Deferred settings are tried again at the next configuration change,
-        reboot or agent update.
-      </>
-    );
+    title = intl.formatMessage(messages.deferredTitle);
+    text = <FormattedMessage {...messages.deferredText} values={{ name: strongName, summary: outcomeSummary(outcomes) }} />;
   } else if (status.inSync && unsupported > 0) {
     tone = 'idle';
-    title = 'Some settings aren’t supported';
-    text = (
-      <>
-        {strongName}: {outcomeSummary(outcomes)}
-      </>
-    );
+    title = intl.formatMessage(messages.unsupportedTitle);
+    text = <FormattedMessage {...messages.nameSummary} values={{ name: strongName, summary: outcomeSummary(outcomes) }} />;
   }
 
   const retryable = status.supported && !status.inSync && (verdict.label === 'Apply failed' || verdict.label === 'Out of sync');
@@ -303,7 +454,10 @@ export function ConfigPanel({
         <>
           {text}
           {unsupported > 0 && isDeviceOwner === false ? (
-            <> This device’s agent isn’t the device owner, and most of these settings need device-owner mode.</>
+            <>
+              {' '}
+              <FormattedMessage {...messages.notDeviceOwner} />
+            </>
           ) : null}
         </>
       }
@@ -312,7 +466,7 @@ export function ConfigPanel({
       <div className="v2-device-cfg__actions">
         {retryable && onRetry ? (
           <Button variant="primary" icon={<IconSync />} disabled={busy} onClick={onRetry}>
-            Retry apply
+            <FormattedMessage {...messages.retryApply} />
           </Button>
         ) : null}
         {edit}
@@ -480,6 +634,7 @@ export function RemoteActions({
   agentVersion?: string | null;
 }) {
   const titleId = useId();
+  const intl = useIntl();
   // Unknown (not reported yet) stays available: the server holds the command from an agent that can't run it.
   const lockoutTooOld = versionAtLeast(agentVersion, CLEAR_PIN_LOCKOUT_AGENT) === false;
   const kioskHint =
@@ -487,7 +642,7 @@ export function RemoteActions({
       <>
         {kioskReturn.hint}
         {kioskReturn.hint && lockoutTooOld ? ' ' : null}
-        {lockoutTooOld ? `Clear PIN lockout needs agent ${CLEAR_PIN_LOCKOUT_AGENT} or later on the device.` : null}
+        {lockoutTooOld ? intl.formatMessage(messages.lockoutTooOld, { version: CLEAR_PIN_LOCKOUT_AGENT }) : null}
       </>
     ) : undefined;
   const tile = (key: string, label: string, icon: ReactNode): Tile => ({
@@ -501,21 +656,21 @@ export function RemoteActions({
 
   return (
     <Card aria-labelledby={titleId} className="v2-device-actions">
-      <CardHeader title="Remote actions" titleId={titleId} className="v2-device-actions__h" />
+      <CardHeader title={intl.formatMessage(messages.remoteActions)} titleId={titleId} className="v2-device-actions__h" />
       <ActionRow
-        title="Message"
-        sub="Get someone’s attention"
+        title={intl.formatMessage(messages.messageTitle)}
+        sub={intl.formatMessage(messages.messageSub)}
         busy={busy}
         tiles={[
-          tile('alert', 'Send alert', <IconAlert />),
-          tile('lockscreen-message', 'Lock-screen message', <IconScreenMessage />),
-          tile('ring', 'Ring', <IconRing />),
-          tile('ring-stop', 'Stop ringing', <IconStopRing />),
+          tile('alert', intl.formatMessage(messages.sendAlert), <IconAlert />),
+          tile('lockscreen-message', intl.formatMessage(messages.lockScreenMessage), <IconScreenMessage />),
+          tile('ring', intl.formatMessage(messages.ring), <IconRing />),
+          tile('ring-stop', intl.formatMessage(messages.stopRinging), <IconStopRing />),
         ]}
       />
       <ActionRow
-        title="Kiosk & apps"
-        sub="What runs on screen"
+        title={intl.formatMessage(messages.kioskTitle)}
+        sub={intl.formatMessage(messages.kioskSub)}
         busy={busy}
         hint={kioskHint}
         tiles={[
@@ -523,39 +678,46 @@ export function RemoteActions({
             ? [
                 {
                   key: 'kiosk-return',
-                  label: 'Return to configured kiosk',
+                  label: intl.formatMessage(messages.returnToKiosk),
                   icon: <IconEnterKiosk />,
-                  tip: 'Puts the device back into the kiosk its configuration defines.',
+                  tip: intl.formatMessage(messages.returnToKioskTip),
                   variant: 'primary' as const,
                   disabled: kioskReturn.disabled,
                   run: kioskReturn.onReturn,
                 },
               ]
             : []),
-          { key: 'kiosk-enter', label: 'Custom kiosk', icon: <IconEnterKiosk />, tip: TEMPLATE['kiosk-enter'].description, run: onEnterKiosk },
-          tile('kiosk-exit', 'Exit kiosk', <IconExitKiosk />),
-          { ...tile('kiosk-clear-lockout', 'Clear PIN lockout', <IconKey />), disabled: lockoutTooOld },
+          { key: 'kiosk-enter', label: intl.formatMessage(messages.customKiosk), icon: <IconEnterKiosk />, tip: TEMPLATE['kiosk-enter'].description, run: onEnterKiosk },
+          tile('kiosk-exit', intl.formatMessage(messages.exitKiosk), <IconExitKiosk />),
+          { ...tile('kiosk-clear-lockout', intl.formatMessage(messages.clearPinLockout), <IconKey />), disabled: lockoutTooOld },
           {
             key: 'config-apps',
-            label: 'Install configuration apps',
+            label: intl.formatMessage(messages.installConfigApps),
             icon: <IconDownload size={16} />,
-            tip: 'Sends every app the configuration marks Install again. Apps added to it install at the next check-in.',
+            tip: intl.formatMessage(messages.installConfigAppsTip),
             run: onInstallConfigApps,
           },
         ]}
       />
       <ActionRow
-        title="Device"
-        sub="Interrupts the user"
+        title={intl.formatMessage(messages.deviceTitle)}
+        sub={intl.formatMessage(messages.deviceSub)}
         busy={busy}
-        tiles={[tile('lock', 'Lock', <IconLock size={16} />), tile('reboot', 'Reboot', <IconPower />)]}
+        tiles={[
+          tile('lock', intl.formatMessage(messages.lock), <IconLock size={16} />),
+          tile('reboot', intl.formatMessage(messages.reboot), <IconPower />),
+        ]}
       />
       <div className="v2-device-actions__row" role="group" aria-labelledby={`${titleId}-pw`}>
-        <ActionHead id={`${titleId}-pw`} title="Power use" sub="How often it reports" />
+        <ActionHead
+          id={`${titleId}-pw`}
+          title={intl.formatMessage(messages.powerTitle)}
+          sub={intl.formatMessage(messages.powerSub)}
+        />
         {/* Two label / control pairs on one grid: both Segmented controls start at the same x (I14). */}
         <div className="v2-device-actions__power">
           <span className="v2-device-actions__seglabel" id={`${titleId}-conn`}>
-            Connection
+            {intl.formatMessage(messages.connection)}
           </span>
           <span className="v2-device-actions__segctl">
             <Segmented<string>
@@ -565,21 +727,21 @@ export function RemoteActions({
               disabled={busy}
               onChange={(v) => send(v === 'alwaysOn' ? 'power-always' : 'power-adaptive')}
               options={[
-                { value: 'alwaysOn', label: 'Always-on' },
-                { value: 'adaptive', label: 'Battery-saver' },
+                { value: 'alwaysOn', label: powerLabel('alwaysOn', intl) as string },
+                { value: 'adaptive', label: powerLabel('adaptive', intl) as string },
               ]}
             />
-            {powerPending ? <span className="v2-device-actions__pending">Waiting for the device</span> : null}
+            {powerPending ? (
+              <span className="v2-device-actions__pending">{intl.formatMessage(messages.waitingForDevice)}</span>
+            ) : null}
           </span>
           {configPowerMode ? (
             <p id={`${titleId}-connhint`} className="v2-device-actions__hint v2-device-actions__seghint">
-              This device’s configuration sets Connectivity: {configPowerMode === 'alwaysOn' ? 'Always-on' : 'Battery-saver'}. A
-              change here lasts until the configuration changes, the device restarts or the agent updates; to keep a mode,
-              set it in the configuration.
+              {intl.formatMessage(messages.configSetsConnectivity, { mode: powerLabel(configPowerMode, intl) as string })}
             </p>
           ) : null}
           <span className="v2-device-actions__seglabel" id={`${titleId}-loc`}>
-            Location
+            {intl.formatMessage(messages.location)}
           </span>
           <span className="v2-device-actions__segctl">
             <Segmented<string>
@@ -589,11 +751,13 @@ export function RemoteActions({
               disabled={busy || doNotTrack === true}
               onChange={(v) => send(v === 'active' ? 'location-active' : 'location-passive')}
               options={[
-                { value: 'active', label: 'Accurate' },
-                { value: 'passive', label: 'Battery-saver' },
+                { value: 'active', label: intl.formatMessage(messages.locationAccurate) },
+                { value: 'passive', label: intl.formatMessage(messages.locationBatterySaver) },
               ]}
             />
-            {locationPending && !doNotTrack ? <span className="v2-device-actions__pending">Sent</span> : null}
+            {locationPending && !doNotTrack ? (
+              <span className="v2-device-actions__pending">{intl.formatMessage(messages.locationSent)}</span>
+            ) : null}
           </span>
           {doNotTrack ? (
             <p id={`${titleId}-lochint`} className="v2-device-actions__hint v2-device-actions__seghint">
@@ -601,23 +765,27 @@ export function RemoteActions({
             </p>
           ) : locationUnknown ? (
             <p id={`${titleId}-lochint`} className="v2-device-actions__hint v2-device-actions__seghint">
-              The device doesn’t report its location mode; the last change was sent from this console.
+              {intl.formatMessage(messages.locationUnknown)}
             </p>
           ) : null}
         </div>
       </div>
       {/* C4: a plain row under a hairline, red-text buttons; each opens a confirmation. */}
       <div className="v2-device-actions__row is-danger" role="group" aria-labelledby={`${titleId}-dz`}>
-        <ActionHead id={`${titleId}-dz`} title="Destructive" sub="Asks you to confirm" />
+        <ActionHead
+          id={`${titleId}-dz`}
+          title={intl.formatMessage(messages.destructiveTitle)}
+          sub={intl.formatMessage(messages.destructiveSub)}
+        />
         <div className="v2-device-actions__tiles">
           <Tooltip content={TEMPLATE['passcode-reset'].description}>
             <Button variant="danger" icon={<IconKey />} disabled={busy} onClick={() => send('passcode-reset')}>
-              Reset passcode
+              {intl.formatMessage(messages.resetPasscode)}
             </Button>
           </Tooltip>
           <Tooltip content={TEMPLATE.wipe.description}>
             <Button variant="danger" icon={<IconFactoryReset />} disabled={busy} onClick={() => send('wipe')}>
-              Factory reset
+              {intl.formatMessage(messages.factoryReset)}
             </Button>
           </Tooltip>
         </div>
@@ -634,7 +802,7 @@ export function RemoteActions({
 export function DialogTarget({ device }: { device: Pick<DeviceView, 'number' | 'description'> }) {
   return (
     <p className="v2-device-target">
-      Device <strong>{device.number}</strong>
+      <FormattedMessage {...messages.targetDevice} values={{ number: <strong>{device.number}</strong> }} />
       {device.description ? ` · ${device.description}` : null}
     </p>
   );
@@ -664,6 +832,7 @@ export function ActionDialog({
   const [values, setValues] = useState<Record<string, string>>({});
   const [confirmText, setConfirmText] = useState('');
   const formId = useId();
+  const intl = useIntl();
   const t = template;
   const typeToConfirm = t.confirm === 'type-to-confirm';
   const canSend = typeToConfirm
@@ -687,7 +856,7 @@ export function ActionDialog({
       footer={
         <>
           <Button size="lg" disabled={busy} onClick={onCancel}>
-            Cancel
+            {intl.formatMessage(messages.cancel)}
           </Button>
           <Button
             size="lg"
@@ -697,7 +866,7 @@ export function ActionDialog({
             form={hasInputs ? formId : undefined}
             type={hasInputs ? 'submit' : 'button'}
           >
-            {t.danger ? t.label : 'Send'}
+            {t.danger ? t.label : intl.formatMessage(messages.send)}
           </Button>
         </>
       }
@@ -727,9 +896,7 @@ export function ActionDialog({
           {typeToConfirm ? (
             <Field
               label={
-                <>
-                  Type <strong>WIPE</strong> to confirm
-                </>
+                <FormattedMessage {...messages.typeToConfirm} values={{ word: <strong>WIPE</strong> }} />
               }
             >
               <Input value={confirmText} autoComplete="off" spellCheck={false} onChange={(e) => setConfirmText(e.target.value)} />
@@ -738,7 +905,7 @@ export function ActionDialog({
         </form>
       ) : t.danger ? (
         <Callout tone="warn" icon={<IconWarning size={16} />}>
-          This interrupts whoever is using the device.
+          <FormattedMessage {...messages.interrupts} />
         </Callout>
       ) : null}
     </Modal>
@@ -754,12 +921,13 @@ const DETAIL_LIMIT = 160;
 /** Long details clamped at 160 characters with show more / show less (classic CommandDetail). */
 function CommandDetail({ text }: { text: string }) {
   const [open, setOpen] = useState(false);
+  const intl = useIntl();
   if (text.length <= DETAIL_LIMIT) return <>{text}</>;
   return (
     <>
       {open ? text : `${text.slice(0, DETAIL_LIMIT)}…`}{' '}
       <LinkButton tone="quiet" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
-        {open ? 'show less' : 'show more'}
+        {intl.formatMessage(open ? messages.showLess : messages.showMore)}
       </LinkButton>
     </>
   );
@@ -777,17 +945,18 @@ export function CommandsCard({
   loaded: boolean;
 }) {
   const titleId = useId();
-    const columns: Column<CommandHistoryItem>[] = [
+  const intl = useIntl();
+  const columns: Column<CommandHistoryItem>[] = [
     {
       key: 'command',
-      header: 'Command',
+      header: intl.formatMessage(messages.colCommand),
       className: 'v2-device-cmds__cmd',
       cell: (c) => {
-        const detail = commandDetail(c);
+        const detail = commandDetail(c, intl);
         return (
           <>
             <span className="v2-device-cmds__name" title={c.type}>
-              {commandName(c.type)}
+              {commandName(c.type, intl)}
             </span>
             {detail ? (
               <>
@@ -803,16 +972,16 @@ export function CommandsCard({
     },
     {
       key: 'status',
-      header: 'Status',
+      header: intl.formatMessage(messages.colStatus),
       shrink: true,
       cell: (c) => {
-        const st = commandStatus(c.status);
+        const st = commandStatus(c.status, intl);
         return <StatusPill status={st.kind} label={st.label} dot={false} />;
       },
     },
     {
       key: 'when',
-      header: 'When',
+      header: intl.formatMessage(messages.colWhen),
       shrink: true,
       align: 'right',
       className: 'v2-device-cmds__when',
@@ -836,20 +1005,18 @@ export function CommandsCard({
         titleId={titleId}
         actions={
           items.length ? (
-            <span className="v2-device-meta">
-              {items.length} command{items.length === 1 ? '' : 's'}
-            </span>
+            <span className="v2-device-meta">{intl.formatMessage(messages.count, { count: items.length })}</span>
           ) : null
         }
       />
       {!loaded && !items.length ? (
-        <SkeletonRows compact count={4} label={`Loading ${title.toLowerCase()}`} />
+        <SkeletonRows compact count={4} label={intl.formatMessage(messages.loading, { title: title.toLowerCase() })} />
       ) : items.length ? (
         <Table<CommandHistoryItem> aria-label={title} rowPad={10} rows={items} rowKey={(c) => String(c.id)} columns={columns} />
       ) : (
         <div className="v2-device-cmds__empty">
-          <EmptyState bare icon={<IconHistory />} title="No commands yet">
-            Actions you send to this device show up here with their result.
+          <EmptyState bare icon={<IconHistory />} title={intl.formatMessage(messages.emptyTitle)}>
+            <FormattedMessage {...messages.emptyText} />
           </EmptyState>
         </div>
       )}
