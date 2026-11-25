@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
+import { FormattedMessage, defineMessages, useIntl, type MessageDescriptor } from 'react-intl';
 import {
   getDeviceByNumber,
   searchDevices,
@@ -85,6 +86,7 @@ import {
   DASH,
   cleanFixes,
   cleanLocation,
+  fmtAccuracy,
   fmtAge,
   isoTime,
   fmtStorage,
@@ -99,6 +101,159 @@ import {
   validTime,
 } from './deviceDetailFormat';
 import './DeviceDetailPage.css';
+
+const messagesRaw = defineMessages({
+  breadcrumbDevices: { id: 'deviceDetail.breadcrumb.devices', defaultMessage: 'Devices' },
+  nameSaved: { id: 'deviceDetail.name.saved', defaultMessage: 'Name saved' },
+  nameCleared: { id: 'deviceDetail.name.cleared', defaultMessage: 'Name cleared.' },
+  renameFailed: { id: 'deviceDetail.name.renameFailed', defaultMessage: 'Rename failed' },
+  deviceName: { id: 'deviceDetail.name.label', defaultMessage: 'Device name' },
+  saving: { id: 'deviceDetail.name.saving', defaultMessage: 'Saving…' },
+  save: { id: 'deviceDetail.name.save', defaultMessage: 'Save' },
+  cancel: { id: 'deviceDetail.name.cancel', defaultMessage: 'Cancel' },
+  renameDevice: { id: 'deviceDetail.name.renameLabel', defaultMessage: 'Rename device' },
+  addName: { id: 'deviceDetail.name.addNameLabel', defaultMessage: 'Add a name' },
+  renameThisDevice: { id: 'deviceDetail.name.renameTitle', defaultMessage: 'Rename this device' },
+  addNameTitle: { id: 'deviceDetail.name.addNameTitle', defaultMessage: 'Add a name' },
+
+  locationsFailed: { id: 'deviceDetail.page.locationsFailed', defaultMessage: 'Failed to load locations' },
+  requestFailed: { id: 'deviceDetail.page.requestFailed', defaultMessage: 'request failed' },
+  documentName: { id: 'deviceDetail.page.documentName', defaultMessage: 'Device {id}' },
+  syncRequested: { id: 'deviceDetail.page.syncRequested', defaultMessage: 'Sync requested' },
+  syncFailed: { id: 'deviceDetail.page.syncFailed', defaultMessage: 'Sync failed' },
+  alreadyApplied: { id: 'deviceDetail.page.alreadyApplied', defaultMessage: 'Already applied' },
+  alreadyAppliedText: {
+    id: 'deviceDetail.page.alreadyAppliedText',
+    defaultMessage: 'The device has the current configuration.',
+  },
+  notSent: { id: 'deviceDetail.page.notSent', defaultMessage: 'Not sent' },
+  agentTooOld: {
+    id: 'deviceDetail.page.agentTooOld',
+    defaultMessage: 'The device’s agent is too old for configurations.',
+  },
+  noConfiguration: { id: 'deviceDetail.page.noConfiguration', defaultMessage: 'The device has no configuration.' },
+  configSentAgain: { id: 'deviceDetail.page.configSentAgain', defaultMessage: 'Configuration sent again' },
+  configAlreadyQueued: {
+    id: 'deviceDetail.page.configAlreadyQueued',
+    defaultMessage: 'It was already on its way; the device was woken.',
+  },
+  retryFailed: { id: 'deviceDetail.page.retryFailed', defaultMessage: 'Retry failed' },
+  installAppsQueued: {
+    id: 'deviceDetail.page.installAppsQueued',
+    defaultMessage: 'Install configuration apps queued',
+  },
+  installAppsQueuedText: {
+    id: 'deviceDetail.page.installAppsQueuedText',
+    defaultMessage: '{count, plural, one {# install command} other {# install commands}} queued.',
+  },
+  installAppsFailed: {
+    id: 'deviceDetail.page.installAppsFailed',
+    defaultMessage: 'Install configuration apps failed',
+  },
+  commandQueued: { id: 'deviceDetail.page.commandQueued', defaultMessage: '{label} queued' },
+  commandFailed: { id: 'deviceDetail.page.commandFailed', defaultMessage: '{label} failed' },
+  commandId: { id: 'deviceDetail.page.commandId', defaultMessage: 'Command {id}' },
+
+  itsConfigurationStart: { id: 'deviceDetail.kiosk.itsConfigurationStart', defaultMessage: 'Its configuration' },
+  itsConfigurationMid: { id: 'deviceDetail.kiosk.itsConfigurationMid', defaultMessage: 'its configuration' },
+  noConfigHint: {
+    id: 'deviceDetail.kiosk.noConfigHint',
+    defaultMessage: 'This device has no configuration, so there is no configured kiosk to return to.',
+  },
+  configLoadFailed: {
+    id: 'deviceDetail.kiosk.configLoadFailed',
+    defaultMessage: 'Couldn’t load {name}, so its kiosk isn’t available here: {error}. Trying again in 15 seconds.',
+  },
+  noKioskMode: {
+    id: 'deviceDetail.kiosk.noKioskMode',
+    defaultMessage: '{name} doesn’t use kiosk mode, so there is no configured kiosk to return to.',
+  },
+  appsLoadFailed: {
+    id: 'deviceDetail.kiosk.appsLoadFailed',
+    defaultMessage: 'Couldn’t load the apps of {name}, so its kiosk can’t be built: {error}.',
+  },
+  retry: { id: 'deviceDetail.kiosk.retry', defaultMessage: 'Retry' },
+  loadingKiosk: { id: 'deviceDetail.kiosk.loading', defaultMessage: 'Loading the kiosk that {name} defines…' },
+  noKioskApps: {
+    id: 'deviceDetail.kiosk.noApps',
+    defaultMessage:
+      '{name} has kiosk mode on, but no app is set to Install and shown in kiosk, so its kiosk has nothing to show. Add one in the configuration.',
+  },
+  waitingKiosk: {
+    id: 'deviceDetail.kiosk.waiting',
+    defaultMessage: 'Waiting for the device to enter the kiosk that {name} defines.',
+  },
+  alreadyInKiosk: {
+    id: 'deviceDetail.kiosk.alreadyIn',
+    defaultMessage: 'The device is already in the kiosk that {name} defines.',
+  },
+
+  loadingDevice: { id: 'deviceDetail.page.loadingDevice', defaultMessage: 'Loading device…' },
+  cannotReach: { id: 'deviceDetail.page.cannotReach', defaultMessage: 'Cannot reach the server.' },
+  thisDevice: { id: 'deviceDetail.page.thisDevice', defaultMessage: 'this device' },
+  notFoundTitle: { id: 'deviceDetail.page.notFoundTitle', defaultMessage: 'Device not found' },
+  goToDevices: { id: 'deviceDetail.page.goToDevices', defaultMessage: 'Go to Devices' },
+  notFoundText: {
+    id: 'deviceDetail.page.notFoundText',
+    defaultMessage: 'No device has the number or id {id}. It may have been deleted.',
+  },
+
+  railBatteryValue: {
+    id: 'deviceDetail.rail.batteryValue',
+    defaultMessage: '{pct}% · {charging, select, true {charging} other {not charging}}',
+  },
+  railKioskRunningApp: { id: 'deviceDetail.rail.kioskRunningApp', defaultMessage: 'Running · {app}' },
+  railKioskRunning: { id: 'deviceDetail.rail.kioskRunning', defaultMessage: 'Running' },
+  railKioskOff: { id: 'deviceDetail.rail.kioskOff', defaultMessage: 'Off' },
+  railLocked: { id: 'deviceDetail.rail.locked', defaultMessage: 'Locked' },
+  railUnlocked: { id: 'deviceDetail.rail.unlocked', defaultMessage: 'Unlocked' },
+  railBattery: { id: 'deviceDetail.rail.battery', defaultMessage: 'Battery' },
+  railScreen: { id: 'deviceDetail.rail.screen', defaultMessage: 'Screen' },
+  railKiosk: { id: 'deviceDetail.rail.kiosk', defaultMessage: 'Kiosk' },
+  railConnection: { id: 'deviceDetail.rail.connection', defaultMessage: 'Connection' },
+  railCoordinates: { id: 'deviceDetail.rail.coordinates', defaultMessage: 'Coordinates' },
+  railAccuracy: { id: 'deviceDetail.rail.accuracy', defaultMessage: 'Accuracy' },
+  railSource: { id: 'deviceDetail.rail.source', defaultMessage: 'Source' },
+  railFixAge: { id: 'deviceDetail.rail.fixAge', defaultMessage: 'Fix age' },
+  railLocation: { id: 'deviceDetail.rail.location', defaultMessage: 'Location' },
+  railNotTracked: { id: 'deviceDetail.rail.notTracked', defaultMessage: 'Not tracked' },
+  railNoFix: { id: 'deviceDetail.rail.noFix', defaultMessage: 'No fix reported yet' },
+  railModel: { id: 'deviceDetail.rail.model', defaultMessage: 'Model' },
+  railAndroid: { id: 'deviceDetail.rail.android', defaultMessage: 'Android' },
+  railStorage: { id: 'deviceDetail.rail.storage', defaultMessage: 'Storage' },
+  railSerial: { id: 'deviceDetail.rail.serial', defaultMessage: 'Serial' },
+  railImei: { id: 'deviceDetail.rail.imei', defaultMessage: 'IMEI' },
+  railPublicIp: { id: 'deviceDetail.rail.publicIp', defaultMessage: 'Public IP' },
+  railLocalIp: { id: 'deviceDetail.rail.localIp', defaultMessage: 'Local IP' },
+  railConfiguration: { id: 'deviceDetail.rail.configuration', defaultMessage: 'Configuration' },
+  railAgent: { id: 'deviceDetail.rail.agent', defaultMessage: 'Agent' },
+  railMdmMode: { id: 'deviceDetail.rail.mdmMode', defaultMessage: 'MDM mode' },
+  railDeviceOwner: { id: 'deviceDetail.rail.deviceOwner', defaultMessage: 'Device owner' },
+  railNotDeviceOwner: { id: 'deviceDetail.rail.notDeviceOwner', defaultMessage: 'Not device owner' },
+  railEnrolled: { id: 'deviceDetail.rail.enrolled', defaultMessage: 'Enrolled' },
+
+  wipedNotice: {
+    id: 'deviceDetail.page.wipedNotice',
+    defaultMessage:
+      'Wiped {when}. The device erased itself, so it no longer reports. Delete it from <link>Devices</link>, or keep it for its history.',
+  },
+  checkedIn: { id: 'deviceDetail.page.checkedIn', defaultMessage: 'checked in {when}' },
+  neverCheckedIn: { id: 'deviceDetail.page.neverCheckedIn', defaultMessage: 'checked in never' },
+  quickActions: { id: 'deviceDetail.page.quickActions', defaultMessage: 'Quick actions' },
+  syncNow: { id: 'deviceDetail.page.syncNow', defaultMessage: 'Sync now' },
+  lock: { id: 'deviceDetail.page.lock', defaultMessage: 'Lock' },
+  moreActions: { id: 'deviceDetail.page.moreActions', defaultMessage: 'More actions' },
+  ring: { id: 'deviceDetail.page.ring', defaultMessage: 'Ring' },
+  sendAlert: { id: 'deviceDetail.page.sendAlert', defaultMessage: 'Send alert' },
+  lockScreenMessage: { id: 'deviceDetail.page.lockScreenMessage', defaultMessage: 'Lock-screen message' },
+  installConfigApps: { id: 'deviceDetail.page.installConfigApps', defaultMessage: 'Install configuration apps' },
+  reboot: { id: 'deviceDetail.page.reboot', defaultMessage: 'Reboot' },
+  viewAllActivity: { id: 'deviceDetail.page.viewAllActivity', defaultMessage: 'View all activity' },
+  railLabel: { id: 'deviceDetail.page.railLabel', defaultMessage: 'Device' },
+  openInMaps: { id: 'deviceDetail.page.openInMaps', defaultMessage: 'Open location in Maps ↗' },
+  opensInNewTab: { id: 'deviceDetail.page.opensInNewTab', defaultMessage: '(opens in a new tab)' },
+});
+const messages: Record<keyof typeof messagesRaw, MessageDescriptor> = messagesRaw;
 
 const POLL_MS = 5000;
 const DAY = 24 * 3600 * 1000;
@@ -128,6 +283,7 @@ function DeviceName({
   onSaved: (description: string) => void;
 }) {
   const toast = useToast();
+  const intl = useIntl();
   const inputId = useId();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(device.description ?? '');
@@ -161,9 +317,9 @@ function DeviceName({
       await updateDeviceDescription(device.id, next);
       onSaved(next);
       setEditing(false);
-      toast.push('ok', 'Name saved', next || 'Name cleared.');
+      toast.push('ok', intl.formatMessage(messages.nameSaved), next || intl.formatMessage(messages.nameCleared));
     } catch (e) {
-      toast.push('err', 'Rename failed', e instanceof Error ? e.message : '');
+      toast.push('err', intl.formatMessage(messages.renameFailed), e instanceof Error ? e.message : '');
     } finally {
       setSaving(false);
     }
@@ -179,14 +335,14 @@ function DeviceName({
         }}
       >
         <label htmlFor={inputId} className="v2-visually-hidden">
-          Device name
+          {intl.formatMessage(messages.deviceName)}
         </label>
         <Input
           id={inputId}
           autoFocus
           value={value}
           maxLength={200}
-          placeholder="Device name"
+          placeholder={intl.formatMessage(messages.deviceName)}
           disabled={saving}
           className="v2-device-rename__input"
           onChange={(e) => setValue(e.target.value)}
@@ -199,10 +355,10 @@ function DeviceName({
         />
         <div className="v2-device-rename__actions">
           <Button type="submit" variant="primary" size="md" disabled={saving}>
-            {saving ? 'Saving…' : 'Save'}
+            {intl.formatMessage(saving ? messages.saving : messages.save)}
           </Button>
           <Button size="md" disabled={saving} onClick={cancel}>
-            Cancel
+            {intl.formatMessage(messages.cancel)}
           </Button>
         </div>
       </form>
@@ -218,8 +374,8 @@ function DeviceName({
           ref={pencilRef}
           size="md"
           className="v2-device-name__edit"
-          label={named ? 'Rename device' : 'Add a name'}
-          title={named ? 'Rename this device' : 'Add a name'}
+          label={intl.formatMessage(named ? messages.renameDevice : messages.addName)}
+          title={intl.formatMessage(named ? messages.renameThisDevice : messages.addNameTitle)}
           onClick={() => setEditing(true)}
         >
           <IconPencil size={15} />
@@ -243,6 +399,7 @@ export function DeviceDetailPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const toast = useToast();
+  const intl = useIntl();
   const now = useNow(30_000);
   const tabsId = useId();
   // What the role may change (ext/core/access.ts); the reads stay for everyone.
@@ -252,7 +409,8 @@ export function DeviceDetailPage() {
   const [device, setDevice] = useState<DeviceView | null>(null);
   const [configs, setConfigs] = useState<Record<string, ConfigurationLookup>>({});
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Why no device shows: not found, the server can't be reached, or the load failed.
+  const [error, setError] = useState<'notFound' | 'unreachable' | 'failed' | null>(null);
 
   const [tele, setTele] = useState<TelemetrySnapshot | null>(null);
   const [teleLoaded, setTeleLoaded] = useState(false);
@@ -352,12 +510,11 @@ export function DeviceDetailPage() {
       }
       setConfigs(lookup);
       setDevice(found);
-      if (!found) setError('Device not found.');
+      if (!found) setError('notFound');
     } catch (err) {
       if (!current()) return;
       setDevice(null);
-      if (err instanceof ApiError && err.httpStatus === 0) setError('Cannot reach the server.');
-      else setError('Failed to load device.');
+      setError(err instanceof ApiError && err.httpStatus === 0 ? 'unreachable' : 'failed');
     } finally {
       if (current() && !redirected) setLoading(false);
     }
@@ -493,11 +650,11 @@ export function DeviceDetailPage() {
       // A range runs up to now, so a non-empty answer starts with the device's newest fix.
       if (list[0]) setLatestFix(list[0]);
     } catch (e) {
-      if (current()) setFixesError(e instanceof Error ? e.message : 'Failed to load locations');
+      if (current()) setFixesError(e instanceof Error ? e.message : intl.formatMessage(messages.locationsFailed));
     } finally {
       if (current()) setFixesLoading(false);
     }
-  }, [number, fixesRange]);
+  }, [number, fixesRange, intl]);
 
   useEffect(() => {
     void loadFixes();
@@ -528,7 +685,7 @@ export function DeviceDetailPage() {
         })
         .catch((e: unknown) => {
           if (!active) return;
-          setConfigurationError(e instanceof Error && e.message ? e.message : 'request failed');
+          setConfigurationError(e instanceof Error && e.message ? e.message : intl.formatMessage(messages.requestFailed));
           t = setTimeout(fetchConfiguration, 15_000);
         });
     void fetchConfiguration();
@@ -536,6 +693,7 @@ export function DeviceDetailPage() {
       active = false;
       clearTimeout(t);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [configurationId]);
 
   const kioskConfigured = configuration?.kioskMode === true;
@@ -549,11 +707,12 @@ export function DeviceDetailPage() {
         if (active) setCfgApps(Array.isArray(apps) ? apps : []);
       })
       .catch((e: unknown) => {
-        if (active) setCfgAppsError(e instanceof Error && e.message ? e.message : 'request failed');
+        if (active) setCfgAppsError(e instanceof Error && e.message ? e.message : intl.formatMessage(messages.requestFailed));
       });
     return () => {
       active = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [configurationId, kioskConfigured, cfgAppsAttempt]);
 
   // Same rule as useDoNotTrack: unset counts as Do not track; null while unknown.
@@ -586,7 +745,11 @@ export function DeviceDetailPage() {
 
   /* ---- document title ---- */
   // A device that can't be shown still names the page (2.4.2).
-  const docName = device ? device.description || device.number : error ? `Device ${id}` : null;
+  const docName = device
+    ? device.description || device.number
+    : error
+      ? intl.formatMessage(messages.documentName, { id })
+      : null;
   useEffect(() => {
     if (!docName) return;
     const prev = document.title;
@@ -604,9 +767,9 @@ export function DeviceDetailPage() {
       const { connected } = await forceSync(number);
       refresh();
       if (connected === false) toast.push('warn', ...notConnected(number, 'sync'));
-      else toast.push('ok', 'Sync requested', '');
+      else toast.push('ok', intl.formatMessage(messages.syncRequested), '');
     } catch (e) {
-      toast.push('err', 'Sync failed', e instanceof Error ? e.message : '');
+      toast.push('err', intl.formatMessage(messages.syncFailed), e instanceof Error ? e.message : '');
     } finally {
       setBusy(false);
     }
@@ -622,13 +785,24 @@ export function DeviceDetailPage() {
     try {
       const { result, connected } = await retryConfigApply(number);
       refresh();
-      if (result === 'inSync') toast.push('ok', 'Already applied', 'The device has the current configuration.');
-      else if (result === 'unsupported' || result === 'noConfiguration')
-        toast.push('warn', 'Not sent', result === 'unsupported' ? 'The device’s agent is too old for configurations.' : 'The device has no configuration.');
-      else if (connected === false) toast.push('warn', ...notConnected(number, 'command'));
-      else toast.push('ok', 'Configuration sent again', result === 'alreadyQueued' ? 'It was already on its way; the device was woken.' : '');
+      if (result === 'inSync') {
+        toast.push('ok', intl.formatMessage(messages.alreadyApplied), intl.formatMessage(messages.alreadyAppliedText));
+      } else if (result === 'unsupported' || result === 'noConfiguration') {
+        toast.push(
+          'warn',
+          intl.formatMessage(messages.notSent),
+          intl.formatMessage(result === 'unsupported' ? messages.agentTooOld : messages.noConfiguration),
+        );
+      } else if (connected === false) toast.push('warn', ...notConnected(number, 'command'));
+      else {
+        toast.push(
+          'ok',
+          intl.formatMessage(messages.configSentAgain),
+          result === 'alreadyQueued' ? intl.formatMessage(messages.configAlreadyQueued) : '',
+        );
+      }
     } catch (e) {
-      toast.push('err', 'Retry failed', commandErrorText(e));
+      toast.push('err', intl.formatMessage(messages.retryFailed), commandErrorText(e));
     } finally {
       setBusy(false);
     }
@@ -639,10 +813,14 @@ export function DeviceDetailPage() {
     setBusy(true);
     try {
       const res = await syncConfigApps(number);
-      toast.push('ok', 'Install configuration apps queued', `${res.queued} install command${res.queued === 1 ? '' : 's'} queued.`);
+      toast.push(
+        'ok',
+        intl.formatMessage(messages.installAppsQueued),
+        intl.formatMessage(messages.installAppsQueuedText, { count: res.queued }),
+      );
       refresh();
     } catch (e) {
-      toast.push('err', 'Install configuration apps failed', commandErrorText(e));
+      toast.push('err', intl.formatMessage(messages.installAppsFailed), commandErrorText(e));
     } finally {
       setBusy(false);
     }
@@ -662,18 +840,22 @@ export function DeviceDetailPage() {
       try {
         const res = await queueCommand(number, request());
         const cmdId = (res?.id as number | string | undefined) ?? '';
-        toast.push('ok', `${label} queued`, cmdId ? `Command ${cmdId}` : '');
+        toast.push(
+          'ok',
+          intl.formatMessage(messages.commandQueued, { label }),
+          cmdId ? intl.formatMessage(messages.commandId, { id: cmdId }) : '',
+        );
         onQueued?.(res?.id);
         const nudge = await forceSync(number).catch(() => undefined); // nudge the device
         if (nudge?.connected === false) toast.push('warn', ...notConnected(number, 'command'));
         refresh();
         return true;
       } catch (e) {
-        toast.push('err', `${label} failed`, commandErrorText(e));
+        toast.push('err', intl.formatMessage(messages.commandFailed, { label }), commandErrorText(e));
         return false;
       }
     },
-    [number, toast, refresh],
+    [number, toast, refresh, intl],
   );
 
   /**
@@ -784,8 +966,8 @@ export function DeviceDetailPage() {
     kioskReturnGeneration: ds?.kioskReturnGeneration,
     configuredIds,
   });
-  const cfgStart = configName ?? 'Its configuration';
-  const cfgMid = configName ?? 'its configuration';
+  const cfgStart = configName ?? intl.formatMessage(messages.itsConfigurationStart);
+  const cfgMid = configName ?? intl.formatMessage(messages.itsConfigurationMid);
   const openReturn = () => {
     setDialogSeq((n) => n + 1);
     setReturnOpen(true);
@@ -793,17 +975,21 @@ export function DeviceDetailPage() {
   const shownKiosk = useStickyValue(returnOpen ? kiosk : null);
   let kioskReturn: KioskReturnOffer;
   if (configurationId == null) {
-    kioskReturn = { offered: false, onReturn: openReturn, hint: 'This device has no configuration, so there is no configured kiosk to return to.' };
+    kioskReturn = { offered: false, onReturn: openReturn, hint: intl.formatMessage(messages.noConfigHint) };
   } else if (!configuration) {
     kioskReturn = {
       offered: false,
       onReturn: openReturn,
       hint: configurationError
-        ? `Couldn’t load ${cfgMid}, so its kiosk isn’t available here: ${configurationError}. Trying again in 15 seconds.`
+        ? intl.formatMessage(messages.configLoadFailed, { name: cfgMid, error: configurationError })
         : undefined,
     };
   } else if (configuration.kioskMode !== true) {
-    kioskReturn = { offered: false, onReturn: openReturn, hint: `${cfgStart} doesn’t use kiosk mode, so there is no configured kiosk to return to.` };
+    kioskReturn = {
+      offered: false,
+      onReturn: openReturn,
+      hint: intl.formatMessage(messages.noKioskMode, { name: cfgStart }),
+    };
   } else if (cfgAppsError) {
     kioskReturn = {
       offered: true,
@@ -811,24 +997,34 @@ export function DeviceDetailPage() {
       onReturn: openReturn,
       hint: (
         <>
-          Couldn’t load the apps of {cfgMid}, so its kiosk can’t be built: {cfgAppsError}.{' '}
-          <LinkButton onClick={() => setCfgAppsAttempt((n) => n + 1)}>Retry</LinkButton>
+          {intl.formatMessage(messages.appsLoadFailed, { name: cfgMid, error: cfgAppsError })}{' '}
+          <LinkButton onClick={() => setCfgAppsAttempt((n) => n + 1)}>{intl.formatMessage(messages.retry)}</LinkButton>
         </>
       ),
     };
   } else if (!kiosk) {
-    kioskReturn = { offered: true, disabled: true, onReturn: openReturn, hint: `Loading the kiosk that ${cfgMid} defines…` };
+    kioskReturn = { offered: true, disabled: true, onReturn: openReturn, hint: intl.formatMessage(messages.loadingKiosk, { name: cfgMid }) };
   } else if (kiosk.apps.length === 0) {
     kioskReturn = {
       offered: true,
       disabled: true,
       onReturn: openReturn,
-      hint: `${cfgStart} has kiosk mode on, but no app is set to Install and shown in kiosk, so its kiosk has nothing to show. Add one in the configuration.`,
+      hint: intl.formatMessage(messages.noKioskApps, { name: cfgStart }),
     };
   } else if (kioskState === 'sending') {
-    kioskReturn = { offered: true, disabled: true, onReturn: openReturn, hint: `Waiting for the device to enter the kiosk that ${cfgMid} defines.` };
+    kioskReturn = {
+      offered: true,
+      disabled: true,
+      onReturn: openReturn,
+      hint: intl.formatMessage(messages.waitingKiosk, { name: cfgMid }),
+    };
   } else if (kioskState === 'active') {
-    kioskReturn = { offered: true, disabled: true, onReturn: openReturn, hint: `The device is already in the kiosk that ${cfgMid} defines.` };
+    kioskReturn = {
+      offered: true,
+      disabled: true,
+      onReturn: openReturn,
+      hint: intl.formatMessage(messages.alreadyInKiosk, { name: cfgMid }),
+    };
   } else {
     kioskReturn = { offered: true, onReturn: openReturn };
   }
@@ -851,10 +1047,10 @@ export function DeviceDetailPage() {
   if (loading) {
     return (
       <>
-        <Breadcrumb items={[{ label: 'Devices', to: paths.devices }, { label: id, mono: true }]} />
+        <Breadcrumb items={[{ label: intl.formatMessage(messages.breadcrumbDevices), to: paths.devices }, { label: id, mono: true }]} />
         {/* The page's own shape at its own size, so nothing moves when the device arrives. */}
         <div className="v2-device-cols" role="status" aria-busy="true">
-          <span className="v2-visually-hidden">Loading device…</span>
+          <span className="v2-visually-hidden">{intl.formatMessage(messages.loadingDevice)}</span>
           <Card className="v2-device-id">
             <Skeleton width="60%" />
             <Skeleton width="80%" height="var(--lh-page)" />
@@ -875,25 +1071,25 @@ export function DeviceDetailPage() {
   if (!device) {
     return (
       <>
-        <Breadcrumb items={[{ label: 'Devices', to: paths.devices }, { label: id, mono: true }]} />
-        <h1 className="v2-visually-hidden">Device {id}</h1>
-        {error && error !== 'Device not found.' ? (
+        <Breadcrumb items={[{ label: intl.formatMessage(messages.breadcrumbDevices), to: paths.devices }, { label: id, mono: true }]} />
+        <h1 className="v2-visually-hidden">{intl.formatMessage(messages.documentName, { id })}</h1>
+        {error && error !== 'notFound' ? (
           <ErrorState
-            thing="this device"
-            detail={error === 'Failed to load device.' ? undefined : error}
+            thing={intl.formatMessage(messages.thisDevice)}
+            detail={error === 'unreachable' ? intl.formatMessage(messages.cannotReach) : undefined}
             onRetry={() => void load()}
           />
         ) : (
           <Card role="alert">
             <EmptyState
-              title="Device not found"
+              title={intl.formatMessage(messages.notFoundTitle)}
               action={
                 <ButtonLink to={paths.devices} variant="primary">
-                  Go to Devices
+                  {intl.formatMessage(messages.goToDevices)}
                 </ButtonLink>
               }
             >
-              No device has the number or id <span className="v2-mono">{id}</span>. It may have been deleted.
+              <FormattedMessage {...messages.notFoundText} values={{ id: <span className="v2-mono">{id}</span> }} />
             </EmptyState>
           </Card>
         )}
@@ -904,19 +1100,29 @@ export function DeviceDetailPage() {
   /* ---- rail groups ---- */
   const batteryText =
     ds && typeof ds.battery === 'number' && Number.isFinite(ds.battery) && ds.battery >= 0
-      ? `${Math.round(ds.battery)}% · ${ds.charging ? 'charging' : 'not charging'}`
+      ? intl.formatMessage(messages.railBatteryValue, { pct: Math.round(ds.battery), charging: String(!!ds.charging) })
       : DASH;
   const kioskApp = foreground ? library?.find((a) => a.pkg === foreground)?.name ?? foreground : undefined;
-  const kioskText = ds ? (ds.kioskActive ? (kioskApp ? `Running · ${kioskApp}` : 'Running') : 'Off') : DASH;
-  const net = networkLabel(teleStr(dyn.networkType));
-  const power = powerLabel(ds?.powerMode);
+  const kioskText = ds
+    ? ds.kioskActive
+      ? kioskApp
+        ? intl.formatMessage(messages.railKioskRunningApp, { app: kioskApp })
+        : intl.formatMessage(messages.railKioskRunning)
+      : intl.formatMessage(messages.railKioskOff)
+    : DASH;
+  const net = networkLabel(teleStr(dyn.networkType), intl);
+  const power = powerLabel(ds?.powerMode, intl);
   const connection = net && power ? `${net} · ${power.toLowerCase()}` : net ?? power ?? DASH;
 
   const statusItems: KeyValueItem[] = [
-    { key: 'battery', label: 'Battery', value: batteryText },
-    { key: 'screen', label: 'Screen', value: ds ? (ds.locked ? 'Locked' : 'Unlocked') : DASH },
-    { key: 'kiosk', label: 'Kiosk', value: kioskText },
-    { key: 'conn', label: 'Connection', value: connection },
+    { key: 'battery', label: intl.formatMessage(messages.railBattery), value: batteryText },
+    {
+      key: 'screen',
+      label: intl.formatMessage(messages.railScreen),
+      value: ds ? intl.formatMessage(ds.locked ? messages.railLocked : messages.railUnlocked) : DASH,
+    },
+    { key: 'kiosk', label: intl.formatMessage(messages.railKiosk), value: kioskText },
+    { key: 'conn', label: intl.formatMessage(messages.railConnection), value: connection },
   ];
 
   const loc = latestFix
@@ -925,16 +1131,25 @@ export function DeviceDetailPage() {
   const fixIso = isoTime(loc?.capturedAt);
   const locationItems: KeyValueItem[] = loc
     ? [
-        { key: 'coords', label: 'Coordinates', value: `${loc.lat.toFixed(5)}, ${loc.lon.toFixed(5)}`, mono: true },
-        { key: 'acc', label: 'Accuracy', value: loc.accuracyM != null ? `±${Math.round(loc.accuracyM)} m` : DASH },
+        {
+          key: 'coords',
+          label: intl.formatMessage(messages.railCoordinates),
+          value: `${loc.lat.toFixed(5)}, ${loc.lon.toFixed(5)}`,
+          mono: true,
+        },
+        {
+          key: 'acc',
+          label: intl.formatMessage(messages.railAccuracy),
+          value: loc.accuracyM != null ? fmtAccuracy(loc.accuracyM, intl) : DASH,
+        },
         {
           key: 'src',
-          label: 'Source',
-          value: loc.provider ? <span title={loc.provider}>{providerLabel(loc.provider)}</span> : DASH,
+          label: intl.formatMessage(messages.railSource),
+          value: loc.provider ? <span title={loc.provider}>{providerLabel(loc.provider, intl)}</span> : DASH,
         },
         {
           key: 'age',
-          label: 'Fix age',
+          label: intl.formatMessage(messages.railFixAge),
           value:
             loc.capturedAt && fixIso ? (
               <time dateTime={fixIso} title={fmtDateTime(loc.capturedAt)}>
@@ -945,41 +1160,69 @@ export function DeviceDetailPage() {
             ),
         },
       ]
-    : [{ key: 'none', label: 'Location', value: doNotTrack ? 'Not tracked' : 'No fix reported yet' }];
+    : [
+        {
+          key: 'none',
+          label: intl.formatMessage(messages.railLocation),
+          value: intl.formatMessage(doNotTrack ? messages.railNotTracked : messages.railNoFix),
+        },
+      ];
 
   const model = teleStr(hw.model);
   const hardwareItems: KeyValueItem[] = [
-    { key: 'model', label: 'Model', value: model ?? DASH },
+    { key: 'model', label: intl.formatMessage(messages.railModel), value: model ?? DASH },
     {
       key: 'android',
-      label: 'Android',
+      label: intl.formatMessage(messages.railAndroid),
       value: teleStr(hw.osRelease) ?? (ds?.androidRelease || undefined) ?? device.androidVersion ?? DASH,
     },
     // The Telemetry tab owns the full hardware and network facts; the rail keeps the identity ones, and the rest
     // only while there is no telemetry to show them.
     ...(tele
       ? []
-      : [{ key: 'storage', label: 'Storage', value: fmtStorage(teleNum(hw.totalStorageBytes), teleNum(dyn.freeStorageBytes)) }]),
-    { key: 'serial', label: 'Serial', value: teleStr(idn.serial) ?? device.serial ?? DASH, mono: true },
-    { key: 'imei', label: 'IMEI', value: teleStr(idn.imei) ?? device.imei ?? DASH, mono: true },
+      : [
+          {
+            key: 'storage',
+            label: intl.formatMessage(messages.railStorage),
+            value: fmtStorage(teleNum(hw.totalStorageBytes), teleNum(dyn.freeStorageBytes), intl),
+          },
+        ]),
+    { key: 'serial', label: intl.formatMessage(messages.railSerial), value: teleStr(idn.serial) ?? device.serial ?? DASH, mono: true },
+    { key: 'imei', label: intl.formatMessage(messages.railImei), value: teleStr(idn.imei) ?? device.imei ?? DASH, mono: true },
   ];
   // With telemetry, the Telemetry tab shows the IPs; a public IP only the server knows (none in the report) stays here.
   const networkItems: KeyValueItem[] = tele
     ? !teleStr(topTele.publicIp) && device.publicIp
-      ? [{ key: 'public', label: 'Public IP', value: device.publicIp, mono: true }]
+      ? [{ key: 'public', label: intl.formatMessage(messages.railPublicIp), value: device.publicIp, mono: true }]
       : []
     : [
-        { key: 'local', label: 'Local IP', value: teleStr(dyn.ipAddress) ?? DASH, mono: true },
-        { key: 'public', label: 'Public IP', value: teleStr(topTele.publicIp) ?? device.publicIp ?? DASH, mono: true },
+        { key: 'local', label: intl.formatMessage(messages.railLocalIp), value: teleStr(dyn.ipAddress) ?? DASH, mono: true },
+        {
+          key: 'public',
+          label: intl.formatMessage(messages.railPublicIp),
+          value: teleStr(topTele.publicIp) ?? device.publicIp ?? DASH,
+          mono: true,
+        },
       ];
   const deviceOwner = typeof sec.isDeviceOwner === 'boolean' ? sec.isDeviceOwner : undefined;
   const ownerSource = deviceOwner ?? device.mdmMode;
   const managementItems: KeyValueItem[] = [
-    { key: 'cfg', label: 'Configuration', value: configName ?? DASH },
+    { key: 'cfg', label: intl.formatMessage(messages.railConfiguration), value: configName ?? DASH },
     // The agent's own report only: device.launcherVersion is the configuration's main-app version.
-    { key: 'agent', label: 'Agent', value: ds?.agentVersion || DASH, mono: !!ds?.agentVersion },
-    { key: 'mdm', label: 'MDM mode', value: ownerSource == null ? DASH : ownerSource ? 'Device owner' : 'Not device owner' },
-    { key: 'enrolled', label: 'Enrolled', value: device.enrollTime ? fmtDateTime(device.enrollTime) : DASH },
+    { key: 'agent', label: intl.formatMessage(messages.railAgent), value: ds?.agentVersion || DASH, mono: !!ds?.agentVersion },
+    {
+      key: 'mdm',
+      label: intl.formatMessage(messages.railMdmMode),
+      value:
+        ownerSource == null
+          ? DASH
+          : intl.formatMessage(ownerSource ? messages.railDeviceOwner : messages.railNotDeviceOwner),
+    },
+    {
+      key: 'enrolled',
+      label: intl.formatMessage(messages.railEnrolled),
+      value: device.enrollTime ? fmtDateTime(device.enrollTime) : DASH,
+    },
   ];
 
   const subline = [DEVICE_KIND_LABEL[kind], makeModel(teleStr(hw.manufacturer), model)].filter(Boolean).join(' · ');
@@ -1043,7 +1286,7 @@ export function DeviceDetailPage() {
             {/* Activity owns the command history (I12); a quiet way there. */}
             <div className="v2-device-allact">
               <LinkButton tone="quiet" onClick={() => deviceTabs.select('activity')}>
-                View all activity
+                {intl.formatMessage(messages.viewAllActivity)}
               </LinkButton>
             </div>
           </>
@@ -1078,13 +1321,17 @@ export function DeviceDetailPage() {
 
   return (
     <DeviceProvider value={deviceValue}>
-      <Breadcrumb items={[{ label: 'Devices', to: paths.devices }, { label: device.number, mono: true }]} />
+      <Breadcrumb items={[{ label: intl.formatMessage(messages.breadcrumbDevices), to: paths.devices }, { label: device.number, mono: true }]} />
 
       {device.wipedAt != null ? (
         <Callout tone="info">
-          Wiped <time dateTime={isoTime(device.wipedAt)}>{fmtDateTime(device.wipedAt)}</time>. The device erased itself, so
-          it no longer reports. Delete it from <Link to={`${paths.devices}?status=wiped`}>Devices</Link>, or keep it for its
-          history.
+          <FormattedMessage
+            {...messages.wipedNotice}
+            values={{
+              when: <time dateTime={isoTime(device.wipedAt)}>{fmtDateTime(device.wipedAt)}</time>,
+              link: (chunks) => <Link to={`${paths.devices}?status=wiped`}>{chunks}</Link>,
+            }}
+          />
         </Callout>
       ) : null}
 
@@ -1102,13 +1349,19 @@ export function DeviceDetailPage() {
               {reasonText ? <span className="v2-visually-hidden">: {reasonText}</span> : null}
               <span aria-hidden="true">·</span>
               <span>
-                checked in{' '}
                 {lastSeen && lastAge && lastIso ? (
-                  <time dateTime={lastIso} title={fmtDateTime(lastSeen)}>
-                    {lastAge === 'just now' ? lastAge : `${lastAge} ago`}
-                  </time>
+                  <FormattedMessage
+                    {...messages.checkedIn}
+                    values={{
+                      when: (
+                        <time dateTime={lastIso} title={fmtDateTime(lastSeen)}>
+                          {lastAge === 'just now' ? lastAge : `${lastAge} ago`}
+                        </time>
+                      ),
+                    }}
+                  />
                 ) : (
-                  'never'
+                  intl.formatMessage(messages.neverCheckedIn)
                 )}
               </span>
             </span>
@@ -1132,7 +1385,7 @@ export function DeviceDetailPage() {
             </span>
           </div>
           {canEdit ? (
-            <div role="toolbar" aria-label="Quick actions" className="v2-device-id__actions">
+            <div role="toolbar" aria-label={intl.formatMessage(messages.quickActions)} className="v2-device-id__actions">
               <Button
                 variant="primary"
                 icon={<IconSync />}
@@ -1140,34 +1393,34 @@ export function DeviceDetailPage() {
                 disabled={busy || wiped}
                 onClick={() => void syncNow()}
               >
-                Sync now
+                {intl.formatMessage(messages.syncNow)}
               </Button>
               <Tooltip content={TEMPLATE.lock.description}>
                 <Button icon={<IconLock />} disabled={busy || wiped} onClick={() => runAction(TEMPLATE.lock)}>
-                  Lock
+                  {intl.formatMessage(messages.lock)}
                 </Button>
               </Tooltip>
               <Menu
-                label="More actions"
+                label={intl.formatMessage(messages.moreActions)}
                 iconSize="md"
                 disabled={busy || wiped}
                 items={[
-                  { key: 'ring', label: 'Ring', icon: <IconRing />, onSelect: () => runAction(TEMPLATE.ring) },
-                  { key: 'alert', label: 'Send alert', icon: <IconAlert />, onSelect: () => runAction(TEMPLATE.alert) },
+                  { key: 'ring', label: intl.formatMessage(messages.ring), icon: <IconRing />, onSelect: () => runAction(TEMPLATE.ring) },
+                  { key: 'alert', label: intl.formatMessage(messages.sendAlert), icon: <IconAlert />, onSelect: () => runAction(TEMPLATE.alert) },
                   {
                     key: 'lsm',
-                    label: 'Lock-screen message',
+                    label: intl.formatMessage(messages.lockScreenMessage),
                     icon: <IconScreenMessage />,
                     onSelect: () => runAction(TEMPLATE['lockscreen-message']),
                   },
                   'separator',
                   {
                     key: 'apps',
-                    label: 'Install configuration apps',
+                    label: intl.formatMessage(messages.installConfigApps),
                     icon: <IconDownload size={16} />,
                     onSelect: () => void installConfigApps(),
                   },
-                  { key: 'reboot', label: 'Reboot', icon: <IconPower />, onSelect: () => runAction(TEMPLATE.reboot) },
+                  { key: 'reboot', label: intl.formatMessage(messages.reboot), icon: <IconPower />, onSelect: () => runAction(TEMPLATE.reboot) },
                 ]}
               />
             </div>
@@ -1176,7 +1429,7 @@ export function DeviceDetailPage() {
         <div className="v2-device-main">
           <DeviceTabs {...deviceTabs} idBase={tabsId} />
         </div>
-        <aside aria-label="Device" className="v2-card v2-card--pad-default v2-device-rail">
+        <aside aria-label={intl.formatMessage(messages.railLabel)} className="v2-card v2-card--pad-default v2-device-rail">
           <DeviceRailGroups />
           {loc ? (
             <a
@@ -1185,7 +1438,8 @@ export function DeviceDetailPage() {
               target="_blank"
               rel="noopener noreferrer"
             >
-              Open location in Maps ↗<span className="v2-visually-hidden"> (opens in a new tab)</span>
+              {intl.formatMessage(messages.openInMaps)}
+              <span className="v2-visually-hidden"> {intl.formatMessage(messages.opensInNewTab)}</span>
             </a>
           ) : null}
         </aside>
