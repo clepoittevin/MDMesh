@@ -18,7 +18,7 @@ const toCatalog = (source: Source): Catalog =>
 
 /** The shipped translations: every locales/<code>.json but the English source. */
 const SHIPPED = Object.fromEntries(
-  Object.entries(import.meta.glob<Source>('./locales/*.json', { import: 'default' }))
+  Object.entries(import.meta.glob<Source>(['./locales/*.json', '!./locales/en.json'], { import: 'default' }))
     .map(([path, load]) => [path.slice('./locales/'.length, -'.json'.length), load] as const)
     .filter(([code]) => code !== SOURCE_LOCALE)
     .map(([code, load]) => [code, () => load().then(toCatalog)]),
