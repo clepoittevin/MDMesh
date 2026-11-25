@@ -1,3 +1,4 @@
+import { createIntl, defineMessages, type IntlShape, type MessageDescriptor } from 'react-intl';
 import { apiClient } from './client';
 
 // Applications library — see com.hmdm.rest.resource.ApplicationResource (@Path /private/applications).
@@ -166,16 +167,31 @@ export interface BundleUploadResult {
   parts: { url: string; sha256: string; name: string }[];
 }
 
-const bundleMessages: Record<string, string> = {
-  'error.bundle.noApks': 'The file has no APKs in it. An encrypted .apkm bundle can’t be unpacked.',
-  'error.bundle.unreadable': 'The server could not read the package name and version from the APKs.',
-  'error.bundle.tooLarge': 'The bundle’s APKs unpack to more than 4 GB.',
-  'error.bundle.unpack': 'The server could not unpack the bundle. It may be damaged.',
-};
-/** What a failed bundle upload says, by the server's error key. */
-export function bundleErrorText(e: unknown): string {
+/** The text of each bundle upload error the server is known to send, by its error key. */
+export const bundleErrorMessages: Record<string, MessageDescriptor> = defineMessages({
+  'error.bundle.noApks': {
+    id: 'apps.bundleError.noApks',
+    defaultMessage: 'The file has no APKs in it. An encrypted .apkm bundle can’t be unpacked.',
+  },
+  'error.bundle.unreadable': {
+    id: 'apps.bundleError.unreadable',
+    defaultMessage: 'The server could not read the package name and version from the APKs.',
+  },
+  'error.bundle.tooLarge': {
+    id: 'apps.bundleError.tooLarge',
+    defaultMessage: 'The bundle’s APKs unpack to more than 4 GB.',
+  },
+  'error.bundle.unpack': {
+    id: 'apps.bundleError.unpack',
+    defaultMessage: 'The server could not unpack the bundle. It may be damaged.',
+  },
+});
+const englishIntl = createIntl({ locale: 'en' });
+/** What a failed bundle upload says, by the server's error key; `intl` (from useIntl) translates it. */
+export function bundleErrorText(e: unknown, intl: Pick<IntlShape, 'formatMessage'> = englishIntl): string {
   const message = e instanceof Error ? e.message : '';
-  return bundleMessages[message] ?? message;
+  const known = Object.prototype.hasOwnProperty.call(bundleErrorMessages, message) ? bundleErrorMessages[message] : undefined;
+  return known ? intl.formatMessage(known) : message;
 }
 
 /** Upload a split-APK bundle; the server unpacks it and returns the hosted parts. */
