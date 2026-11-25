@@ -4,6 +4,7 @@ import { getConfigurations, type Configuration } from '../api/configurations';
 import { mintEnrollToken, revokeAllEnrollTokens } from '../api/enroll';
 import { getUpdateStatus, type UpdateStatus } from '../api/updates';
 import { Link } from 'react-router';
+import { defineMessage, defineMessages, useIntl } from '../i18n/plain';
 import { ARRIVAL_LABEL, arrivalNews, useArrivals, type Arrival } from '../enroll/arrivals';
 import { addressProblem, wifiProblem } from '../enroll/checks';
 import {
@@ -11,7 +12,10 @@ import {
   buildProvisioningPayload,
   configurationQrExtras,
   extrasInCode,
-  wifiExtrasLeftOut,
+  extrasLeftOut,
+  qrPayloadBytes,
+  QR_DENSE_BYTES,
+  QR_MAX_BYTES,
   summarizeQrExtras,
   serverBaseUrl,
   type WifiSecurity,
@@ -233,7 +237,61 @@ function useArrivalNews(arrivals: Arrival[], active: boolean, watching: boolean)
 }
 
 /** Enroll. Classic: pages/EnrollPage.tsx. */
+const setupMessages = defineMessages({
+  label: { id: 'enroll.setup.label', defaultMessage: 'Setup' },
+  skipIntro: { id: 'enroll.setup.skipIntro', defaultMessage: 'intro screens skipped' },
+  mobileData: { id: 'enroll.setup.mobileData', defaultMessage: 'mobile data' },
+  hiddenWifi: { id: 'enroll.setup.hiddenWifi', defaultMessage: 'hidden Wi-Fi' },
+  nothing: { id: 'enroll.setup.nothing', defaultMessage: 'Nothing added' },
+});
+const setupWifiLeftOut = defineMessage<{ count: number }>({
+  id: 'enroll.setup.wifiLeftOut',
+  defaultMessage:
+    '{count, plural, one {# Wi-Fi entry left out} other {# Wi-Fi entries left out}}: Wi-Fi comes from this page (and the configuration\'s setup Wi-Fi)',
+});
+const setupNotKnown = defineMessages({
+  serverDefault: {
+    id: 'enroll.setup.serverDefault',
+    defaultMessage: "Not added: choose a configuration to add its setup entries (the page can't tell which one is the server default)",
+  },
+  notLoaded: {
+    id: 'enroll.setup.notLoaded',
+    defaultMessage: "Not added: the configuration didn't load, so the code has none of its setup entries",
+  },
+});
+const setupUnsupported = defineMessage<{ count: number }>({
+  id: 'enroll.setup.unsupported',
+  defaultMessage:
+    '{count, plural, one {# entry left out} other {# entries left out}}: not a setup entry MDMesh passes on, or a value of the wrong type',
+});
+const qrSizeMessages = defineMessages({
+  tooLargeFrame: { id: 'enroll.qrSize.tooLargeFrame', defaultMessage: 'No QR code: it would be too large to scan.' },
+});
+const qrTooLarge = defineMessage<{ bytes: number; max: number }>({
+  id: 'enroll.qrSize.tooLarge',
+  defaultMessage:
+    "This code would hold {bytes} bytes, more than a QR code can ({max}). The server address (it is in the code twice) or the Wi-Fi is too long: shorten them.",
+});
+const qrDense = defineMessage<{ bytes: number }>({
+  id: 'enroll.qrSize.dense',
+  defaultMessage:
+    "This code holds {bytes} bytes, so it is dense: some devices' setup cameras may struggle to scan it. A shorter server address or Wi-Fi, or fewer Extra QR parameters, make it lighter.",
+});
+const setupOthers = defineMessage<{ count: number }>({
+  id: 'enroll.setup.others',
+  defaultMessage: '{count, plural, one {# other entry} other {# other entries}}',
+});
+const setupProtectedLeftOut = defineMessage<{ summary: string; count: number }>({
+  id: 'enroll.setup.protectedLeftOut',
+  defaultMessage: '{summary} ({count} protected left out)',
+});
+const setupUnreadable = defineMessage<{ summary: string; error: string }>({
+  id: 'enroll.setup.unreadable',
+  defaultMessage: '{summary} (other Extra QR parameters left out: {error})',
+});
+
 export function EnrollPage() {
+  const intl = useIntl();
   const toast = useToast();
   const mobile = useMediaQuery(MOBILE_QUERY);
 
@@ -462,20 +520,21 @@ export function EnrollPage() {
   const extrasText = useMemo(() => {
     // What goes in the code (Wi-Fi entries only with the page's own network), as buildProvisioningPayload adds it.
     const sum = summarizeQrExtras(extrasInCode(qrExtras.entries, wifiInCode));
-    const wifiLeftOut = wifiExtrasLeftOut(qrExtras.entries, wifiInCode).length;
+    const leftOut = extrasLeftOut(qrExtras.entries, wifiInCode);
+    const wifiLeftOut = leftOut.wifi.length;
+    const unsupported = leftOut.unsupported.length + leftOut.invalid.length;
     const parts = [
       sum.locale,
       sum.timeZone,
-      sum.skipIntro ? 'intro screens skipped' : null,
-      sum.mobileData ? 'mobile data' : null,
-      sum.hiddenWifi ? 'hidden Wi-Fi' : null,
-      sum.others > 0 ? `${sum.others} other ${sum.others === 1 ? 'entry' : 'entries'}` : null,
-      wifiLeftOut > 0
-        ? `${wifiLeftOut} Wi-Fi ${wifiLeftOut === 1 ? 'entry' : 'entries'} left out: Wi-Fi comes from this page (and the configuration's setup Wi-Fi)`
-        : null,
+      sum.skipIntro ? intl.formatMessage(setupMessages.skipIntro) : null,
+      sum.mobileData ? intl.formatMessage(setupMessages.mobileData) : null,
+      sum.hiddenWifi ? intl.formatMessage(setupMessages.hiddenWifi) : null,
+      sum.others > 0 ? intl.formatMessage(setupOthers, { count: sum.others }) : null,
+      wifiLeftOut > 0 ? intl.formatMessage(setupWifiLeftOut, { count: wifiLeftOut }) : null,
+      unsupported > 0 ? intl.formatMessage(setupUnsupported, { count: unsupported }) : null,
     ].filter((x): x is string => !!x);
     return parts.join(' · ');
-  }, [qrExtras, wifiInCode]);
+  }, [qrExtras, intl, wifiInCode]);
   // A code goes only with the setup entries of the configuration it was made for: right after another configuration is
   // chosen, the old code is still here for a render while the new configuration's entries already are.
   const payload = useMemo(
@@ -515,21 +574,25 @@ export function EnrollPage() {
     ...(!selected
       ? [{
           key: 'qrExtras',
-          label: 'Setup',
-          value: cfgId
-            ? "Not added: the configuration didn't load, so the code has none of its setup entries"
-            : "Not added: choose a configuration to add its setup entries (the page can't tell which one is the server default)",
+          label: intl.formatMessage(setupMessages.label),
+          value: intl.formatMessage(cfgId ? setupNotKnown.notLoaded : setupNotKnown.serverDefault),
         }]
       : []),
     ...(selected
       ? [{
           key: 'qrExtras',
-          label: 'Setup',
+          label: intl.formatMessage(setupMessages.label),
           value: qrExtras.error
-            ? `${extrasText || 'Nothing added'} (other Extra QR parameters left out: ${qrExtras.error})`
+            ? intl.formatMessage(setupUnreadable, {
+                summary: extrasText || intl.formatMessage(setupMessages.nothing),
+                error: qrExtras.error,
+              })
             : qrExtras.ignored.length
-              ? `${extrasText || 'Nothing added'} (${qrExtras.ignored.length} protected left out)`
-              : extrasText || 'Nothing added',
+              ? intl.formatMessage(setupProtectedLeftOut, {
+                  summary: extrasText || intl.formatMessage(setupMessages.nothing),
+                  count: qrExtras.ignored.length,
+                })
+              : extrasText || intl.formatMessage(setupMessages.nothing),
         }]
       : []),
     { key: 'use', label: 'Use', value: usesText(token?.maxUses ?? uses) },
@@ -537,6 +600,9 @@ export function EnrollPage() {
   ];
 
   const agentVersion = RELEASE_BUILD && update?.apk?.available ? update.apk.version : null;
+  // No agent to download: a QR code would fail on the device, so the page says why instead of showing one.
+  // deploy-0.5.1: no agentUnavailable on 0.5.1, so the newer no-agent notice stays off.
+  const noAgent = false;
 
   const configHelp = configsFailed ? (
     <>
@@ -668,8 +734,22 @@ export function EnrollPage() {
     </Card>
   );
 
-  const qrPanel =
-    payload && !expired ? (
+  // A QR code holds at most QR_MAX_BYTES: a larger code can't be drawn, and reloading wouldn't help, so say why.
+  const payloadBytes = payload ? qrPayloadBytes(payload) : 0;
+  const tooLarge = payloadBytes > QR_MAX_BYTES;
+  const qrPanel = noAgent ? (
+    <div className="v2-qr">
+      <div className="v2-qr__frame v2-enroll__qrwait" role="status">
+        No QR code: there is no agent to install yet.
+      </div>
+    </div>
+  ) : tooLarge ? (
+    <div className="v2-qr">
+      <div className="v2-qr__frame v2-enroll__qrwait" role="status">
+        {intl.formatMessage(qrSizeMessages.tooLargeFrame)}
+      </div>
+    </div>
+  ) : payload && !expired ? (
       <QrPanel
         value={payload}
         label={`Enrollment QR code for ${givesName}`}
@@ -722,6 +802,24 @@ export function EnrollPage() {
           />
         }
       />
+      {noAgent ? (
+        <Callout tone="alert" icon={<IconAlert />} role="status">
+          This server has no agent app to give new devices, so a device that scans a code can&rsquo;t install it. The
+          updater hasn&rsquo;t verified an agent for this server: GitHub didn&rsquo;t answer (it tries again every few
+          minutes), the release this server runs has a signed manifest that doesn&rsquo;t check out, or no release with
+          an agent was found (is <span className="v2-mono">GITHUB_REPO</span> set?). See Settings &rarr; Updates and the
+          updater&rsquo;s log. Devices that already run the agent can still use a token.
+        </Callout>
+      ) : null}
+      {tooLarge ? (
+        <Callout tone="alert" icon={<IconAlert />} role="status">
+          {intl.formatMessage(qrTooLarge, { bytes: payloadBytes, max: QR_MAX_BYTES })}
+        </Callout>
+      ) : payloadBytes > QR_DENSE_BYTES ? (
+        <Callout tone="warn" icon={<IconWarning size={16} />} role="status">
+          {intl.formatMessage(qrDense, { bytes: payloadBytes })}
+        </Callout>
+      ) : null}
       {/* Pre-flight problems, not failures: amber (nothing has gone wrong yet; the admin can still fix it here). */}
       {address ? (
         <Callout tone="warn" icon={<IconWarning size={16} />} role="status">
