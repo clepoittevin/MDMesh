@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useIntl } from 'react-intl';
+import { defineMessages, useIntl, type MessageDescriptor } from 'react-intl';
 import { useAuth } from '../../auth/AuthContext';
 import { roleDescription, roleName } from '../../data/seededRoles';
 import {
@@ -52,6 +52,91 @@ type View = 'users' | 'roles';
 
 const TABS_ID = 'v2-users-tabs';
 
+const messages = defineMessages<'rowAction' | 'moreActions' | 'edit' | 'delete' | 'usersTable' | 'noMatchingUsers' | 'noUsers' | 'colUser' | 'colEmail' | 'colRole' | 'colAccess' | 'colActions' | 'colDescription' | 'colPermissions' | 'you' | 'beyond' | 'beyondTitle' | 'access' | 'rolesTable' | 'noMatchingRoles' | 'noRoles' | 'title' | 'subtitle' | 'newRole' | 'newUser' | 'thing' | 'loading' | 'manage' | 'tabUsers' | 'tabRoles' | 'searchRoles' | 'searchUsers' | 'protectedRoles' | 'userSavedTitle' | 'userSavedBody' | 'roleSavedTitle' | 'roleSavedBody' | 'userDeletedTitle' | 'userDeletedBody' | 'roleDeletedTitle' | 'roleDeletedBody' | 'deleteTitle' | 'cancel' | 'deleting' | 'deleteRole' | 'deleteUser' | 'deleteRoleText' | 'deleteUserText' | 'currentPassword' | 'currentPasswordHelp' | 'showCurrent'>({
+  rowAction: { id: 'settings.users.rowAction', defaultMessage: '{action} {name}' },
+  moreActions: { id: 'settings.users.moreActions', defaultMessage: 'More actions for {name}' },
+  edit: { id: 'settings.users.edit', defaultMessage: 'Edit' },
+  delete: { id: 'settings.users.delete', defaultMessage: 'Delete' },
+  usersTable: { id: 'settings.users.usersTable', defaultMessage: 'Users' },
+  noMatchingUsers: { id: 'settings.users.noMatchingUsers', defaultMessage: 'No matching users' },
+  noUsers: { id: 'settings.users.noUsers', defaultMessage: 'No users yet' },
+  colUser: { id: 'settings.users.colUser', defaultMessage: 'User' },
+  colEmail: { id: 'settings.users.colEmail', defaultMessage: 'Email' },
+  colRole: { id: 'settings.users.colRole', defaultMessage: 'Role' },
+  colAccess: { id: 'settings.users.colAccess', defaultMessage: 'Access' },
+  colActions: { id: 'settings.users.colActions', defaultMessage: 'Actions' },
+  colDescription: { id: 'settings.users.colDescription', defaultMessage: 'Description' },
+  colPermissions: { id: 'settings.users.colPermissions', defaultMessage: 'Permissions' },
+  you: { id: 'settings.users.you', defaultMessage: 'You' },
+  beyond: { id: 'settings.users.beyond', defaultMessage: 'Beyond your access' },
+  beyondTitle: {
+    id: 'settings.users.beyondTitle',
+    defaultMessage: 'This account reaches more than you do, or only a super-admin manages it.',
+  },
+  access: {
+    id: 'settings.users.access',
+    defaultMessage:
+      '{devices, select, all {All devices} other {Selected device groups}} · {configs, select, all {All configurations} other {Selected configurations}}',
+  },
+  rolesTable: { id: 'settings.users.rolesTable', defaultMessage: 'Roles' },
+  noMatchingRoles: { id: 'settings.users.noMatchingRoles', defaultMessage: 'No matching roles' },
+  noRoles: { id: 'settings.users.noRoles', defaultMessage: 'No editable roles yet' },
+  title: { id: 'settings.users.title', defaultMessage: 'Users & roles' },
+  subtitle: {
+    id: 'settings.users.subtitle',
+    defaultMessage: 'Console accounts, what they may do, and which devices they reach.',
+  },
+  newRole: { id: 'settings.users.newRole', defaultMessage: 'New role' },
+  newUser: { id: 'settings.users.newUser', defaultMessage: 'New user' },
+  thing: { id: 'settings.users.thing', defaultMessage: 'users and roles' },
+  loading: { id: 'settings.users.loading', defaultMessage: 'Loading users and roles' },
+  manage: { id: 'settings.users.manage', defaultMessage: 'Manage' },
+  tabUsers: { id: 'settings.users.tabUsers', defaultMessage: 'Users' },
+  tabRoles: { id: 'settings.users.tabRoles', defaultMessage: 'Roles' },
+  searchRoles: { id: 'settings.users.searchRoles', defaultMessage: 'Search roles' },
+  searchUsers: { id: 'settings.users.searchUsers', defaultMessage: 'Search users' },
+  protectedRoles: {
+    id: 'settings.users.protectedRoles',
+    defaultMessage: 'Administrator roles are protected, so only roles you can edit are listed.',
+  },
+  userSavedTitle: { id: 'settings.users.userSavedTitle', defaultMessage: 'User saved' },
+  userSavedBody: { id: 'settings.users.userSavedBody', defaultMessage: 'The account list is up to date.' },
+  roleSavedTitle: { id: 'settings.users.roleSavedTitle', defaultMessage: 'Role saved' },
+  roleSavedBody: { id: 'settings.users.roleSavedBody', defaultMessage: 'The role list is up to date.' },
+  userDeletedTitle: { id: 'settings.users.userDeletedTitle', defaultMessage: 'User deleted' },
+  userDeletedBody: { id: 'settings.users.userDeletedBody', defaultMessage: '{name} can no longer sign in.' },
+  roleDeletedTitle: { id: 'settings.users.roleDeletedTitle', defaultMessage: 'Role deleted' },
+  roleDeletedBody: { id: 'settings.users.roleDeletedBody', defaultMessage: '{name} is no longer available.' },
+  deleteTitle: {
+    id: 'settings.users.deleteTitle',
+    defaultMessage: 'Delete {name}?',
+    description: 'DESTRUCTIVE: title of the confirmation for deleting a user account or a role',
+  },
+  cancel: { id: 'settings.users.cancel', defaultMessage: 'Cancel' },
+  deleting: { id: 'settings.users.deleting', defaultMessage: 'Deleting…' },
+  deleteRole: {
+    id: 'settings.users.deleteRole',
+    defaultMessage: 'Delete role',
+    description: 'DESTRUCTIVE: confirms deleting a role',
+  },
+  deleteUser: {
+    id: 'settings.users.deleteUser',
+    defaultMessage: 'Delete user',
+    description: 'DESTRUCTIVE: confirms deleting a user account',
+  },
+  deleteRoleText: {
+    id: 'settings.users.deleteRoleText',
+    defaultMessage: 'Only a role no one is assigned to can be deleted.',
+  },
+  deleteUserText: {
+    id: 'settings.users.deleteUserText',
+    defaultMessage: 'This account can no longer sign in to the console.',
+  },
+  currentPassword: { id: 'settings.users.currentPassword', defaultMessage: 'Your current password' },
+  currentPasswordHelp: { id: 'settings.users.currentPasswordHelp', defaultMessage: 'Needed to delete an account.' },
+  showCurrent: { id: 'settings.users.showCurrent', defaultMessage: 'Show your current password' },
+}) as Record<'rowAction' | 'moreActions' | 'edit' | 'delete' | 'usersTable' | 'noMatchingUsers' | 'noUsers' | 'colUser' | 'colEmail' | 'colRole' | 'colAccess' | 'colActions' | 'colDescription' | 'colPermissions' | 'you' | 'beyond' | 'beyondTitle' | 'access' | 'rolesTable' | 'noMatchingRoles' | 'noRoles' | 'title' | 'subtitle' | 'newRole' | 'newUser' | 'thing' | 'loading' | 'manage' | 'tabUsers' | 'tabRoles' | 'searchRoles' | 'searchUsers' | 'protectedRoles' | 'userSavedTitle' | 'userSavedBody' | 'roleSavedTitle' | 'roleSavedBody' | 'userDeletedTitle' | 'userDeletedBody' | 'roleDeletedTitle' | 'roleDeletedBody' | 'deleteTitle' | 'cancel' | 'deleting' | 'deleteRole' | 'deleteUser' | 'deleteRoleText' | 'deleteUserText' | 'currentPassword' | 'currentPasswordHelp' | 'showCurrent', MessageDescriptor>;
+
 /** Text kept to one line, ending in "…" when its column is narrow (the full text on hover). */
 function Clip({ text, sub }: { text: string; sub?: boolean }) {
   return (
@@ -63,16 +148,17 @@ function Clip({ text, sub }: { text: string; sub?: boolean }) {
 
 /** Row actions, shown on row hover or focus: a "…" menu, or its one action as a visible button. */
 function RowActions({ name, items }: { name: string; items: MenuItem[] }) {
+  const intl = useIntl();
   if (items.length === 0) return null;
   const [only] = items;
   return (
     <div className="v2-rowactions">
       {items.length === 1 ? (
-        <Button size="sm" variant="ghost" aria-label={`${only.textValue} ${name}`} onClick={only.onSelect}>
+        <Button size="sm" variant="ghost" aria-label={intl.formatMessage(messages.rowAction, { action: only.textValue, name })} onClick={only.onSelect}>
           {only.label}
         </Button>
       ) : (
-        <Menu label={`More actions for ${name}`} iconSize="xs" items={items} />
+        <Menu label={intl.formatMessage(messages.moreActions, { name })} iconSize="xs" items={items} />
       )}
     </div>
   );
@@ -133,7 +219,7 @@ export function UsersSection({
         if (!controller.signal.aborted) setData(snapshot);
       })
       .catch((e) => {
-        if (!controller.signal.aborted) setError(managementError(e));
+        if (!controller.signal.aborted) setError(managementError(intl, e));
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
@@ -170,10 +256,19 @@ export function UsersSection({
     try {
       if (deleting.kind === 'user') await deleteUser(deleting.id, deletePassword);
       else await deleteRole(deleting.id);
-      if (deleting.kind === 'user') saved('User deleted', `${deleting.name} can no longer sign in.`);
-      else saved('Role deleted', `${deleting.name} is no longer available.`);
+      if (deleting.kind === 'user') {
+        saved(
+          intl.formatMessage(messages.userDeletedTitle),
+          intl.formatMessage(messages.userDeletedBody, { name: deleting.name }),
+        );
+      } else {
+        saved(
+          intl.formatMessage(messages.roleDeletedTitle),
+          intl.formatMessage(messages.roleDeletedBody, { name: deleting.name }),
+        );
+      }
     } catch (e) {
-      setDeleteError(managementError(e));
+      setDeleteError(managementError(intl, e));
     } finally {
       setBusy(false);
     }
@@ -197,29 +292,40 @@ export function UsersSection({
   /** What this account may do to another one (the server enforces the same). */
   const userActions = (u: ManagedUser): MenuItem[] => {
     if (u.id === user?.id || u.editable === false || (u.userRole?.superAdmin && !iAmSuper)) return [];
-    const items: MenuItem[] = [{ key: 'edit', label: 'Edit', textValue: 'Edit', onSelect: () => editUser(u) }];
+    const edit = intl.formatMessage(messages.edit);
+    const del = intl.formatMessage(messages.delete);
+    const items: MenuItem[] = [{ key: 'edit', label: edit, textValue: edit, onSelect: () => editUser(u) }];
     if (!u.userRole?.superAdmin) {
       items.push({
         key: 'delete',
-        label: 'Delete',
-        textValue: 'Delete',
+        label: del,
+        textValue: del,
         danger: true,
         onSelect: () => askDelete('user', u.id!, u.login),
       });
     }
     return items;
   };
-  const roleActions = (r: UserRole): MenuItem[] => [
-    { key: 'edit', label: 'Edit', textValue: 'Edit', onSelect: () => editRole(r) },
-    { key: 'delete', label: 'Delete', textValue: 'Delete', danger: true, onSelect: () => askDelete('role', r.id!, roleName(intl, r)) },
-  ];
+  const roleActions = (r: UserRole): MenuItem[] => {
+    const edit = intl.formatMessage(messages.edit);
+    const del = intl.formatMessage(messages.delete);
+    return [
+      { key: 'edit', label: edit, textValue: edit, onSelect: () => editRole(r) },
+      { key: 'delete', label: del, textValue: del, danger: true, onSelect: () => askDelete('role', r.id!, roleName(intl, r)) },
+    ];
+  };
 
   const usersTable = data ? (
     <Table
       minWidth={600}
-      aria-label="Users"
+      aria-label={intl.formatMessage(messages.usersTable)}
       className="v2-users-table"
-      empty={<EmptyState bare title={needle ? 'No matching users' : 'No users yet'} />}
+      empty={
+        <EmptyState
+          bare
+          title={intl.formatMessage(needle ? messages.noMatchingUsers : messages.noUsers)}
+        />
+      }
       rowKey={(u) => u.id!}
       rows={data.users.filter((u) => `${u.login} ${u.name ?? ''} ${u.email ?? ''}`.toLowerCase().includes(needle))}
       onRowClick={(u) => {
@@ -228,16 +334,16 @@ export function UsersSection({
       columns={[
         {
           key: 'user',
-          header: 'User',
+          header: intl.formatMessage(messages.colUser),
           className: 'v2-users-col v2-users-col--wide',
           cell: (u) => (
             <span className="v2-users-who">
               <span className="v2-users-who__line">
                 <Clip text={u.name || u.login} />
-                {u.id === user?.id ? <Badge tone="neutral">You</Badge> : null}
+                {u.id === user?.id ? <Badge tone="neutral">{intl.formatMessage(messages.you)}</Badge> : null}
                 {beyondReach(u) ? (
-                  <Badge tone="neutral" title="This account reaches more than you do, or only a super-admin manages it.">
-                    Beyond your access
+                  <Badge tone="neutral" title={intl.formatMessage(messages.beyondTitle)}>
+                    {intl.formatMessage(messages.beyond)}
                   </Badge>
                 ) : null}
               </span>
@@ -245,23 +351,24 @@ export function UsersSection({
             </span>
           ),
         },
-        { key: 'email', header: 'Email', className: 'v2-users-col', cell: (u) => (u.email ? <Clip text={u.email} /> : '—') },
-        { key: 'role', header: 'Role', className: 'v2-users-col', cell: (u) => <Clip text={(u.userRole && roleName(intl, u.userRole)) || '—'} /> },
+        { key: 'email', header: intl.formatMessage(messages.colEmail), className: 'v2-users-col', cell: (u) => (u.email ? <Clip text={u.email} /> : '—') },
+        { key: 'role', header: intl.formatMessage(messages.colRole), className: 'v2-users-col', cell: (u) => <Clip text={(u.userRole && roleName(intl, u.userRole)) || '—'} /> },
         {
           key: 'access',
-          header: 'Access',
+          header: intl.formatMessage(messages.colAccess),
           className: 'v2-users-col v2-users-col--wide',
           cell: (u) => (
             <Clip
-              text={`${u.allDevicesAvailable ? 'All devices' : 'Selected device groups'} · ${
-                u.allConfigAvailable ? 'All configurations' : 'Selected configurations'
-              }`}
+              text={intl.formatMessage(messages.access, {
+                devices: u.allDevicesAvailable ? 'all' : 'selected',
+                configs: u.allConfigAvailable ? 'all' : 'selected',
+              })}
             />
           ),
         },
         {
           key: 'actions',
-          header: 'Actions',
+          header: intl.formatMessage(messages.colActions),
           headerHidden: true,
           shrink: true,
           align: 'right',
@@ -274,19 +381,21 @@ export function UsersSection({
   const rolesTable = data ? (
     <Table
       minWidth={480}
-      aria-label="Roles"
+      aria-label={intl.formatMessage(messages.rolesTable)}
       className="v2-users-table"
-      empty={<EmptyState bare title={needle ? 'No matching roles' : 'No editable roles yet'} />}
+      empty={
+        <EmptyState bare title={intl.formatMessage(needle ? messages.noMatchingRoles : messages.noRoles)} />
+      }
       rowKey={(r) => r.id!}
       rows={data.roles.filter((r) =>
         `${r.name} ${roleName(intl, r)} ${roleDescription(intl, r)}`.toLowerCase().includes(needle),
       )}
       onRowClick={(r) => editRole(r)}
       columns={[
-        { key: 'name', header: 'Role', className: 'v2-users-col', cell: (r) => <Clip text={roleName(intl, r)} /> },
+        { key: 'name', header: intl.formatMessage(messages.colRole), className: 'v2-users-col', cell: (r) => <Clip text={roleName(intl, r)} /> },
         {
           key: 'description',
-          header: 'Description',
+          header: intl.formatMessage(messages.colDescription),
           className: 'v2-users-col v2-users-col--wide',
           cell: (r) => {
             const description = roleDescription(intl, r);
@@ -295,14 +404,14 @@ export function UsersSection({
         },
         {
           key: 'permissions',
-          header: 'Permissions',
+          header: intl.formatMessage(messages.colPermissions),
           align: 'right',
           shrink: true,
           cell: (r) => <span className="v2-num">{(r.permissions ?? []).length}</span>,
         },
         {
           key: 'actions',
-          header: 'Actions',
+          header: intl.formatMessage(messages.colActions),
           headerHidden: true,
           shrink: true,
           align: 'right',
@@ -317,29 +426,29 @@ export function UsersSection({
       <CardHeader
         inset
         titleId={headingId}
-        title="Users & roles"
-        subtitle="Console accounts, what they may do, and which devices they reach."
+        title={intl.formatMessage(messages.title)}
+        subtitle={intl.formatMessage(messages.subtitle)}
         actions={
           data && !loading ? (
             <Button variant="primary" size="sm" onClick={() => (rolesTab ? editRole('new') : editUser('new'))}>
-              {rolesTab ? 'New role' : 'New user'}
+              {intl.formatMessage(rolesTab ? messages.newRole : messages.newUser)}
             </Button>
           ) : undefined
         }
       />
       {error ? (
         <div className="v2-users-pad">
-          <ErrorState thing="users and roles" detail={error} onRetry={() => setRevision((r) => r + 1)} />
+          <ErrorState thing={intl.formatMessage(messages.thing)} detail={error} onRetry={() => setRevision((r) => r + 1)} />
         </div>
       ) : null}
       {loading ? (
-        <SkeletonRows count={3} label="Loading users and roles" />
+        <SkeletonRows count={3} label={intl.formatMessage(messages.loading)} />
       ) : data ? (
         <>
           <div className="v2-users-toolbar">
             {data.capabilities.roles ? (
               <Tabs<View>
-                aria-label="Manage"
+                aria-label={intl.formatMessage(messages.manage)}
                 size="md"
                 idBase={TABS_ID}
                 value={tab}
@@ -349,8 +458,8 @@ export function UsersSection({
                   setQ('');
                 }}
                 items={[
-                  { key: 'users', label: 'Users' },
-                  { key: 'roles', label: 'Roles' },
+                  { key: 'users', label: intl.formatMessage(messages.tabUsers) },
+                  { key: 'roles', label: intl.formatMessage(messages.tabRoles) },
                 ]}
               />
             ) : null}
@@ -358,8 +467,8 @@ export function UsersSection({
               className="v2-users-search"
               value={q}
               onChange={setQ}
-              placeholder={rolesTab ? 'Search roles' : 'Search users'}
-              aria-label={rolesTab ? 'Search roles' : 'Search users'}
+              placeholder={intl.formatMessage(rolesTab ? messages.searchRoles : messages.searchUsers)}
+              aria-label={intl.formatMessage(rolesTab ? messages.searchRoles : messages.searchUsers)}
             />
           </div>
           {data.capabilities.roles ? (
@@ -367,7 +476,7 @@ export function UsersSection({
               {rolesTab ? (
                 <>
                   <div className="v2-users-pad">
-                    <Callout>Administrator roles are protected, so only roles you can edit are listed.</Callout>
+                    <Callout>{intl.formatMessage(messages.protectedRoles)}</Callout>
                   </div>
                   {rolesTable}
                 </>
@@ -387,7 +496,7 @@ export function UsersSection({
           target={shownUser}
           roles={data?.assignable ?? []}
           onClose={() => setEditingUser(null)}
-          onSaved={() => saved('User saved', 'The account list is up to date.')}
+          onSaved={() => saved(intl.formatMessage(messages.userSavedTitle), intl.formatMessage(messages.userSavedBody))}
         />
       ) : null}
       {shownRole ? (
@@ -397,14 +506,14 @@ export function UsersSection({
           target={shownRole}
           permissions={data?.permissions ?? []}
           onClose={() => setEditingRole(null)}
-          onSaved={() => saved('Role saved', 'The role list is up to date.')}
+          onSaved={() => saved(intl.formatMessage(messages.roleSavedTitle), intl.formatMessage(messages.roleSavedBody))}
         />
       ) : null}
       <Modal
         open={deleting !== null}
         role="alertdialog"
         size="sm"
-        title={`Delete ${shownDelete?.name ?? ''}?`}
+        title={intl.formatMessage(messages.deleteTitle, { name: shownDelete?.name ?? '' })}
         dismissOnBackdrop={false}
         onClose={() => {
           if (!busy) closeDelete();
@@ -412,7 +521,7 @@ export function UsersSection({
         footer={
           <>
             <Button size="lg" disabled={busy} onClick={closeDelete}>
-              Cancel
+              {intl.formatMessage(messages.cancel)}
             </Button>
             <Button
               variant="danger-primary"
@@ -420,15 +529,15 @@ export function UsersSection({
               disabled={busy || (shownDelete?.kind === 'user' && !deletePassword)}
               onClick={() => void confirmDelete()}
             >
-              {busy ? 'Deleting…' : shownDelete?.kind === 'role' ? 'Delete role' : 'Delete user'}
+              {busy
+                ? intl.formatMessage(messages.deleting)
+                : intl.formatMessage(shownDelete?.kind === 'role' ? messages.deleteRole : messages.deleteUser)}
             </Button>
           </>
         }
       >
         <p className="v2-users-text">
-          {shownDelete?.kind === 'role'
-            ? 'Only a role no one is assigned to can be deleted.'
-            : 'This account can no longer sign in to the console.'}
+          {intl.formatMessage(shownDelete?.kind === 'role' ? messages.deleteRoleText : messages.deleteUserText)}
         </p>
         {shownDelete?.kind === 'user' ? (
           <form
@@ -437,13 +546,16 @@ export function UsersSection({
               void confirmDelete();
             }}
           >
-            <Field label="Your current password" help="Needed to delete an account.">
+            <Field
+              label={intl.formatMessage(messages.currentPassword)}
+              help={intl.formatMessage(messages.currentPasswordHelp)}
+            >
               <PasswordInput
                 value={deletePassword}
                 required
                 disabled={busy}
                 autoComplete="current-password"
-                toggleLabel="Show your current password"
+                toggleLabel={intl.formatMessage(messages.showCurrent)}
                 onChange={(e) => setDeletePassword(e.target.value)}
               />
             </Field>

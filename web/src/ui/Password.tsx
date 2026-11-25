@@ -1,4 +1,5 @@
 import { forwardRef, useState, type ReactNode } from 'react';
+import { useIntl } from 'react-intl';
 import { Input, type InputProps } from './Input';
 import { Tooltip } from './Tooltip';
 import { IconCheckSmall, IconCrossSmall, IconDashSmall, IconEye, IconEyeOff } from './icons';
@@ -9,6 +10,7 @@ export type PasswordInputProps = Omit<InputProps, 'type'> & {
   /**
    * The show/hide button's name. It stays the same while the button is `aria-pressed` (the pressed state says
    * whether the password shows), so give each field on a form its own: "Show new password", "Show current password".
+   * "Show password" when omitted.
    */
   toggleLabel?: string;
 };
@@ -19,18 +21,20 @@ export type PasswordInputProps = Omit<InputProps, 'type'> & {
  * `aria-pressed`; its tooltip says what a click does next.
  */
 export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(function PasswordInput(
-  { size = 'lg', className, toggleLabel = 'Show password', ...rest },
+  { size = 'lg', className, toggleLabel, ...rest },
   ref,
 ) {
+  const intl = useIntl();
   const [shown, setShown] = useState(false);
+  const show = intl.formatMessage({ id: 'shell.password.show', defaultMessage: 'Show password' });
   return (
     <span className={cx('v2-password', className)}>
       <Input ref={ref} type={shown ? 'text' : 'password'} size={size} spellCheck={false} {...rest} />
-      <Tooltip content={shown ? 'Hide password' : 'Show password'}>
+      <Tooltip content={shown ? intl.formatMessage({ id: 'shell.password.hide', defaultMessage: 'Hide password' }) : show}>
         <button
           type="button"
           className="v2-password__toggle"
-          aria-label={toggleLabel}
+          aria-label={toggleLabel ?? show}
           aria-pressed={shown}
           disabled={rest.disabled}
           onClick={() => setShown((v) => !v)}
@@ -55,6 +59,7 @@ export interface Rule {
  * aria-describedby at its id.
  */
 export function RuleList({ rules, id, className }: { rules: ReadonlyArray<Rule>; id?: string; className?: string }) {
+  const intl = useIntl();
   return (
     <ul id={id} aria-live="polite" className={cx('v2-rules', className)}>
       {rules.map((r) => {
@@ -64,7 +69,11 @@ export function RuleList({ rules, id, className }: { rules: ReadonlyArray<Rule>;
             <span className="v2-rules__tile" aria-hidden="true">
               {state === 'ok' ? <IconCheckSmall /> : state === 'alert' ? <IconCrossSmall size={10} strokeWidth={2} /> : <IconDashSmall size={10} />}
             </span>
-            <span className="v2-visually-hidden">{state === 'ok' ? 'Met: ' : state === 'alert' ? 'Not met: ' : ''}</span>
+            <span className="v2-visually-hidden">{state === 'ok'
+                ? `${intl.formatMessage({ id: 'shell.password.met', defaultMessage: 'Met:' })} `
+                : state === 'alert'
+                  ? `${intl.formatMessage({ id: 'shell.password.notMet', defaultMessage: 'Not met:' })} `
+                  : ''}</span>
             {r.label}
           </li>
         );

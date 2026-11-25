@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useIntl, type IntlShape } from 'react-intl';
+import { defineMessages, FormattedMessage, useIntl, type IntlShape, type MessageDescriptor } from 'react-intl';
 import { Link } from 'react-router';
 import { useAuth } from '../auth/AuthContext';
 import type { AuthUser } from '../api/auth';
@@ -46,11 +46,66 @@ const DEFAULT_CONFIG_KEY = 'mdmesh-default-config';
 /** Build-time console version (Docker images set it; source and dev builds don't). */
 const CONSOLE_VERSION = (import.meta.env.VITE_APP_VERSION as string | undefined) || null;
 
-const THEME_OPTIONS: ReadonlyArray<{ value: ThemePreference; label: string }> = [
-  { value: 'light', label: 'Light' },
-  { value: 'dark', label: 'Dark' },
-  { value: 'system', label: 'Match system' },
-];
+const messages = defineMessages<'themeLight' | 'themeDark' | 'themeSystem' | 'versionBoth' | 'versionConsole' | 'checking' | 'unreachable' | 'retry' | 'connected' | 'running' | 'sections' | 'whatsNew' | 'accountTitle' | 'changePassword' | 'signOut' | 'name' | 'login' | 'email' | 'role' | 'usersTitle' | 'usersThing' | 'serverTitle' | 'connection' | 'address' | 'serverAndConsole' | 'installedWith' | 'installSource' | 'installDocker' | 'enrollmentTitle' | 'enrollDevice' | 'defaultConfig' | 'loadFailed' | 'noConfigs' | 'preselected' | 'noDefault' | 'appearanceTitle' | 'theme' | 'themeHelp' | 'pageTitle' | 'pageSubtitle'>({
+  themeLight: { id: 'settings.theme.light', defaultMessage: 'Light' },
+  themeDark: { id: 'settings.theme.dark', defaultMessage: 'Dark' },
+  themeSystem: { id: 'settings.theme.system', defaultMessage: 'Match system' },
+  versionBoth: { id: 'settings.server.versionBoth', defaultMessage: 'server {server} · console {console}' },
+  versionConsole: { id: 'settings.server.versionConsole', defaultMessage: 'console {console}' },
+  checking: { id: 'settings.server.checking', defaultMessage: 'Checking…' },
+  unreachable: { id: 'settings.server.unreachable', defaultMessage: 'Unreachable' },
+  retry: { id: 'settings.server.retry', defaultMessage: 'Retry' },
+  connected: { id: 'settings.server.connected', defaultMessage: 'Connected · {ms} ms' },
+  running: { id: 'settings.rollout.running', defaultMessage: 'Running' },
+  sections: { id: 'settings.sections', defaultMessage: 'Settings sections' },
+  whatsNew: { id: 'settings.server.whatsNew', defaultMessage: 'What’s new' },
+  accountTitle: { id: 'settings.account.title', defaultMessage: 'Account' },
+  changePassword: { id: 'settings.account.changePassword', defaultMessage: 'Change password' },
+  signOut: { id: 'settings.account.signOut', defaultMessage: 'Sign out' },
+  name: { id: 'settings.account.name', defaultMessage: 'Name' },
+  login: { id: 'settings.account.login', defaultMessage: 'Login' },
+  email: { id: 'settings.account.email', defaultMessage: 'Email' },
+  role: { id: 'settings.account.role', defaultMessage: 'Role' },
+  usersTitle: { id: 'settings.section.users', defaultMessage: 'Users & roles' },
+  usersThing: { id: 'settings.section.usersThing', defaultMessage: 'users and roles' },
+  serverTitle: { id: 'settings.server.title', defaultMessage: 'Server' },
+  connection: { id: 'settings.server.connection', defaultMessage: 'Connection' },
+  address: { id: 'settings.server.address', defaultMessage: 'Address' },
+  serverAndConsole: { id: 'settings.server.serverAndConsole', defaultMessage: 'Server and console' },
+  installedWith: { id: 'settings.server.installedWith', defaultMessage: 'Installed with' },
+  installSource: {
+    id: 'settings.server.installSource',
+    defaultMessage: 'Source or native installer, updated from the shell',
+  },
+  installDocker: { id: 'settings.server.installDocker', defaultMessage: 'Docker, can update itself' },
+  enrollmentTitle: { id: 'settings.enrollment.title', defaultMessage: 'Enrollment' },
+  enrollDevice: { id: 'settings.enrollment.enrollDevice', defaultMessage: 'Enroll a device' },
+  defaultConfig: { id: 'settings.enrollment.defaultConfig', defaultMessage: 'Default configuration' },
+  loadFailed: {
+    id: 'settings.enrollment.loadFailed',
+    defaultMessage: 'Couldn’t load configurations. <retry>Retry</retry>',
+  },
+  noConfigs: {
+    id: 'settings.enrollment.noConfigs',
+    defaultMessage: 'No configurations yet. Once you create one, it can be the default here.',
+  },
+  preselected: {
+    id: 'settings.enrollment.preselected',
+    defaultMessage: 'Pre-selected when you open Enroll. Saved in this browser only.',
+  },
+  noDefault: { id: 'settings.enrollment.noDefault', defaultMessage: 'No default' },
+  appearanceTitle: { id: 'settings.appearance.title', defaultMessage: 'Appearance' },
+  theme: { id: 'settings.appearance.theme', defaultMessage: 'Theme' },
+  themeHelp: {
+    id: 'settings.appearance.themeHelp',
+    defaultMessage: 'Match system follows your computer’s light or dark setting.',
+  },
+  pageTitle: { id: 'settings.page.title', defaultMessage: 'Settings' },
+  pageSubtitle: {
+    id: 'settings.page.subtitle',
+    defaultMessage: 'Your account, the server, updates and console preferences.',
+  },
+}) as Record<'themeLight' | 'themeDark' | 'themeSystem' | 'versionBoth' | 'versionConsole' | 'checking' | 'unreachable' | 'retry' | 'connected' | 'running' | 'sections' | 'whatsNew' | 'accountTitle' | 'changePassword' | 'signOut' | 'name' | 'login' | 'email' | 'role' | 'usersTitle' | 'usersThing' | 'serverTitle' | 'connection' | 'address' | 'serverAndConsole' | 'installedWith' | 'installSource' | 'installDocker' | 'enrollmentTitle' | 'enrollDevice' | 'defaultConfig' | 'loadFailed' | 'noConfigs' | 'preselected' | 'noDefault' | 'appearanceTitle' | 'theme' | 'themeHelp' | 'pageTitle' | 'pageSubtitle', MessageDescriptor>;
 
 function roleLabel(intl: IntlShape, u: AuthUser | null): string {
   if (!u) return '—';
@@ -79,18 +134,21 @@ function serverAddress(): string {
 }
 
 /** "0.3.3" when server and console agree; both when they differ (a console reload pending, or a dev build). */
-function versionLine(s: UpdateStatus | null): string | null {
+function versionLine(intl: IntlShape, s: UpdateStatus | null): string | null {
   const server = s?.current || null;
-  if (server && CONSOLE_VERSION && CONSOLE_VERSION !== server) return `server ${server} · console ${CONSOLE_VERSION}`;
-  return server ?? (CONSOLE_VERSION ? `console ${CONSOLE_VERSION}` : null);
+  if (server && CONSOLE_VERSION && CONSOLE_VERSION !== server) {
+    return intl.formatMessage(messages.versionBoth, { server, console: CONSOLE_VERSION });
+  }
+  return server ?? (CONSOLE_VERSION ? intl.formatMessage(messages.versionConsole, { console: CONSOLE_VERSION }) : null);
 }
 
 function ConnectionValue({ conn, onRetry }: { conn: Connection; onRetry: () => void }) {
+  const intl = useIntl();
   if (conn.state === 'checking') {
     return (
       <span className="v2-settings-conn">
         <span className="v2-settings-conn__dot is-idle" aria-hidden="true" />
-        Checking…
+        {intl.formatMessage(messages.checking)}
       </span>
     );
   }
@@ -98,15 +156,15 @@ function ConnectionValue({ conn, onRetry }: { conn: Connection; onRetry: () => v
     return (
       <span className="v2-settings-conn">
         <span className="v2-settings-conn__dot is-alert" aria-hidden="true" />
-        Unreachable
-        <LinkButton onClick={onRetry}>Retry</LinkButton>
+        {intl.formatMessage(messages.unreachable)}
+        <LinkButton onClick={onRetry}>{intl.formatMessage(messages.retry)}</LinkButton>
       </span>
     );
   }
   return (
     <span className="v2-settings-conn">
       <span className="v2-settings-conn__dot is-ok" aria-hidden="true" />
-      Connected · {conn.ms} ms
+      {intl.formatMessage(messages.connected, { ms: String(conn.ms) })}
     </span>
   );
 }
@@ -116,6 +174,11 @@ export function SettingsPage() {
   const { user, signOut } = useAuth();
   const { preference, setPreference } = useTheme();
   const intl = useIntl();
+  const themeOptions: ReadonlyArray<{ value: ThemePreference; label: string }> = [
+    { value: 'light', label: intl.formatMessage(messages.themeLight) },
+    { value: 'dark', label: intl.formatMessage(messages.themeDark) },
+    { value: 'system', label: intl.formatMessage(messages.themeSystem) },
+  ];
   const languageOptions = [
     { value: '', label: intl.formatMessage({ id: 'settings.language.auto', defaultMessage: 'Browser' }) },
     ...[SOURCE_LOCALE, ...Object.keys(CATALOGS).filter((c) => LANGUAGE_NAMES[c])].map((c) => ({
@@ -152,11 +215,11 @@ export function SettingsPage() {
         if (!controller.signal.aborted) setManagement({ user, capabilities, error: '' });
       },
       (error) => {
-        if (!controller.signal.aborted) setManagement({ user, capabilities: null, error: managementError(error) });
+        if (!controller.signal.aborted) setManagement({ user, capabilities: null, error: managementError(intl, error) });
       },
     );
     return () => controller.abort();
-  }, [mayAdminister, user, managementRetry]);
+  }, [mayAdminister, user, managementRetry, intl]);
   const administration = management?.user === user && mayAdminister ? management : null;
   const showUsers = administration?.capabilities?.users === true || !!administration?.error;
 
@@ -198,21 +261,21 @@ export function SettingsPage() {
   const { nav, sections } = useSettingsSections(
     {
       [S.updates]: updMeta,
-      [S.agentRollout]: rolloutActive(ro.rollout) ? { meta: 'Running', metaTone: 'warn' } : {},
+      [S.agentRollout]: rolloutActive(ro.rollout) ? { meta: intl.formatMessage(messages.running), metaTone: 'warn' } : {},
     },
     showUsers ? [] : [S.users],
   );
-  const sideNav = <SectionNav items={nav} aria-label="Settings sections" />;
+  const sideNav = <SectionNav items={nav} aria-label={intl.formatMessage(messages.sections)} />;
 
   // A stored default whose configuration is gone shows as "No default".
   const known = configs === null || configs.some((c) => String(c.id) === defaultConfig);
-  const version = versionLine(s);
+  const version = versionLine(intl, s);
   // What's new again, beside the version, when this console has notes for it.
   const whatsNew = useWhatsNew();
   const versionValue = whatsNew?.target ? (
     <span className="v2-settings-ver">
       {version ? <span className="v2-num">{version}</span> : null}
-      <LinkButton onClick={whatsNew.open}>What’s new</LinkButton>
+      <LinkButton onClick={whatsNew.open}>{intl.formatMessage(messages.whatsNew)}</LinkButton>
     </span>
   ) : (
     version
@@ -223,7 +286,7 @@ export function SettingsPage() {
     account: (
       <Card id={S.account} aria-labelledby={`${S.account}-title`} padding="rows" className="v2-settings-card">
         <CardHeader
-          title="Account"
+          title={intl.formatMessage(messages.accountTitle)}
           titleId={`${S.account}-title`}
           spacing={8}
           actions={
@@ -236,10 +299,10 @@ export function SettingsPage() {
                 }}
                 disabled={!user}
               >
-                Change password
+                {intl.formatMessage(messages.changePassword)}
               </Button>
               <Button size="sm" onClick={() => void signOut()}>
-                Sign out
+                {intl.formatMessage(messages.signOut)}
               </Button>
             </>
           }
@@ -247,10 +310,10 @@ export function SettingsPage() {
         <KeyValueList
           variant="rows"
           items={[
-            { key: 'name', label: 'Name', value: user?.name || user?.login || '—' },
-            { key: 'login', label: 'Login', value: user?.login || '—' },
-            { key: 'email', label: 'Email', value: user?.email || '—' },
-            { key: 'role', label: 'Role', value: roleLabel(intl, user) },
+            { key: 'name', label: intl.formatMessage(messages.name), value: user?.name || user?.login || '—' },
+            { key: 'login', label: intl.formatMessage(messages.login), value: user?.login || '—' },
+            { key: 'email', label: intl.formatMessage(messages.email), value: user?.email || '—' },
+            { key: 'role', label: intl.formatMessage(messages.role), value: roleLabel(intl, user) },
           ]}
         />
       </Card>
@@ -259,9 +322,9 @@ export function SettingsPage() {
       <UsersSection capabilities={administration.capabilities} anchorId={S.users} headingId={`${S.users}-title`} />
     ) : administration?.error ? (
       <Card id={S.users} aria-labelledby={`${S.users}-title`} gap={12} className="v2-settings-card">
-        <CardHeader title="Users & roles" titleId={`${S.users}-title`} />
+        <CardHeader title={intl.formatMessage(messages.usersTitle)} titleId={`${S.users}-title`} />
         <ErrorState
-          thing="users and roles"
+          thing={intl.formatMessage(messages.usersThing)}
           detail={administration.error}
           onRetry={() => setManagementRetry((r) => r + 1)}
         />
@@ -269,24 +332,24 @@ export function SettingsPage() {
     ) : null,
     server: (
       <Card id={S.server} aria-labelledby={`${S.server}-title`} padding="rows" className="v2-settings-card">
-        <CardHeader title="Server" titleId={`${S.server}-title`} spacing={8} />
+        <CardHeader title={intl.formatMessage(messages.serverTitle)} titleId={`${S.server}-title`} spacing={8} />
         <KeyValueList
           variant="rows"
           items={[
-            { key: 'conn', label: 'Connection', value: <ConnectionValue conn={conn} onRetry={recheck} /> },
-            { key: 'addr', label: 'Address', value: serverAddress(), mono: true },
+            { key: 'conn', label: intl.formatMessage(messages.connection), value: <ConnectionValue conn={conn} onRetry={recheck} /> },
+            { key: 'addr', label: intl.formatMessage(messages.address), value: serverAddress(), mono: true },
             ...(versionValue
-              ? [{ key: 'ver', label: 'Server and console', value: <span className="v2-num">{versionValue}</span> }]
+              ? [{ key: 'ver', label: intl.formatMessage(messages.serverAndConsole), value: <span className="v2-num">{versionValue}</span> }]
               : []),
             ...(s
               ? [
                   {
                     key: 'how',
-                    label: 'Installed with',
+                    label: intl.formatMessage(messages.installedWith),
                     value:
                       s.applySupported === false
-                        ? 'Source or native installer, updated from the shell'
-                        : 'Docker, can update itself',
+                        ? intl.formatMessage(messages.installSource)
+                        : intl.formatMessage(messages.installDocker),
                   },
                 ]
               : []),
@@ -303,28 +366,32 @@ export function SettingsPage() {
     enrollment: (
       <Card id={S.enrollment} aria-labelledby={`${S.enrollment}-title`} padding="rows" className="v2-settings-card">
         <CardHeader
-          title="Enrollment"
+          title={intl.formatMessage(messages.enrollmentTitle)}
           titleId={`${S.enrollment}-title`}
           spacing={8}
-          actions={canEnroll ? <Link to={paths.enroll}>Enroll a device</Link> : undefined}
+          actions={canEnroll ? <Link to={paths.enroll}>{intl.formatMessage(messages.enrollDevice)}</Link> : undefined}
         />
         <div className="v2-settings-pref">
           <div className="v2-settings-pref__text">
             <span id="v2-settings-default-config" className="v2-settings-pref__label">
-              Default configuration
+              {intl.formatMessage(messages.defaultConfig)}
             </span>
             <span id="v2-settings-default-config-help" className="v2-settings-pref__help">
               {configsErr ? (
-                <>
-                  Couldn’t load configurations.{' '}
-                  <LinkButton tone="inline" onClick={retryConfigs}>
-                    Retry
-                  </LinkButton>
-                </>
+                <FormattedMessage
+                  {...messages.loadFailed}
+                  values={{
+                    retry: (chunks) => (
+                      <LinkButton tone="inline" onClick={retryConfigs}>
+                        {chunks}
+                      </LinkButton>
+                    ),
+                  }}
+                />
               ) : configs && configs.length === 0 ? (
-                'No configurations yet. Once you create one, it can be the default here.'
+                intl.formatMessage(messages.noConfigs)
               ) : (
-                'Pre-selected when you open Enroll. Saved in this browser only.'
+                intl.formatMessage(messages.preselected)
               )}
             </span>
           </div>
@@ -336,7 +403,7 @@ export function SettingsPage() {
             onChange={(e) => chooseDefault(e.target.value)}
             disabled={configs === null || configsErr}
           >
-            <option value="">No default</option>
+            <option value="">{intl.formatMessage(messages.noDefault)}</option>
             {(configs ?? []).map((c) => (
               <option key={c.id} value={String(c.id)}>
                 {c.name}
@@ -348,21 +415,21 @@ export function SettingsPage() {
     ),
     appearance: (
       <Card id={S.appearance} aria-labelledby={`${S.appearance}-title`} padding="rows" className="v2-settings-card">
-        <CardHeader title="Appearance" titleId={`${S.appearance}-title`} spacing={8} />
+        <CardHeader title={intl.formatMessage(messages.appearanceTitle)} titleId={`${S.appearance}-title`} spacing={8} />
         <div className="v2-settings-pref">
           <div className="v2-settings-pref__text">
             <span id="v2-settings-theme" className="v2-settings-pref__label">
-              Theme
+              {intl.formatMessage(messages.theme)}
             </span>
             <span id="v2-settings-theme-help" className="v2-settings-pref__help">
-              Match system follows your computer&rsquo;s light or dark setting.
+              {intl.formatMessage(messages.themeHelp)}
             </span>
           </div>
           <Segmented
             className="v2-settings-pref__control"
             aria-labelledby="v2-settings-theme"
             aria-describedby="v2-settings-theme-help"
-            options={THEME_OPTIONS}
+            options={themeOptions}
             value={preference}
             onChange={(v) => setPreference(v)}
           />
@@ -397,7 +464,7 @@ export function SettingsPage() {
 
   return (
     <>
-      <PageHeader title="Settings" subtitle="Your account, the server, updates and console preferences." />
+      <PageHeader title={intl.formatMessage(messages.pageTitle)} subtitle={intl.formatMessage(messages.pageSubtitle)} />
       <CoreSettingsProvider parts={core}>
         <SectionLayout contentBasis={560} nav={sideNav} className="v2-settings-layout">
           {sections}

@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { defineMessages, useIntl, type MessageDescriptor } from 'react-intl';
 import { Button } from './Button';
 import { cx } from './cx';
 import './BulkSelectionBar.css';
+
+const messages = defineMessages<'selectedNoun' | 'selected'>({
+  selectedNoun: { id: 'shell.bulk.selectedNoun', defaultMessage: '{count} {noun} selected' },
+  selected: { id: 'shell.bulk.selected', defaultMessage: '{count} selected' },
+}) as Record<'selectedNoun' | 'selected', MessageDescriptor>;
 
 export interface BulkSelectionBarProps {
   /** Selected count; render the bar only when it is > 0. */
@@ -43,6 +49,7 @@ export function BulkSelectionBar({
   className,
 }: BulkSelectionBarProps) {
   // While it slides out, it keeps saying what it said (the count has already gone to 0).
+  const intl = useIntl();
   const last = useRef(count);
   if (count > 0) last.current = count;
   const shown = open ? count : last.current;
@@ -56,32 +63,42 @@ export function BulkSelectionBar({
       first.current = false;
       if (live === 0) return;
     }
-    setSaid(live > 0 ? `${live} ${noun ? `${noun} ` : ''}selected` : 'Selection cleared');
-  }, [live, noun]);
+    setSaid(
+      live > 0
+        ? intl.formatMessage(
+            noun ? messages.selectedNoun : messages.selected,
+            { count: live, noun },
+          )
+        : intl.formatMessage({ id: 'shell.bulk.cleared', defaultMessage: 'Selection cleared' }),
+    );
+  }, [live, noun, intl]);
   return (
     <>
       <span className="v2-visually-hidden" role="status">
         {said}
       </span>
       <section
-        aria-label="Selection"
+        aria-label={intl.formatMessage({ id: 'shell.bulk.label', defaultMessage: 'Selection' })}
         className={cx('v2-bulkbar', className)}
         data-state={open ? 'open' : 'closed'}
         inert={!open || undefined}
         aria-hidden={!open || undefined}
       >
         <span className="v2-bulkbar__count">
-          {shown} {noun ? `${noun} ` : ''}selected
+          {intl.formatMessage(
+            noun ? messages.selectedNoun : messages.selected,
+            { count: shown, noun },
+          )}
           {onSelectAll && total !== undefined && shown < total ? (
             <Button variant="ghost" size="sm" className="v2-bulkbar__all" onClick={onSelectAll}>
-              Select all {total}
+              {intl.formatMessage({ id: 'shell.bulk.selectAll', defaultMessage: 'Select all {total}' }, { total })}
             </Button>
           ) : null}
         </span>
         {hint ? <span className="v2-bulkbar__hint">{hint}</span> : null}
         {children}
         <Button variant="ghost" size="sm" onClick={onClear}>
-          Clear
+          {intl.formatMessage({ id: 'shell.bulk.clear', defaultMessage: 'Clear' })}
         </Button>
       </section>
     </>
