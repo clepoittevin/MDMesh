@@ -55,3 +55,17 @@ describe('Enroll: the Setup fact', () => {
     expect(text).toMatch(/1 other entry · 1 Wi-Fi entry left out/);
   });
 });
+
+describe('Enroll: a configuration that adds nothing', () => {
+  it('still shows the Setup fact, saying nothing is added', async () => {
+    serve({ id: 5, name: 'Club', qrParameters: null, mobileEnrollment: false, wifiSSID: '' });
+    renderInConsole(<AppRoutes />, { path: '/enroll' });
+    const main = within(await screen.findByRole('main', undefined, LOAD));
+    const select = await main.findByRole('combobox', { name: 'Configuration' }, LOAD);
+    await waitFor(() => chooseOption(select, 'Club'), LOAD);
+    await waitFor(() => {
+      const label = main.getAllByText('Setup').find((el) => el.tagName !== 'OPTION');
+      expect(label?.parentElement?.textContent).toMatch(/Nothing added/);
+    }, LOAD);
+  });
+});

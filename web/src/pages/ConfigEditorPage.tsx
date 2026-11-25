@@ -90,6 +90,7 @@ import {
   joinQrParameters,
   parseExtraQrParameters,
   settingsInRest,
+  unusedInRest,
   splitQrParameters,
   type QrParametersSplit,
 } from '../enroll/provisioning';
@@ -729,8 +730,15 @@ function Editor({
       const rest = qrRestOf(draft, typedQr.current);
       const parsed = parseExtraQrParameters(rest);
       const dupes = settingsInRest(rest);
+      const unused = unusedInRest(rest);
+      const notes = [
+        dupes.length ? `${dupes.join(', ')}: use the setting above instead. Once that is set, it wins over this entry.` : null,
+        unused.length
+          ? `${unused.join(', ')}: not used. Wi-Fi comes from the setup Wi-Fi above and the Enroll page, and MDMesh sets the others itself.`
+          : null,
+      ].filter((x): x is string => !!x);
       if (parsed.error) qrNote = { tone: 'alert', text: 'Not valid JSON yet. It is saved as typed; the Enroll page leaves it out until it is fixed.' };
-      else if (dupes.length) qrNote = { tone: 'warn', text: `${dupes.join(', ')}: use the setting above instead. Once that is set, it wins over this entry.` };
+      else if (notes.length) qrNote = { tone: 'warn', text: notes.join(' ') };
     }
     // The PIN callout asks for a new PIN, which a disabled row (kiosk off) cannot take; the nav still flags it.
     const showPinWarn = key === 'password' && pinWarn != null && (readOnly || !off);

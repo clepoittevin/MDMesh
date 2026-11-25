@@ -471,7 +471,7 @@ export function EnrollPage() {
       sum.hiddenWifi ? 'hidden Wi-Fi' : null,
       sum.others > 0 ? `${sum.others} other ${sum.others === 1 ? 'entry' : 'entries'}` : null,
       wifiLeftOut > 0
-        ? `${wifiLeftOut} Wi-Fi ${wifiLeftOut === 1 ? 'entry' : 'entries'} left out: only a hidden network or a proxy, and only with the Wi-Fi chosen here`
+        ? `${wifiLeftOut} Wi-Fi ${wifiLeftOut === 1 ? 'entry' : 'entries'} left out: Wi-Fi comes from this page (and the configuration's setup Wi-Fi)`
         : null,
     ].filter((x): x is string => !!x);
     return parts.join(' · ');
@@ -521,7 +521,7 @@ export function EnrollPage() {
             : "Not added: choose a configuration to add its setup entries (the page can't tell which one is the server default)",
         }]
       : []),
-    ...(selected && (qrExtras.error || extrasText || qrExtras.ignored.length > 0)
+    ...(selected
       ? [{
           key: 'qrExtras',
           label: 'Setup',
