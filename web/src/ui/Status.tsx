@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { defineMessages, useIntl, type MessageDescriptor } from 'react-intl';
 import { cx } from './cx';
 import './Status.css';
 
@@ -54,6 +55,26 @@ export const STATUS_META: Record<StatusKind, StatusMeta> = {
   expired: { tone: 'warn', shape: 'diamond', label: 'Expired' },
 };
 
+/** STATUS_META's wording as messages (same text), for the console's language. */
+export const STATUS_LABEL_MESSAGES: Record<StatusKind, MessageDescriptor> = defineMessages({
+  online: { id: 'status.presence.online', defaultMessage: 'Online' },
+  attention: { id: 'status.presence.attention', defaultMessage: 'Needs attention' },
+  offline: { id: 'status.presence.offline', defaultMessage: 'Offline' },
+  wiped: { id: 'status.presence.wiped', defaultMessage: 'Wiped' },
+  inSync: { id: 'status.sync.inSync', defaultMessage: 'In sync' },
+  applying: { id: 'status.sync.applying', defaultMessage: 'Applying…' },
+  applyFailed: { id: 'status.sync.applyFailed', defaultMessage: 'Apply failed' },
+  agentTooOld: { id: 'status.sync.agentTooOld', defaultMessage: 'Agent too old' },
+  notReported: { id: 'status.sync.notReported', defaultMessage: 'Not reported' },
+  noConfiguration: { id: 'status.sync.noConfiguration', defaultMessage: 'No configuration' },
+  applied: { id: 'status.sync.applied', defaultMessage: 'Applied' },
+  failed: { id: 'status.sync.failed', defaultMessage: 'Failed' },
+  notSupported: { id: 'status.sync.notSupported', defaultMessage: 'Not supported' },
+  done: { id: 'status.command.done', defaultMessage: 'Done' },
+  pending: { id: 'status.command.pending', defaultMessage: 'Waiting' },
+  expired: { id: 'status.command.expired', defaultMessage: 'Expired' },
+});
+
 /** Default shape for a tone (ok circle, warn diamond, alert square, idle ring). */
 export const TONE_SHAPE: Record<StatusTone, StatusShape> = {
   ok: 'circle',
@@ -91,11 +112,12 @@ export interface StatusPillProps {
 
 /** Soft pill with the shape mark: 2×10, r999, 12.5/500, soft fill + line + ink. */
 export function StatusPill({ status, label, dot = true, className }: StatusPillProps) {
+  const intl = useIntl();
   const m = STATUS_META[status];
   return (
     <span className={cx('v2-spill', `v2-spill--${m.tone}`, !dot && 'v2-spill--nodot', className)}>
       {dot ? <StatusDot tone={m.tone} shape={m.shape} /> : null}
-      {label ?? m.label}
+      {label ?? intl.formatMessage(STATUS_LABEL_MESSAGES[status])}
     </span>
   );
 }
@@ -117,13 +139,14 @@ export interface StatusTextProps {
 
 /** Inline status: mark + text coloured by tone (no pill). */
 export function StatusText({ status, tone, shape, variant = 'sync', children, className }: StatusTextProps) {
+  const intl = useIntl();
   const m = status ? STATUS_META[status] : undefined;
   const t = tone ?? m?.tone ?? 'idle';
   const s = variant === 'sync' ? 'circle' : (shape ?? m?.shape ?? TONE_SHAPE[t]);
   return (
     <span className={cx('v2-stext', `v2-stext--${variant}`, `v2-stext--${t}`, className)}>
       <StatusDot tone={t} shape={s} size={variant === 'sync' ? 6 : 7} />
-      {children ?? m?.label}
+      {children ?? (status ? intl.formatMessage(STATUS_LABEL_MESSAGES[status]) : undefined)}
     </span>
   );
 }
