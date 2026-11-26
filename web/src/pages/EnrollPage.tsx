@@ -5,7 +5,7 @@ import { mintEnrollToken, revokeAllEnrollTokens } from '../api/enroll';
 import { getUpdateStatus, type UpdateStatus } from '../api/updates';
 import { agentUnavailable } from '../data/updateStatus';
 import { Link } from 'react-router';
-import { defineMessage, defineMessages, useIntl } from '../i18n/plain';
+import { defineMessage, defineMessages, useIntl } from 'react-intl';
 import { ARRIVAL_LABEL, arrivalNews, useArrivals, type Arrival } from '../enroll/arrivals';
 import { addressProblem, wifiProblem } from '../enroll/checks';
 import {

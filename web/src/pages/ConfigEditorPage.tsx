@@ -100,7 +100,7 @@ import {
   splitQrParameters,
   type QrParametersSplit,
 } from '../enroll/provisioning';
-import { defineMessage, defineMessages, useIntl, type MessageDescriptor } from '../i18n/plain';
+import { defineMessage, defineMessages, useIntl, type MessageDescriptor } from 'react-intl';
 
 const enrollmentMessages = defineMessages({
   setupScreens: { id: 'configEditor.enrollment.setupScreens', defaultMessage: 'Setup screens' },

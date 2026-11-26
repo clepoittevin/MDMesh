@@ -3,7 +3,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { AppRoutes } from '../App';
-import { renderInConsole, stubApi } from '../test/console';
+import { renderInConsole, settled, stubApi } from '../test/console';
 import { chooseOption } from '../test/select';
 
 const LOAD = { timeout: 10_000 };
@@ -46,6 +46,7 @@ describe('Enroll: the Setup fact', () => {
     const text = await setupFact();
     expect(text).toMatch(/fr_FR · mobile data/);
     expect(text).toMatch(/other Extra QR parameters left out: invalid JSON/);
+    await settled();
   });
 
   it('says how many Wi-Fi entries stay out of the code', async () => {
@@ -56,6 +57,7 @@ describe('Enroll: the Setup fact', () => {
     renderInConsole(<AppRoutes />, { path: '/enroll' });
     const text = await setupFact();
     expect(text).toMatch(/1 other entry · 1 Wi-Fi entry left out: .* · 1 entry left out: not a setup entry MDMesh passes on/);
+    await settled();
   });
 });
 
@@ -70,5 +72,6 @@ describe('Enroll: a configuration that adds nothing', () => {
       const label = main.getAllByText('Setup').find((el) => el.tagName !== 'OPTION');
       expect(label?.parentElement?.textContent).toMatch(/Nothing added/);
     }, LOAD);
+    await settled();
   });
 });
