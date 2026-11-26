@@ -62,7 +62,7 @@ export { ColourInput } from './ColourInput';
 export { PasswordInput, RuleList } from './Password';
 export type { Rule } from './Password';
 export { AppTile } from './AppTile';
-export { RelativeTime, formatRelative } from './RelativeTime';
+export { RelativeTime, formatRelative, formatRelativeIntl } from './RelativeTime';
 export { CopyField } from './CopyField';
 export { useLeaveGuard } from './useLeaveGuard';
 // Not exported here, import them by path: QrPanel (pulls in `qrcode`), LocationMap (Leaflet), and the dialogs with

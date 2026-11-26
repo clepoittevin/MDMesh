@@ -2,13 +2,15 @@
 // would write one. The others open the page's own dialogs (Change configuration, Delete, Run action, the checksum
 // and remove dialogs), so the page builds them and hands them over with the list's helpers (withCore*Parts), and the
 // contributions here only pick theirs out. Core's columns stay the page's own: see ORDER.devicesColumn.
+import { defineMessages, type MessageDescriptor } from 'react-intl';
 import type { Application } from '../../api/applications';
-import { ACTION_TEMPLATES } from '../../api/commands';
+import { ACTION_TEMPLATES, actionTemplateMessages } from '../../api/commands';
 import type { DeviceView } from '../../api/devices';
 import { IconPlay, IconSliders, IconTrash } from '../../ui/icons';
 import type { MenuItem } from '../../ui/Menu';
 import type {
   DeviceActionHelpers,
+  DeviceCommand,
   ListBulkActionContribution,
   ListRowActionContribution,
   RowActionHelpers,
@@ -52,12 +54,35 @@ export function withCoreAppsParts(helpers: RowActionHelpers, parts: CoreAppsPart
 
 const editDevices = CORE_ACTION_ACCESS.editDevices;
 
+/** Core's row-menu commands' labels as messages, by action id (the list host shows these for core's items). */
+export const coreRowActionMessages: Readonly<Record<string, MessageDescriptor>> = {
+  lock: actionTemplateMessages.lock.label,
+  ring: actionTemplateMessages.ring.label,
+};
+
+/** Core's bulk-bar button labels as messages, by action id. */
+export const coreBulkActionMessages: Readonly<Record<string, MessageDescriptor>> = defineMessages({
+  run: { id: 'ext.bulkAction.run', defaultMessage: 'Run action' },
+  move: { id: 'ext.bulkAction.move', defaultMessage: 'Change configuration' },
+  delete: { id: 'ext.bulkAction.delete', defaultMessage: 'Delete', description: 'DESTRUCTIVE: deletes the selected devices from the console.' },
+});
+
+// Core's commands, to their labels as messages: the list host's toasts say "Verrouiller : en file d’attente" in French.
+const CORE_COMMANDS = new WeakMap<object, MessageDescriptor>();
+
+/** The label of one of core's own commands as a message (undefined for an extension's command). */
+export function coreCommandMessage(command: DeviceCommand): MessageDescriptor | undefined {
+  return CORE_COMMANDS.get(command);
+}
+
 /**
  * A command sent straight from the menu, as before: no confirmation. Its toasts say "Lock queued". Greyed out
  * for a wiped device: it erased itself, so nothing would run it.
  */
 function command(id: 'lock' | 'ring', label: string): ListRowActionContribution {
   const request = ACTION_TEMPLATES.find((t) => t.key === id)?.request;
+  const sent: DeviceCommand | null = request ? { label, request } : null;
+  if (sent) CORE_COMMANDS.set(sent, coreRowActionMessages[id]);
   return {
     slot: 'list.rowAction',
     list: 'devices',
@@ -65,12 +90,12 @@ function command(id: 'lock' | 'ring', label: string): ListRowActionContribution 
     order: ORDER.devicesRowAction[id],
     requires: editDevices,
     item: (device, helpers) =>
-      request
+      sent
         ? {
             key: id,
             label,
             disabled: device.wipedAt != null,
-            onSelect: () => void helpers.sendCommand([device], { label, request }),
+            onSelect: () => void helpers.sendCommand([device], sent),
           }
         : null,
   };

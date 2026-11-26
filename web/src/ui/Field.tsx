@@ -1,4 +1,5 @@
 import { createContext, useContext, useId, type ReactNode } from 'react';
+import { FormattedMessage } from 'react-intl';
 import { cx } from './cx';
 import './Field.css';
 
@@ -130,11 +131,11 @@ export function FieldRow({
 }
 
 /** "Changed" chip: 6px ink dot + 11.5/500 on surface-2. */
-export function ChangedChip({ label = 'Changed' }: { label?: string }) {
+export function ChangedChip({ label }: { label?: string }) {
   return (
     <span className="v2-changed">
       <span className="v2-changed__dot" aria-hidden="true" />
-      {label}
+      {label ?? <FormattedMessage id="ui.field.changed" defaultMessage="Changed" />}
     </span>
   );
 }

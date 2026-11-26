@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEventHandler, type ReactNode } from 'react';
+import { defineMessages, useIntl } from 'react-intl';
 import { fetchAuthOptions } from '../api/auth';
 import { getUpdateStatus } from '../api/updates';
 import { Wordmark } from './Sidebar';
@@ -70,7 +71,14 @@ const BUILD_VERSION = (import.meta.env as Record<string, string | undefined>).VI
  * Footer line under the auth card: `host · Connected` (from `GET /public/auth/options`) and,
  * optionally, the version and an extra link.
  */
+const connMessages = defineMessages({
+  ok: { id: 'ui.auth.connected', defaultMessage: 'Connected' },
+  down: { id: 'ui.auth.unreachable', defaultMessage: 'Can’t reach the server' },
+  checking: { id: 'ui.auth.checking', defaultMessage: 'Checking…' },
+});
+
 export function AuthFooter({ showVersion, children }: { showVersion?: boolean; children?: ReactNode }) {
+  const intl = useIntl();
   const [conn, setConn] = useState<Conn>('checking');
   const [version, setVersion] = useState<string | null>(null);
 
@@ -90,7 +98,7 @@ export function AuthFooter({ showVersion, children }: { showVersion?: boolean; c
     };
   }, [showVersion]);
 
-  const label = conn === 'ok' ? 'Connected' : conn === 'down' ? 'Can’t reach the server' : 'Checking…';
+  const label = intl.formatMessage(conn === 'ok' ? connMessages.ok : conn === 'down' ? connMessages.down : connMessages.checking);
   return (
     <>
       <span className="v2-auth-conn">

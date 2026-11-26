@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from 'react';
+import { useIntl } from 'react-intl';
 import { Link } from 'react-router';
 import { cx } from './cx';
 import './PageHeader.css';
@@ -79,8 +80,9 @@ export interface Crumb {
 
 /** "Devices / KSK-0151": 13px secondary links (underlined on hover), the current page in text colour. */
 export function Breadcrumb({ items, className }: { items: ReadonlyArray<Crumb>; className?: string }) {
+  const intl = useIntl();
   return (
-    <nav aria-label="Breadcrumb" className={cx('v2-crumbs', className)}>
+    <nav aria-label={intl.formatMessage({ id: 'ui.breadcrumb.label', defaultMessage: 'Breadcrumb' })} className={cx('v2-crumbs', className)}>
       <ol>
         {items.map((c, i) => {
           const last = i === items.length - 1;
