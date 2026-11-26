@@ -12,11 +12,11 @@ Unreleased.
 ## v0.5.1 — 2026-11-25
 
 Upgrading
-- **SSVA fork build** (github.com/clepoittevin/MDMesh): upstream 0.5.1 plus the enrollment QR setup settings below
-  (proposed upstream as MDMesh-app/MDMesh#272). Its agent is signed with the fork's own key and its release manifest
-  with the fork's minisign key (560768536AE7A48B): a server follows these releases only when installed from this
-  repository (`REPO=clepoittevin/MDMesh`, `IMAGE_OWNER=clepoittevin`), and devices enrolled with the upstream agent
-  must be enrolled again.
+- **Archery-club fork** (github.com/clepoittevin/MDMesh), adapted for clubs scoring with Ianseo: upstream 0.5.1 plus
+  the enrollment QR setup settings below (proposed upstream as MDMesh-app/MDMesh#272). Its agent is signed with the
+  fork's own key and its release manifest with the fork's minisign key (560768536AE7A48B): a server follows these
+  releases only when installed from this repository (`REPO=clepoittevin/MDMesh`, `IMAGE_OWNER=clepoittevin`), and
+  devices enrolled with the upstream agent must be enrolled again.
 - Update every server: this is a security release, so it can't wait for 0.6.0. The updater (supervisor) is
   unchanged. Quick-start installs: apply the update from Settings → Updates. From source: `./setup.sh --update`.
   Native installs: `sudo ./setup.sh --update --native`. The agent fixes below need agent 0.5.1, which devices get

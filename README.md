@@ -27,11 +27,12 @@
 </div>
 
 > [!NOTE]
-> **This is the SSVA fork of [MDMesh](https://github.com/MDMesh-app/MDMesh)** (the archery club's Android scoring
-> phones). It follows the upstream releases and adds the enrollment QR setup settings (proposed upstream as
-> MDMesh-app/MDMesh#272). Its releases are signed with the fork's own keys: the agent cannot update a device enrolled
-> with the upstream agent, and a server installed from upstream does not take these releases. Bugs in upstream code
-> go [upstream](https://github.com/MDMesh-app/MDMesh/issues).
+> **MDMesh for archery clubs.** This is a fork of [MDMesh](https://github.com/MDMesh-app/MDMesh) adapted for archery
+> clubs that run their tournaments with [Ianseo](https://www.ianseo.net): it manages a club's Android scoring phones
+> (Ianseo Scorekeeper NG, locked in kiosk mode). It follows the upstream releases and adds the enrollment QR setup
+> settings (proposed upstream as MDMesh-app/MDMesh#272). Its releases are signed with the fork's own keys: the agent
+> cannot update a device enrolled with the upstream agent, and a server installed from upstream does not take these
+> releases. Bugs in upstream code go [upstream](https://github.com/MDMesh-app/MDMesh/issues).
 
 You enroll an Android device by scanning a QR code during its setup, which makes the MDMesh agent its Device Owner.
 From the web console you then install apps on it, lock it into kiosk mode, see its location and send it remote
