@@ -61,7 +61,7 @@ export function ServerCard({ status }: { status: UpdateStatus }) {
         <span className="v2-ov-srv__title">{intl.formatMessage(updatingTo, { version: apply.toVersion })}</span>
         <span className="v2-ov-srv__line is-warn">
           <StatusDot tone="warn" />
-          {applyPhaseLabel(apply.phase)}
+          {applyPhaseLabel(apply.phase, intl)}
         </span>
         <ButtonLink size="sm" to={UPDATES_HREF}>
           {intl.formatMessage(messages.viewProgress)}
@@ -90,7 +90,7 @@ export function ServerCard({ status }: { status: UpdateStatus }) {
             <span className="v2-ov-srv__icon" aria-hidden="true">
               <IconShield size={14} />
             </span>
-            <span>{missedSecurityShort(missed)}</span>
+            <span>{missedSecurityShort(missed, intl)}</span>
           </span>
         ) : status.verified ? (
           <span className="v2-ov-srv__line is-ok">

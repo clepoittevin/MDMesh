@@ -74,7 +74,7 @@ function UpdateCard({ status, onNavigate }: { status: UpdateStatus | null; onNav
           <span className="v2-updcard__dot is-warn" aria-hidden="true" />
           {intl.formatMessage(messages.updating, { version: apply.toVersion })}
         </span>
-        <span className="v2-updcard__text">{applyPhaseLabel(apply.phase)}</span>
+        <span className="v2-updcard__text">{applyPhaseLabel(apply.phase, intl)}</span>
         <span className="v2-updcard__action">{intl.formatMessage(messages.viewProgress)}</span>
       </Link>
     );
@@ -110,8 +110,8 @@ function UpdateCard({ status, onNavigate }: { status: UpdateStatus | null; onNav
         </span>
         <span className="v2-updcard__text">
           {status.applySupported === false || !canUpdate
-            ? intl.formatMessage(messages.missedWithHow, { summary: missedSecurityShort(missed), how })
-            : missedSecurityShort(missed)}
+            ? intl.formatMessage(messages.missedWithHow, { summary: missedSecurityShort(missed, intl), how })
+            : missedSecurityShort(missed, intl)}
         </span>
         <span className="v2-updcard__action">{intl.formatMessage(messages.reviewUpdate)}</span>
       </Link>

@@ -1,4 +1,5 @@
 import { useId, useState, type ReactNode } from 'react';
+import { FormattedMessage } from 'react-intl';
 import { Link } from 'react-router';
 import { LinkButton } from '../ui/Button';
 import { IconChevronDown } from '../ui/icons';
@@ -149,7 +150,11 @@ export function NotesView({ notes, onNavigate }: { notes: Notes; onNavigate: () 
             aria-controls={moreId}
             onClick={() => setMore((v) => !v)}
           >
-            Under the hood ({hoodCount})
+            <FormattedMessage
+              id="updates.whatsNew.underTheHood"
+              defaultMessage="Under the hood ({count})"
+              values={{ count: hoodCount }}
+            />
             <IconChevronDown className={more ? 'v2-whatsnew__chev is-open' : 'v2-whatsnew__chev'} />
           </LinkButton>
           <div id={moreId} hidden={!more} className="v2-whatsnew__folded">
