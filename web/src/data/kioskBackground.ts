@@ -1,6 +1,27 @@
 // The kiosk background image picker: what the console checks before uploading, the hosted name it commits the
 // upload under, and readable text for the upload's errors. The server checks the image again on save
 // (KioskBackgroundImageAssets): PNG, JPEG or WebP, at most 10 MB and 16 megapixels, the agent's own limits.
+import { defineMessages, type IntlShape } from 'react-intl';
+import { EN_INTL, untyped } from './configIntl';
+import { apiErrorText } from '../api/apiErrorText';
+
+const messages = untyped(defineMessages({
+  wrongType: { id: 'kiosk.background.problem.wrongType', defaultMessage: 'Choose a PNG, JPEG or WebP image.' },
+  tooLarge: { id: 'kiosk.background.problem.tooLarge', defaultMessage: 'The image is larger than 10 MB. Choose a smaller one.' },
+  duplicateFile: {
+    id: 'kiosk.background.error.duplicateFile',
+    defaultMessage: 'A different file with this name is already in Files. Rename the image and try again.',
+  },
+  noPermission: {
+    id: 'kiosk.background.error.noPermission',
+    defaultMessage: 'You need the permission to manage files to upload an image.',
+  },
+  notSaved: { id: 'kiosk.background.error.notSaved', defaultMessage: 'The server could not save the image.' },
+  overLimit: {
+    id: 'kiosk.background.problem.overLimit',
+    defaultMessage: 'The image is over {megapixels} megapixels. Export a smaller version and choose it again.',
+  },
+}));
 
 /** The agent refuses a larger image file (KioskBackgroundImageStore.MAX_BYTES). */
 export const KIOSK_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
@@ -12,9 +33,9 @@ export const KIOSK_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 export const KIOSK_IMAGE_AGENT = '0.5.0';
 
 /** Why a picked file can't be a background image, or null. An unknown type is left to the server's check. */
-export function kioskImageProblem(file: { type: string; size: number }): string | null {
-  if (file.type && !KIOSK_IMAGE_TYPES.includes(file.type)) return 'Choose a PNG, JPEG or WebP image.';
-  if (file.size > KIOSK_IMAGE_MAX_BYTES) return 'The image is larger than 10 MB. Choose a smaller one.';
+export function kioskImageProblem(file: { type: string; size: number }, intl: IntlShape = EN_INTL): string | null {
+  if (file.type && !KIOSK_IMAGE_TYPES.includes(file.type)) return intl.formatMessage(messages.wrongType);
+  if (file.size > KIOSK_IMAGE_MAX_BYTES) return intl.formatMessage(messages.tooLarge);
   return null;
 }
 
@@ -55,12 +76,12 @@ export async function kioskImageContentId(file: Blob): Promise<string> {
 }
 
 /** Readable text for a failed image upload; the server answers some refusals with a message key. */
-export function kioskImageErrorText(e: unknown): string {
+export function kioskImageErrorText(e: unknown, intl: IntlShape = EN_INTL): string {
   const msg = e instanceof Error ? e.message : '';
-  if (msg === 'error.duplicate.file') return 'A different file with this name is already in Files. Rename the image and try again.';
-  if (msg === 'error.permission.denied') return 'You need the permission to manage files to upload an image.';
-  if (!msg || /^error\./.test(msg)) return 'The server could not save the image.';
-  return msg;
+  if (msg === 'error.duplicate.file') return intl.formatMessage(messages.duplicateFile);
+  if (msg === 'error.permission.denied') return intl.formatMessage(messages.noPermission);
+  if (!msg || /^error\./.test(msg)) return intl.formatMessage(messages.notSaved);
+  return apiErrorText(intl, e);
 }
 
 /* ---------------------------------------------------------------------------------------------------------------
@@ -170,9 +191,9 @@ export type KioskImagePlan =
  * size makes it re-encode: an image within the limits keeps its bytes, colour profile and orientation tag (the server
  * keeps that one tag; the console and the agent turn the image upright when they draw it), with no generation loss.
  */
-export function kioskImagePlan(h: KioskImageHeader, bytes: number): KioskImagePlan {
+export function kioskImagePlan(h: KioskImageHeader, bytes: number, intl: IntlShape = EN_INTL): KioskImagePlan {
   if (h.width * h.height > KIOSK_IMAGE_DECODE_LIMIT) {
-    return { refuse: `The image is over ${KIOSK_IMAGE_DECODE_LIMIT / 1_000_000} megapixels. Export a smaller version and choose it again.` };
+    return { refuse: intl.formatMessage(messages.overLimit, { megapixels: KIOSK_IMAGE_DECODE_LIMIT / 1_000_000 }) };
   }
   const turned = h.orientation >= 5;
   const w = turned ? h.height : h.width;
@@ -347,11 +368,12 @@ export interface NormalizedKioskImage {
 export async function normalizeKioskImage(
   file: File,
   codec: KioskImageCodec | null = browserImageCodec(),
+  intl: IntlShape = EN_INTL,
 ): Promise<NormalizedKioskImage> {
   const head = new Uint8Array(await file.slice(0, 256 * 1024).arrayBuffer());
   const header = readImageHeader(head);
   if (!header) return { file, changed: false };
-  const plan = kioskImagePlan(header, file.size);
+  const plan = kioskImagePlan(header, file.size, intl);
   if ('refuse' in plan) throw new Error(plan.refuse);
   if (!plan.reencode) return { file, changed: false, width: plan.width, height: plan.height };
   if (!codec) return { file, changed: false };

@@ -1,4 +1,5 @@
 import { createElement, useState } from 'react';
+import { defineMessages, useIntl, type MessageDescriptor } from 'react-intl';
 import { Link, NavLink } from 'react-router';
 import { useAuth } from '../auth/AuthContext';
 import { useMayManageDeployment } from '../auth/useMayManageDeployment';
@@ -6,6 +7,7 @@ import { useTheme } from './theme';
 import { isApplyTerminal, type UpdateStatus } from '../api/updates';
 import { useSupervisor } from '../data/useSupervisor';
 import { applyPhaseLabel, blockedShort, missedSecurityShort, updateOffer } from '../data/updateStatus';
+import { coreNavMessages } from '../ext/core/nav';
 import { ExtensionBoundary } from '../ext/ExtensionBoundary';
 import { useContributions } from '../ext/useContributions';
 import { paths, UPDATES_HREF } from '../routes';
@@ -15,6 +17,30 @@ import { IconChevronDown, IconMoon, IconSignOut, IconSun } from './icons';
 import { cx } from './cx';
 import './Menu.css';
 import './Sidebar.css';
+
+const messages = defineMessages<'updating' | 'viewProgress' | 'rolledBack' | 'failed' | 'openRecovery' | 'howShell' | 'howApply' | 'howAdmin' | 'updateTitle' | 'missedWithHow' | 'reviewUpdate' | 'serverUpdate' | 'verified' | 'unverified' | 'account' | 'switchToDark' | 'switchToLight' | 'signOut' | 'main' | 'cantInstall' | 'seeWhy'>({
+  updating: { id: 'shell.sidebar.updating', defaultMessage: 'Updating to {version}' },
+  viewProgress: { id: 'shell.sidebar.viewProgress', defaultMessage: 'View progress' },
+  rolledBack: { id: 'shell.sidebar.rolledBack', defaultMessage: 'Update rolled back' },
+  failed: { id: 'shell.sidebar.failed', defaultMessage: 'Update failed' },
+  openRecovery: { id: 'shell.sidebar.openRecovery', defaultMessage: 'Open recovery' },
+  howShell: { id: 'shell.sidebar.howShell', defaultMessage: 'Update from the server shell.' },
+  howApply: { id: 'shell.sidebar.howApply', defaultMessage: 'About 2 minutes to apply.' },
+  howAdmin: { id: 'shell.sidebar.howAdmin', defaultMessage: 'An admin can apply it.' },
+  updateTitle: { id: 'shell.sidebar.updateTitle', defaultMessage: 'Update {version}' },
+  missedWithHow: { id: 'shell.sidebar.missedWithHow', defaultMessage: '{summary} {how}' },
+  reviewUpdate: { id: 'shell.sidebar.reviewUpdate', defaultMessage: 'Review update' },
+  cantInstall: { id: 'shell.sidebar.cantInstall', defaultMessage: '{version} can’t be installed' },
+  seeWhy: { id: 'shell.sidebar.seeWhy', defaultMessage: 'See why' },
+  serverUpdate: { id: 'shell.sidebar.serverUpdate', defaultMessage: 'Server update {version}' },
+  verified: { id: 'shell.sidebar.verified', defaultMessage: 'Verified release. {how}' },
+  unverified: { id: 'shell.sidebar.unverified', defaultMessage: 'Signature not verified. {how}' },
+  account: { id: 'shell.sidebar.account', defaultMessage: 'Account:' },
+  switchToDark: { id: 'shell.sidebar.switchToDark', defaultMessage: 'Switch to dark mode' },
+  switchToLight: { id: 'shell.sidebar.switchToLight', defaultMessage: 'Switch to light mode' },
+  signOut: { id: 'shell.sidebar.signOut', defaultMessage: 'Sign out' },
+  main: { id: 'shell.sidebar.main', defaultMessage: 'Main' },
+}) as Record<'updating' | 'viewProgress' | 'rolledBack' | 'failed' | 'openRecovery' | 'howShell' | 'howApply' | 'howAdmin' | 'updateTitle' | 'missedWithHow' | 'reviewUpdate' | 'serverUpdate' | 'verified' | 'unverified' | 'account' | 'switchToDark' | 'switchToLight' | 'signOut' | 'main' | 'cantInstall' | 'seeWhy', MessageDescriptor>;
 
 /** MDMesh wordmark: ink square + "MDM" 600 + "esh" 400 secondary, at the card-title size. */
 export function Wordmark({ size = 17, className }: { size?: 17 | 18; className?: string }) {
@@ -37,6 +63,7 @@ export function Wordmark({ size = 17, className }: { size?: 17 | 18; className?:
 function UpdateCard({ status, onNavigate }: { status: UpdateStatus | null; onNavigate?: () => void }) {
   // Only the admin who runs the install may update; anyone else is told so instead of how long it takes.
   const canUpdate = useMayManageDeployment();
+  const intl = useIntl();
   if (!status) return null;
   const apply = status.apply;
   const active = !!apply && !isApplyTerminal(apply.phase);
@@ -47,10 +74,10 @@ function UpdateCard({ status, onNavigate }: { status: UpdateStatus | null; onNav
       <Link to={UPDATES_HREF} className="v2-updcard" onClick={onNavigate}>
         <span className="v2-updcard__title">
           <span className="v2-updcard__dot is-warn" aria-hidden="true" />
-          Updating to {apply.toVersion}
+          {intl.formatMessage(messages.updating, { version: apply.toVersion })}
         </span>
-        <span className="v2-updcard__text">{applyPhaseLabel(apply.phase)}</span>
-        <span className="v2-updcard__action">View progress</span>
+        <span className="v2-updcard__text">{applyPhaseLabel(apply.phase, intl)}</span>
+        <span className="v2-updcard__action">{intl.formatMessage(messages.viewProgress)}</span>
       </Link>
     );
   }
@@ -59,10 +86,10 @@ function UpdateCard({ status, onNavigate }: { status: UpdateStatus | null; onNav
       <a href="/recovery" className="v2-updcard">
         <span className="v2-updcard__title">
           <span className="v2-updcard__dot is-alert" aria-hidden="true" />
-          {apply.phase === 'rolled_back' ? 'Update rolled back' : 'Update failed'}
+          {intl.formatMessage(apply.phase === 'rolled_back' ? messages.rolledBack : messages.failed)}
         </span>
         {apply.error ? <span className="v2-updcard__text">{apply.error}</span> : null}
-        <span className="v2-updcard__action">Open recovery</span>
+        <span className="v2-updcard__action">{intl.formatMessage(messages.openRecovery)}</span>
       </a>
     );
   }
@@ -74,19 +101,19 @@ function UpdateCard({ status, onNavigate }: { status: UpdateStatus | null; onNav
       <Link to={UPDATES_HREF} className="v2-updcard" onClick={onNavigate}>
         <span className="v2-updcard__title">
           <span className={cx('v2-updcard__dot', offer.missed.length > 0 ? 'is-warn' : 'is-idle')} aria-hidden="true" />
-          {offer.latest} can&rsquo;t be installed
+          {intl.formatMessage(messages.cantInstall, { version: offer.latest })}
         </span>
-        <span className="v2-updcard__text">{blockedShort(status, offer.missed)}</span>
-        <span className="v2-updcard__action">See why</span>
+        <span className="v2-updcard__text">{blockedShort(status, offer.missed, intl)}</span>
+        <span className="v2-updcard__action">{intl.formatMessage(messages.seeWhy)}</span>
       </Link>
     );
   }
   const how =
     status.applySupported === false
-      ? 'Update from the server shell.'
+      ? intl.formatMessage(messages.howShell)
       : canUpdate
-        ? 'About 2 minutes to apply.'
-        : 'An admin can apply it.';
+        ? intl.formatMessage(messages.howApply)
+        : intl.formatMessage(messages.howAdmin);
   // The update skips over security releases (verified manifest only): amber, and the card says which. Who can apply
   // it, or how, still shows where it isn't this admin's one click.
   const missed = offer.missed;
@@ -95,13 +122,14 @@ function UpdateCard({ status, onNavigate }: { status: UpdateStatus | null; onNav
       <Link to={UPDATES_HREF} className="v2-updcard" onClick={onNavigate}>
         <span className="v2-updcard__title">
           <span className="v2-updcard__dot is-warn" aria-hidden="true" />
-          Update {status.latest}
+          {intl.formatMessage(messages.updateTitle, { version: status.latest })}
         </span>
         <span className="v2-updcard__text">
-          {missedSecurityShort(missed)}
-          {status.applySupported === false || !canUpdate ? ` ${how}` : null}
+          {status.applySupported === false || !canUpdate
+            ? intl.formatMessage(messages.missedWithHow, { summary: missedSecurityShort(missed, intl), how })
+            : missedSecurityShort(missed, intl)}
         </span>
-        <span className="v2-updcard__action">Review update</span>
+        <span className="v2-updcard__action">{intl.formatMessage(messages.reviewUpdate)}</span>
       </Link>
     );
   }
@@ -109,12 +137,12 @@ function UpdateCard({ status, onNavigate }: { status: UpdateStatus | null; onNav
     <Link to={UPDATES_HREF} className="v2-updcard" onClick={onNavigate}>
       <span className="v2-updcard__title">
         <span className={cx('v2-updcard__dot', status.verified ? 'is-ok' : 'is-warn')} aria-hidden="true" />
-        Server update {status.latest}
+        {intl.formatMessage(messages.serverUpdate, { version: status.latest })}
       </span>
       <span className="v2-updcard__text">
-        {status.verified ? 'Verified release.' : 'Signature not verified.'} {how}
+        {intl.formatMessage(status.verified ? messages.verified : messages.unverified, { how })}
       </span>
-      <span className="v2-updcard__action">Review update</span>
+      <span className="v2-updcard__action">{intl.formatMessage(messages.reviewUpdate)}</span>
     </Link>
   );
 }
@@ -123,7 +151,7 @@ function UpdateCard({ status, onNavigate }: { status: UpdateStatus | null; onNav
 function AccountMenu() {
   const { user, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const nextTheme = theme === 'dark' ? 'light' : 'dark';
+  const intl = useIntl();
   const name = user?.login || user?.name || '—';
   const [open, setOpen] = useState(false);
   return (
@@ -139,7 +167,7 @@ function AccountMenu() {
           {name.slice(0, 1).toUpperCase()}
         </span>
         <span className="v2-account__name">
-          <span className="v2-visually-hidden">Account: </span>
+          <span className="v2-visually-hidden">{intl.formatMessage(messages.account)} </span>
           {name}
         </span>
         <IconChevronDown />
@@ -150,14 +178,14 @@ function AccountMenu() {
             <span className="v2-menu__icon" aria-hidden="true">
               {theme === 'dark' ? <IconSun /> : <IconMoon />}
             </span>
-            Switch to {nextTheme} mode
+            {intl.formatMessage(theme === 'dark' ? messages.switchToLight : messages.switchToDark)}
           </DM.Item>
           <DM.Separator className="v2-menu__sep" />
           <DM.Item className="v2-menu__item" onSelect={() => void signOut()}>
             <span className="v2-menu__icon" aria-hidden="true">
               <IconSignOut />
             </span>
-            Sign out
+            {intl.formatMessage(messages.signOut)}
           </DM.Item>
         </DM.Content>
       </DM.Portal>
@@ -178,6 +206,7 @@ export interface SidebarProps {
  * The nav is the registry's `nav.item` slot (core's items are ext/core/nav.ts), filtered by the user's role.
  */
 export function Sidebar({ onNavigate, id, className }: SidebarProps) {
+  const intl = useIntl();
   const navItems = useContributions('nav.item');
   const prefetch = usePrefetchRoute();
   // The shell's shared status (at the fastest cadence any mounted consumer asks for: 30 min for the sidebar alone,
@@ -187,13 +216,15 @@ export function Sidebar({ onNavigate, id, className }: SidebarProps) {
   const update = supervisor.reachable ? supervisor.status : null;
 
   return (
-    <nav id={id} aria-label="Main" className={cx('v2-sidebar', className)}>
+    <nav id={id} aria-label={intl.formatMessage(messages.main)} className={cx('v2-sidebar', className)}>
       <Link to={paths.overview} className="v2-sidebar__brand" onClick={onNavigate}>
         <Wordmark />
       </Link>
       <div className="v2-sidebar__nav">
         {navItems.map((entry) => {
-          const { to, label, icon, badge } = entry.contribution;
+          const { to, icon, badge } = entry.contribution;
+          const core = entry.extension.core ? coreNavMessages[entry.contribution.id] : undefined;
+          const label = core ? intl.formatMessage(core) : entry.contribution.label;
           return (
             <NavLink
               key={entry.key}

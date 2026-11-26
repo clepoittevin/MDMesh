@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
+import { defineMessages, useIntl } from 'react-intl';
 import type { Application } from '../api/applications';
 import { IconAndroid, IconLibrary, IconUpload, LinkTabs, PageHeader, useToast } from '../ui';
 import { AppsCustom } from './AppsCustom';
@@ -16,6 +17,19 @@ import './AppsPage.css';
 
 type SourceId = 'library' | 'custom' | 'fdroid';
 
+const messages = defineMessages({
+  cannotDeploy: { id: 'apps.page.cannotDeploy', defaultMessage: 'Cannot deploy' },
+  sourceLabel: { id: 'apps.page.sourceLabel', defaultMessage: 'App source' },
+  tabLibrary: { id: 'apps.page.tabLibrary', defaultMessage: 'Library' },
+  tabCustom: { id: 'apps.page.tabCustom', defaultMessage: 'Custom APK' },
+  tabFdroid: { id: 'apps.page.tabFdroid', defaultMessage: 'F-Droid' },
+  title: { id: 'apps.page.title', defaultMessage: 'Apps' },
+  subtitle: {
+    id: 'apps.page.subtitle',
+    defaultMessage: 'Apps in the library can be added to a configuration or pushed straight to devices.',
+  },
+});
+
 /** The tab a link asks for; the Library when it asks for none, or for one the role doesn't see. */
 function sourceFrom(param: string | null, sources: Sources): SourceId {
   return (param === 'custom' || param === 'fdroid') && sources[param] ? param : 'library';
@@ -27,6 +41,7 @@ function sourceFrom(param: string | null, sources: Sources): SourceId {
  * tab shows its count on every source and F-Droid marks apps already in the library.
  */
 export function AppsPage() {
+  const intl = useIntl();
   const [params] = useSearchParams();
   const toast = useToast();
   const library = useLibrary();
@@ -69,7 +84,7 @@ export function AppsPage() {
         if (seq === deploySeq.current) setDeploy(subject);
       })
       .catch((e) => {
-        if (seq === deploySeq.current) toast.push('err', 'Cannot deploy', errorText(e));
+        if (seq === deploySeq.current) toast.push('err', intl.formatMessage(messages.cannotDeploy), errorText(e, intl));
       })
       .finally(() => {
         if (seq === deploySeq.current) setDeployingId(null);
@@ -95,22 +110,22 @@ export function AppsPage() {
 
   const tabs = (
     <LinkTabs
-      aria-label="App source"
+      aria-label={intl.formatMessage(messages.sourceLabel)}
       className="v2-apps-tabs"
       items={[
         {
           key: 'library',
           to: paths.apps,
-          label: 'Library',
+          label: intl.formatMessage(messages.tabLibrary),
           icon: <IconLibrary />,
           count: library.apps ? library.apps.length : undefined,
           active: source === 'library',
         },
         ...(sources.custom
-          ? [{ key: 'custom', to: `${paths.apps}?source=custom`, label: 'Custom APK', icon: <IconUpload />, active: source === 'custom' }]
+          ? [{ key: 'custom', to: `${paths.apps}?source=custom`, label: intl.formatMessage(messages.tabCustom), icon: <IconUpload />, active: source === 'custom' }]
           : []),
         ...(sources.fdroid
-          ? [{ key: 'fdroid', to: `${paths.apps}?source=fdroid`, label: 'F-Droid', icon: <IconAndroid />, active: source === 'fdroid' }]
+          ? [{ key: 'fdroid', to: `${paths.apps}?source=fdroid`, label: intl.formatMessage(messages.tabFdroid), icon: <IconAndroid />, active: source === 'fdroid' }]
           : []),
       ]}
     />
@@ -118,7 +133,7 @@ export function AppsPage() {
 
   return (
     <>
-      <PageHeader title="Apps" subtitle="Apps in the library can be added to a configuration or pushed straight to devices." />
+      <PageHeader title={intl.formatMessage(messages.title)} subtitle={intl.formatMessage(messages.subtitle)} />
 
       {source === 'library' ? (
         <AppsLibrary

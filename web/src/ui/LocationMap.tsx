@@ -1,11 +1,25 @@
 import { useEffect, useRef } from 'react';
+import { defineMessages, useIntl, type IntlShape } from 'react-intl';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { cx } from './cx';
+import { untyped } from '../data/configIntl';
 import './LocationMap.css';
 import type { LocationFix } from '../api/deviceLocations';
 import { fmtDateTime } from './format';
 import { arrowSegments, showPoints, type Pt } from './locationTrail';
+
+const messages = untyped(defineMessages({
+  // {osm} is the linked name "OpenStreetMap".
+  attribution: { id: 'ui.map.attribution', defaultMessage: '© {osm} contributors' },
+  zoomIn: { id: 'ui.map.zoomIn', defaultMessage: 'Zoom in' },
+  zoomOut: { id: 'ui.map.zoomOut', defaultMessage: 'Zoom out' },
+  oldest: { id: 'ui.map.oldest', defaultMessage: 'Oldest' },
+  latest: { id: 'ui.map.latest', defaultMessage: 'Latest' },
+  accuracy: { id: 'ui.map.accuracy', defaultMessage: '±{meters} m' },
+  mapKey: { id: 'ui.map.key', defaultMessage: 'Map key' },
+  path: { id: 'ui.map.path', defaultMessage: 'Path, oldest to latest' },
+}));
 
 /** On screen: arrows on segments from 20 px long, 72 px apart; a dot per fix once their median gap is 14 px. */
 const ARROW_MIN_PX = 20;
@@ -36,11 +50,11 @@ function popupText(text: string): HTMLElement {
 }
 
 /** A fix's popup: which end it is (if one), when, how accurate, from which provider. */
-function popupFor(f: LocationFix, role?: string): HTMLElement {
+function popupFor(f: LocationFix, intl: IntlShape, role?: string): HTMLElement {
   return popupText(
     (role ? `${role} · ` : '') +
       fmtDateTime(f.capturedAt) +
-      (f.accuracy != null ? ` · ±${Math.round(f.accuracy)} m` : '') +
+      (f.accuracy != null ? ` · ${intl.formatMessage(messages.accuracy, { meters: Math.round(f.accuracy) })}` : '') +
       (f.provider ? ` · ${f.provider}` : ''),
   );
 }
@@ -96,10 +110,15 @@ export function LocationMap({
    * a remount keeps refs) starts with nothing drawn and nothing fitted.
    */
   const mapRef = useRef<MapState | null>(null);
+  // Read when the map is made and when the path is drawn: Leaflet's own controls and popups in the console's language.
+  const intl = useIntl();
+  const intlRef = useRef(intl);
+  intlRef.current = intl;
 
   useEffect(() => {
     const el = elRef.current;
     if (!el) return;
+    const intl = intlRef.current;
     if (!mapRef.current) {
       const map = L.map(el, { worldCopyJump: true, zoomControl: false });
       // Zoom in and out as the console's icon buttons, with its plus and minus icons (LocationMap.css).
@@ -107,8 +126,8 @@ export function LocationMap({
         .zoom({
           zoomInText: MAP_ICONS.zoomIn,
           zoomOutText: MAP_ICONS.zoomOut,
-          zoomInTitle: 'Zoom in',
-          zoomOutTitle: 'Zoom out',
+          zoomInTitle: intl.formatMessage(messages.zoomIn),
+          zoomOutTitle: intl.formatMessage(messages.zoomOut),
         })
         .addTo(map);
       // The credit OpenStreetMap's licence asks for, linked to its copyright page; no Leaflet prefix (or its flag).
@@ -120,9 +139,9 @@ export function LocationMap({
       });
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
-        attribution:
-          '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">' +
-          'OpenStreetMap</a> contributors',
+        attribution: intl.formatMessage(messages.attribution, {
+          osm: '<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>',
+        }),
         // The edge sends Referrer-Policy: same-origin, so tiles would go without a Referer, which OpenStreetMap's
         // tile policy requires. Send the origin only (never the console path), as browsers do by default.
         referrerPolicy: 'strict-origin-when-cross-origin',
@@ -160,11 +179,11 @@ export function LocationMap({
     if (chrono.length > 1) {
       L.circleMarker(pts[0], { ...end, className: 'v2-locmap__oldest', radius: 6 })
         // A DOM node, not a string: Leaflet renders popup strings as HTML, and `provider` comes from the device.
-        .bindPopup(popupFor(chrono[0], 'Oldest'), POPUP)
+        .bindPopup(popupFor(chrono[0], intl, intl.formatMessage(messages.oldest)), POPUP)
         .addTo(layer);
     }
     L.circleMarker(pts[pts.length - 1], { ...end, className: 'v2-locmap__latest', radius: 8 })
-      .bindPopup(popupFor(fixes[0], 'Latest'), POPUP)
+      .bindPopup(popupFor(fixes[0], intl, intl.formatMessage(messages.latest)), POPUP)
       .addTo(layer);
 
     // The dots are rebuilt only when they come or go (a pan must not close a dot's open popup); the arrows after
@@ -179,7 +198,7 @@ export function LocationMap({
         zoomed.dots.clearLayers();
         for (let i = 1; dots && i < chrono.length - 1; i++) {
           L.circleMarker(pts[i], { className: 'v2-locmap__point', radius: 3.5, weight: 1.5, fillOpacity: 1 })
-            .bindPopup(popupFor(chrono[i]), POPUP)
+            .bindPopup(popupFor(chrono[i], intl), POPUP)
             .addTo(zoomed.dots);
         }
       }
@@ -219,7 +238,7 @@ export function LocationMap({
     <div className={cx('v2-locmap-wrap', className)}>
       <div ref={elRef} className="v2-locmap" role="region" aria-label={label} />
       {/* What the marks mean (each fix's time is in its popup and in the list below). */}
-      <ul className="v2-locmap-key" aria-label="Map key">
+      <ul className="v2-locmap-key" aria-label={intl.formatMessage(messages.mapKey)}>
         {/* Swatches on the console's 16 px icon grid, drawn as the marks on the map. */}
         {trail ? (
           <li>
@@ -228,7 +247,7 @@ export function LocationMap({
               <path className="v2-locmap-key__line" d="M2 8h12" />
               <path className="v2-locmap-key__arrow" d="M5.5 4.5 L12 8 L5.5 11.5 L7.5 8 Z" />
             </svg>
-            Path, oldest to latest
+            {intl.formatMessage(messages.path)}
           </li>
         ) : null}
         {trail ? (
@@ -236,14 +255,14 @@ export function LocationMap({
             <svg className="v2-locmap-key__swatch" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
               <circle className="v2-locmap-key__oldest" cx="8" cy="8" r="4.5" />
             </svg>
-            Oldest
+            {intl.formatMessage(messages.oldest)}
           </li>
         ) : null}
         <li>
           <svg className="v2-locmap-key__swatch" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
             <circle className="v2-locmap-key__latest" cx="8" cy="8" r="5.5" />
           </svg>
-          Latest
+          {intl.formatMessage(messages.latest)}
         </li>
       </ul>
     </div>

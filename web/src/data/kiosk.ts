@@ -3,7 +3,23 @@
 import type { CommandHistoryItem } from '../api/commands';
 import type { ConfigApp, Configuration } from '../api/configurations';
 import { parseOutcomes } from '../api/configSync';
+import { defineMessages, type IntlShape } from 'react-intl';
 import { CONFIG_FIELDS } from './configFields';
+import { EN_INTL, untyped } from './configIntl';
+
+/** Kiosk dialog text shared by the device page and the bulk dialogs. The string exports below are its English. */
+export const kioskMessages = untyped(defineMessages({
+  exitPinPlaceholder: { id: 'kiosk.exitPin.placeholder', defaultMessage: 'Empty: no exit on the device (agent 0.3.6+)' },
+  noPinMeans: {
+    id: 'kiosk.exitPin.noPinMeans',
+    defaultMessage: 'agents before 0.3.6 let anyone leave the kiosk; 0.3.6 and later have no exit on the device',
+  },
+  summaryPinned: { id: 'kiosk.summary.pinned', defaultMessage: 'Pinned to {app}' },
+  summaryGrid: {
+    id: 'kiosk.summary.grid',
+    defaultMessage: 'Launcher grid with {count, plural, one {# app} other {# apps}}',
+  },
+}));
 
 /**
  * The configuration's own help for the exit PIN, so every kiosk dialog says the same: with agent 0.3.6+, an empty PIN
@@ -11,11 +27,17 @@ import { CONFIG_FIELDS } from './configFields';
  */
 const PIN_FIELD = CONFIG_FIELDS.find((f) => f.key === 'password');
 /** The exit PIN's help, its one line and its longer explanation, for tooltips beside a PIN field. */
-export const EXIT_PIN_HELP = [PIN_FIELD?.help, PIN_FIELD?.more].filter(Boolean).join(' ') || undefined;
-/** Placeholder of an exit-PIN input that may stay empty. */
-export const EXIT_PIN_PLACEHOLDER = 'Empty: no exit on the device (agent 0.3.6+)';
-/** What a kiosk without an exit PIN means on the device, by agent version. */
-export const NO_PIN_MEANS = 'agents before 0.3.6 let anyone leave the kiosk; 0.3.6 and later have no exit on the device';
+export const exitPinHelp = (intl: IntlShape = EN_INTL): string | undefined =>
+  [PIN_FIELD?.help, PIN_FIELD?.more]
+    .filter((m): m is NonNullable<typeof m> => m != null)
+    .map((m) => intl.formatMessage(m))
+    .join(' ') || undefined;
+/** The same, in English. */
+export const EXIT_PIN_HELP = exitPinHelp();
+/** Placeholder of an exit-PIN input that may stay empty (English; `kioskMessages.exitPinPlaceholder` to translate). */
+export const EXIT_PIN_PLACEHOLDER = EN_INTL.formatMessage(kioskMessages.exitPinPlaceholder);
+/** What a kiosk without an exit PIN means on the device, by agent version (English; `kioskMessages.noPinMeans`). */
+export const NO_PIN_MEANS = EN_INTL.formatMessage(kioskMessages.noPinMeans);
 
 export type KioskChoice = {
   mode: 'launcher' | 'single';
@@ -155,10 +177,11 @@ export function configuredKioskCommand(k: ConfiguredKiosk): string {
 }
 
 /** "Pinned to Signage Player" / "Launcher grid with 3 apps": what the configured kiosk shows. */
-export function configuredKioskSummary(k: ConfiguredKiosk): string {
-  if (k.payload.mode === 'single') return `Pinned to ${k.apps[0]?.name ?? k.payload.pinPackage}`;
-  const n = k.apps.length;
-  return `Launcher grid with ${n} app${n === 1 ? '' : 's'}`;
+export function configuredKioskSummary(k: ConfiguredKiosk, intl: IntlShape = EN_INTL): string {
+  if (k.payload.mode === 'single') {
+    return intl.formatMessage(kioskMessages.summaryPinned, { app: k.apps[0]?.name ?? k.payload.pinPackage ?? '' });
+  }
+  return intl.formatMessage(kioskMessages.summaryGrid, { count: k.apps.length });
 }
 
 const OPEN = new Set(['pending', 'delivered', 'accepted']);

@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
+import { configName } from '../data/seededConfigs';
+import { defineMessages, FormattedMessage, useIntl, type IntlShape, type MessageDescriptor } from 'react-intl';
 import { forceSync } from '../api/commands';
-import type { ConfigSyncSummary } from '../api/configSync';
+import { syncVerdictLabel, type ConfigSyncSummary } from '../api/configSync';
 import type { ConfigurationLookup, DeviceView } from '../api/devices';
 import type { ActiveRollout } from '../api/rollout';
-import { isOnline, notConnected } from '../data/presence';
-import { LOAD_DEVICES_FAILED } from '../data/useDevices';
+import { isOnline } from '../data/presence';
+import { LOAD_DEVICES_FAILED, loadErrorText } from '../data/useDevices';
 import { CORE_ACTION_ACCESS } from '../ext/core/access';
 import { CoreOverviewProvider } from '../ext/core/overview';
 import { OverviewRows, OverviewStats, useHasExtensionStats } from '../ext/hosts/OverviewCards';
@@ -46,11 +48,12 @@ import {
 } from '../ui';
 import { eventView } from './overview/eventView';
 import { ServerCard } from './overview/ServerCard';
-import type { SyncCheck } from '../data/fleetHealth';
+import { ISSUE_REASON_MESSAGES, issueKind, type IssueKind, type SyncCheck } from '../data/fleetHealth';
 import { wipedOnlyLine } from './configurations/sync';
-import { bucketOf, reasonFor, topReason, type ConfigIssue } from './overview/attention';
+import { bucketOf, reasonFor, type ConfigIssue } from './overview/attention';
 import { useOverviewData, type ActivityItem, type OverviewData } from './overview/useOverviewData';
 import './OverviewPage.css';
+import { apiErrorText } from '../api/apiErrorText';
 
 /** Rows in "Needs attention" and "Recent activity". */
 const ATTENTION_ROWS = 6;
@@ -58,8 +61,227 @@ const ACTIVITY_ROWS = 8;
 /** Settings sections the Overview links to (Settings side-nav anchors). */
 const SETTINGS_ROLLOUT = `${paths.settings}#agent-rollout`;
 
-const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
+const messageDefs = defineMessages({
+  title: { id: 'overview.page.title', defaultMessage: 'Overview' },
+  enrollDevice: { id: 'overview.page.enrollDevice', defaultMessage: 'Enroll device' },
+  fleetThing: { id: 'overview.page.fleetThing', defaultMessage: 'the fleet' },
+  lastData: { id: 'overview.page.lastData', defaultMessage: 'Showing the last data loaded.' },
+  firstTitle: { id: 'overview.firstRun.title', defaultMessage: 'Enroll your first device' },
+  firstSubtitle: {
+    id: 'overview.firstRun.subtitle',
+    defaultMessage: 'The fleet, its health and its activity show here once a device reports in.',
+  },
+  firstStep1: {
+    id: 'overview.firstRun.step1',
+    defaultMessage:
+      "Pick what new devices get in <link>Configurations</link> (the default one works to start).",
+  },
+  firstStep2: { id: 'overview.firstRun.step2', defaultMessage: 'Make an enrollment code on the Enroll page.' },
+  firstStep3: {
+    id: 'overview.firstRun.step3',
+    defaultMessage:
+      "Factory-reset the device and scan the code at its welcome screen, or type the token on a device that's set up.",
+  },
+  fleetStatus: { id: 'overview.page.fleetStatus', defaultMessage: 'Fleet status' },
+  devicesEnrolled: {
+    id: 'overview.fleet.devicesEnrolled',
+    defaultMessage: '{count, plural, one {device enrolled} other {devices enrolled}}',
+  },
+  statusOfFirst: {
+    id: 'overview.fleet.statusOfFirst',
+    defaultMessage: 'status of the first <num>{count}</num>',
+  },
+  wipedLink: { id: 'overview.fleet.wipedLink', defaultMessage: '<link><num>{count}</num> wiped</link>' },
+  legendOnline: { id: 'overview.fleet.online', defaultMessage: 'Online' },
+  legendAttention: { id: 'overview.fleet.needsAttention', defaultMessage: 'Needs attention' },
+  legendOffline: { id: 'overview.fleet.offline', defaultMessage: 'Offline' },
+  // Subtitle
+  subNone: { id: 'overview.subtitle.none', defaultMessage: 'No devices enrolled yet. Enroll one to see it here.' },
+  subAllWiped: { id: 'overview.subtitle.allWiped', defaultMessage: 'Every enrolled device was wiped.' },
+  subOnlineSynced: { id: 'overview.subtitle.onlineSynced', defaultMessage: 'Every device is online and in sync.' },
+  subOnlineChecking: {
+    id: 'overview.subtitle.onlineChecking',
+    defaultMessage: 'Every device is online. Checking configuration sync…',
+  },
+  subOnlineFailed: {
+    id: 'overview.subtitle.onlineFailed',
+    defaultMessage: 'Every device is online. Configuration sync could not be checked.',
+  },
+  subOnlinePartial: {
+    id: 'overview.subtitle.onlinePartial',
+    defaultMessage: 'Every device is online. Configuration sync was only partly checked.',
+  },
+  subOffline: {
+    id: 'overview.subtitle.offline',
+    defaultMessage:
+      '{lead, select, true {Most of the fleet is healthy. } other {}}{offline, plural, one {<num>#</num> device is offline.} other {<num>#</num> devices are offline.}}',
+  },
+  subAttention: {
+    id: 'overview.subtitle.attention',
+    defaultMessage:
+      '{lead, select, true {Most of the fleet is healthy. } other {}}{partial, select, true {At least } other {}}{attention, plural, one {<num>#</num> device needs} other {<num>#</num> devices need}} attention{hasReason, select, true {, {share, select, all {all} other {mostly}} for {reason}} other {}}{offline, plural, =0 {} one {, and <num>#</num> is offline} other {, and <num>#</num> are offline}}.',
+  },
+  reasonOffline: { id: 'overview.reason.offline', defaultMessage: 'being offline' },
+  reasonFailed: { id: 'overview.reason.failed', defaultMessage: 'a configuration that failed to apply' },
+  reasonOutOfSync: { id: 'overview.reason.outOfSync', defaultMessage: 'a configuration out of sync' },
+  reasonAgentTooOld: { id: 'overview.reason.agentTooOld', defaultMessage: 'an out-of-date agent' },
+  reasonDeferred: { id: 'overview.reason.deferred', defaultMessage: 'deferred settings' },
+  reasonReset: { id: 'overview.reason.reset', defaultMessage: 'a configuration out of date on the device' },
+  rowOffline: { id: 'overview.attention.offline', defaultMessage: 'Offline' },
+  updatedPrefix: { id: 'overview.updated.prefix', defaultMessage: 'Updated ' },
+  // Stats
+  syncLabel: { id: 'overview.sync.label', defaultMessage: 'Configuration in sync' },
+  syncFailed: { id: 'overview.sync.failed', defaultMessage: 'Could not be checked' },
+  syncChecking: { id: 'overview.sync.checking', defaultMessage: 'Checking…' },
+  syncOutOfSync: { id: 'overview.sync.outOfSync', defaultMessage: '{count} out of sync' },
+  syncAgentTooOld: { id: 'overview.sync.agentTooOld', defaultMessage: '{count, plural, one {#} other {#}} agent too old' },
+  syncNotReported: { id: 'overview.sync.notReported', defaultMessage: '{count} not reported' },
+  syncNoConfig: { id: 'overview.sync.noConfig', defaultMessage: 'No device has a configuration' },
+  syncAll: { id: 'overview.sync.all', defaultMessage: 'All in sync' },
+  rolloutLabel: { id: 'overview.rollout.label', defaultMessage: 'Agent {version} rollout' },
+  rolloutFleet: { id: 'overview.rollout.fleet', defaultMessage: 'Rolling out to the fleet' },
+  rolloutCanary: { id: 'overview.rollout.canary', defaultMessage: 'Canary devices first' },
+  rolloutInstalling: { id: 'overview.rollout.installing', defaultMessage: '{count} installing' },
+  rolloutQueued: { id: 'overview.rollout.queued', defaultMessage: '{count} queued' },
+  rolloutTooOld: { id: 'overview.rollout.tooOld', defaultMessage: '{count} too old to update' },
+  // Needs attention
+  notConnectedTitle: { id: 'overview.attention.notConnectedTitle', defaultMessage: '{number} isn’t connected right now' },
+  notConnectedBody: { id: 'overview.attention.notConnectedBody', defaultMessage: 'It syncs at its next check-in.' },
+  syncRequested: { id: 'overview.attention.syncRequested', defaultMessage: 'Sync requested' },
+  syncRequestedBody: {
+    id: 'overview.attention.syncRequestedBody',
+    defaultMessage: '{number} checks in now and picks up its configuration.',
+  },
+  syncFailedToast: { id: 'overview.attention.syncFailedToast', defaultMessage: 'Sync failed' },
+  syncNowNamed: { id: 'overview.attention.syncNowNamed', defaultMessage: 'Sync now: {name}' },
+  syncing: { id: 'overview.attention.syncing', defaultMessage: 'Syncing…' },
+  syncNow: { id: 'overview.attention.syncNow', defaultMessage: 'Sync now' },
+  updateAgentNamed: { id: 'overview.attention.updateAgentNamed', defaultMessage: 'Update agent: {name}' },
+  updateAgent: { id: 'overview.attention.updateAgent', defaultMessage: 'Update agent' },
+  loadingAttention: {
+    id: 'overview.attention.loading',
+    defaultMessage: 'Loading devices that need attention…',
+  },
+  notKnown: { id: 'overview.attention.notKnown', defaultMessage: 'Not known' },
+  notKnownBody: {
+    id: 'overview.attention.notKnownBody',
+    defaultMessage: 'The devices couldn’t be loaded, so it isn’t known which need attention.',
+  },
+  noDevices: { id: 'overview.attention.noDevices', defaultMessage: 'No devices yet' },
+  noDevicesBody: {
+    id: 'overview.attention.noDevicesBody',
+    defaultMessage: 'Devices that are offline or whose configuration didn’t apply show up here.',
+  },
+  noActive: { id: 'overview.attention.noActive', defaultMessage: 'No active devices' },
+  allClear: { id: 'overview.attention.allClear', defaultMessage: 'All clear' },
+  allOnline: { id: 'overview.attention.allOnline', defaultMessage: 'All online' },
+  attentionListLabel: { id: 'overview.attention.listLabel', defaultMessage: 'Devices that need attention' },
+  attentionTitle: { id: 'overview.attention.title', defaultMessage: 'Needs attention' },
+  // By configuration
+  configurationFallback: { id: 'overview.byConfig.fallback', defaultMessage: 'Configuration {id}' },
+  syncNotReportedNote: { id: 'overview.byConfig.syncNotReported', defaultMessage: 'Sync not reported' },
+  syncUnavailable: { id: 'overview.byConfig.syncUnavailable', defaultMessage: 'Sync status unavailable' },
+  noteAllInSync: { id: 'overview.byConfig.allInSync', defaultMessage: 'All in sync' },
+  noteInSync: { id: 'overview.byConfig.inSync', defaultMessage: '{count} in sync' },
+  noteOutOfSync: { id: 'overview.byConfig.outOfSync', defaultMessage: '{count} out of sync' },
+  noteAgentTooOld: { id: 'overview.byConfig.agentTooOld', defaultMessage: '{count, plural, one {#} other {#}} agent too old' },
+  noteNotReported: { id: 'overview.byConfig.notReported', defaultMessage: '{count} not reported' },
+  noteDeferred: { id: 'overview.byConfig.deferred', defaultMessage: '{count} deferred settings' },
+  noConfiguration: { id: 'overview.byConfig.none', defaultMessage: 'No configuration' },
+  nothingAssigned: {
+    id: 'overview.byConfig.nothingAssigned',
+    defaultMessage: '{count, plural, one {# device has} other {# devices have}} nothing assigned',
+  },
+  byConfigTitle: { id: 'overview.byConfig.title', defaultMessage: 'By configuration' },
+  manage: { id: 'overview.byConfig.manage', defaultMessage: 'Manage' },
+  loadingConfigs: { id: 'overview.byConfig.loading', defaultMessage: 'Loading configurations…' },
+  byConfigUnknownBody: { id: 'overview.byConfig.unknownBody', defaultMessage: 'The devices couldn’t be loaded.' },
+  byConfigEmptyBody: {
+    id: 'overview.byConfig.emptyBody',
+    defaultMessage: 'Devices are counted here by the configuration they use.',
+  },
+  // Recent activity
+  filterAll: { id: 'overview.activity.filterAll', defaultMessage: 'All' },
+  filterCommands: { id: 'overview.activity.filterCommands', defaultMessage: 'Commands' },
+  filterEvents: { id: 'overview.activity.filterEvents', defaultMessage: 'Device events' },
+  activityUnknownBody: {
+    id: 'overview.activity.unknownBody',
+    defaultMessage: 'The devices couldn’t be loaded, so their recent activity isn’t known.',
+  },
+  loadingActivity: { id: 'overview.activity.loading', defaultMessage: 'Loading activity…' },
+  noCommandResults: { id: 'overview.activity.noCommandResults', defaultMessage: 'No command results' },
+  noRecentEvents: { id: 'overview.activity.noRecentEvents', defaultMessage: 'No recent events' },
+  commandResultsBody: {
+    id: 'overview.activity.commandResultsBody',
+    defaultMessage: 'Results of commands run by the most recently seen devices show up here.',
+  },
+  recentEventsBody: {
+    id: 'overview.activity.recentEventsBody',
+    defaultMessage: 'Events from the most recently seen devices show up here.',
+  },
+  activityListLabel: { id: 'overview.activity.listLabel', defaultMessage: 'Recent activity' },
+  activityTitle: { id: 'overview.activity.title', defaultMessage: 'Recent activity' },
+  filterActivity: { id: 'overview.activity.filterLabel', defaultMessage: 'Filter activity' },
+});
+// Widened so values can be passed (react-intl would otherwise type them from the ICU text).
+const messages: { [K in keyof typeof messageDefs]: MessageDescriptor } = messageDefs;
+
+const SUBTITLE_SYNC = {
+  complete: messages.subOnlineSynced,
+  pending: messages.subOnlineChecking,
+  failed: messages.subOnlineFailed,
+  partial: messages.subOnlinePartial,
+} as const;
+
+/** Why a device needs attention, as the subtitle's "mostly for …" phrase (the key is an issue kind, or offline). */
+const REASON_PHRASE: Record<IssueKind | 'offline', MessageDescriptor> = {
+  offline: messages.reasonOffline,
+  failed: messages.reasonFailed,
+  outOfSync: messages.reasonOutOfSync,
+  agentTooOld: messages.reasonAgentTooOld,
+  deferred: messages.reasonDeferred,
+  reset: messages.reasonReset,
+};
+
+/** The issue's kind (or offline) and its phrase and row text, translated; other verdicts keep their own label. */
+function reasonText(intl: IntlShape, issue: ConfigIssue | undefined): { key: string; phrase: string; text: string } {
+  if (!issue) {
+    return { key: 'offline', phrase: intl.formatMessage(REASON_PHRASE.offline), text: intl.formatMessage(messages.rowOffline) };
+  }
+  const kind = issueKind(issue);
+  if (!kind) {
+    const text = syncVerdictLabel(issue.label, intl);
+    return { key: `label:${issue.label}`, phrase: text.toLowerCase(), text };
+  }
+  return { key: kind, phrase: intl.formatMessage(REASON_PHRASE[kind]), text: intl.formatMessage(ISSUE_REASON_MESSAGES[kind]) };
+}
+
+/** The most common reason among the attention devices, and whether it covers all of them or most (> half). */
+function topReasonPhrase(
+  intl: IntlShape,
+  devices: ReadonlyArray<DeviceView>,
+  issues: Record<number, ConfigIssue>,
+  now: number,
+): { phrase: string; share: 'all' | 'most' } | null {
+  const tally = new Map<string, { phrase: string; n: number }>();
+  let n = 0;
+  for (const d of devices) {
+    if (bucketOf(d, issues, now) !== 'attention') continue;
+    n++;
+    const r = reasonText(intl, issues[d.id]);
+    const cur = tally.get(r.key);
+    tally.set(r.key, { phrase: r.phrase, n: (cur?.n ?? 0) + 1 });
+  }
+  let best: { phrase: string; n: number } | null = null;
+  for (const e of tally.values()) if (!best || e.n > best.n) best = e;
+  if (!best || n === 0) return null;
+  if (best.n === n) return { phrase: best.phrase, share: 'all' };
+  if (best.n * 2 > n) return { phrase: best.phrase, share: 'most' };
+  return null;
+}
+
 const Num = ({ children }: { children: ReactNode }) => <span className="v2-num">{children}</span>;
+const NUM_TAG = { num: (chunks: ReactNode) => <Num>{chunks}</Num> };
 
 interface Counts {
   online: number;
@@ -81,6 +303,7 @@ function useNow(ms: number): number {
 
 /** Overview. Classic: pages/DashboardPage.tsx. */
 export function OverviewPage() {
+  const intl = useIntl();
   const data = useOverviewData();
   const now = useNow(30_000);
   // Enrolling writes to devices (ext/core/access.ts).
@@ -149,14 +372,14 @@ export function OverviewPage() {
   return (
     <CoreOverviewProvider parts={core}>
       <PageHeader
-        title="Overview"
+        title={intl.formatMessage(messages.title)}
         subtitle={showSubtitle ? <Subtitle data={data} counts={counts} now={now} /> : null}
         actions={
           <>
             <UpdatedAt loadedAt={data.loadedAt} failed={!!data.error} />
             {canEnroll ? (
               <ButtonLink to={paths.enroll} variant="primary" size="lg" icon={<IconPlus />}>
-                Enroll device
+                {intl.formatMessage(messages.enrollDevice)}
               </ButtonLink>
             ) : null}
           </>
@@ -165,8 +388,8 @@ export function OverviewPage() {
 
       {data.error ? (
         <ErrorState
-          thing="the fleet"
-          detail={[data.error === LOAD_DEVICES_FAILED ? null : data.error, data.loadedAt !== null ? 'Showing the last data loaded.' : null]
+          thing={intl.formatMessage(messages.fleetThing)}
+          detail={[data.error === LOAD_DEVICES_FAILED ? null : loadErrorText(data.error, intl), data.loadedAt !== null ? intl.formatMessage(messages.lastData) : null]
             .filter(Boolean)
             .join(' ') || undefined}
           onRetry={data.refresh}
@@ -177,30 +400,30 @@ export function OverviewPage() {
       {firstRun ? (
         <Card aria-labelledby="v2-ov-first" className="v2-ov-first">
           <CardHeader
-            title="Enroll your first device"
+            title={intl.formatMessage(messages.firstTitle)}
             titleId="v2-ov-first"
-            subtitle="The fleet, its health and its activity show here once a device reports in."
+            subtitle={intl.formatMessage(messages.firstSubtitle)}
           />
           <NumberedSteps
             steps={[
-              <>
-                Pick what new devices get in <Link to={paths.configurations}>Configurations</Link> (the default one works to
-                start).
-              </>,
-              <>Make an enrollment code on the Enroll page.</>,
-              <>Factory-reset the device and scan the code at its welcome screen, or type the token on a device that's set up.</>,
+              <FormattedMessage
+                {...messages.firstStep1}
+                values={{ link: (chunks) => <Link to={paths.configurations}>{chunks}</Link> }}
+              />,
+              <>{intl.formatMessage(messages.firstStep2)}</>,
+              <>{intl.formatMessage(messages.firstStep3)}</>,
             ]}
           />
           <div>
             <ButtonLink to={paths.enroll} variant="primary" icon={<IconPlus />}>
-              Enroll device
+              {intl.formatMessage(messages.enrollDevice)}
             </ButtonLink>
           </div>
         </Card>
       ) : null}
       {/* First run hides the fleet and core's stats (all zeros), not an extension's: those may be about anything. */}
       {firstRun && extensionStats ? (
-        <Card aria-label="Fleet status" className="v2-ov-stats">
+        <Card aria-label={intl.formatMessage(messages.fleetStatus)} className="v2-ov-stats">
           <StatGrid>
             <OverviewStats extensionsOnly />
           </StatGrid>
@@ -218,39 +441,44 @@ export function OverviewPage() {
               total={unknown ? null : data.total}
               caption={
                 <>
-                  {plural(data.total, 'device enrolled', 'devices enrolled')}
+                  {intl.formatMessage(messages.devicesEnrolled, { count: data.total })}
                   {data.total > devices.length && devices.length > 0 ? (
                     <>
-                      {' '}
-                      · status of the first <Num>{devices.length}</Num>
+                      {' · '}
+                      <FormattedMessage {...messages.statusOfFirst} values={{ count: devices.length, ...NUM_TAG }} />
                     </>
                   ) : null}
                   {/* Beside the total, not in the bar and legend: a wiped device is enrolled but no longer reports. */}
                   {counts.wiped > 0 ? (
                     <>
                       {' · '}
-                      <Link to={`${paths.devices}?status=wiped`}>
-                        <Num>{counts.wiped}</Num> wiped
-                      </Link>
+                      <FormattedMessage
+                        {...messages.wipedLink}
+                        values={{
+                          count: counts.wiped,
+                          ...NUM_TAG,
+                          link: (chunks) => <Link to={`${paths.devices}?status=wiped`}>{chunks}</Link>,
+                        }}
+                      />
                     </>
                   ) : null}
                 </>
               }
               legend={[
-                { key: 'online', label: 'Online', count: counts.online, tone: 'ok', to: `${paths.devices}?status=online` },
+                { key: 'online', label: intl.formatMessage(messages.legendOnline), count: counts.online, tone: 'ok', to: `${paths.devices}?status=online` },
                 {
                   key: 'attention',
-                  label: 'Needs attention',
+                  label: intl.formatMessage(messages.legendAttention),
                   count: counts.attention,
                   tone: 'warn',
                   to: `${paths.devices}?status=attention`,
                 },
-                { key: 'offline', label: 'Offline', count: counts.offline, tone: 'idle', to: `${paths.devices}?status=offline` },
+                { key: 'offline', label: intl.formatMessage(messages.legendOffline), count: counts.offline, tone: 'idle', to: `${paths.devices}?status=offline` },
               ]}
             />
           </GridCell>
           <GridCell span={4}>
-            <Card aria-label="Fleet status" className="v2-ov-stats">
+            <Card aria-label={intl.formatMessage(messages.fleetStatus)} className="v2-ov-stats">
               <StatGrid>
                 <OverviewStats />
               </StatGrid>
@@ -267,53 +495,45 @@ export function OverviewPage() {
 
 /** "Most of the fleet is healthy. 14 devices need attention, mostly for an out-of-date agent." from real counts. */
 function Subtitle({ data, counts, now }: { data: OverviewData; counts: Counts; now: number }) {
+  const intl = useIntl();
   const { devices, issues, syncCheck } = data;
   // Wiped devices are left out: they no longer report, so they are neither healthy nor offline.
   const shown = devices.length - counts.wiped;
-  if (devices.length === 0) return <>No devices enrolled yet. Enroll one to see it here.</>;
-  if (shown === 0) return <>Every enrolled device was wiped.</>;
+  if (devices.length === 0) return <>{intl.formatMessage(messages.subNone)}</>;
+  if (shown === 0) return <>{intl.formatMessage(messages.subAllWiped)}</>;
 
-  if (counts.attention === 0 && counts.offline === 0) {
-    if (syncCheck === 'complete') return <>Every device is online and in sync.</>;
-    if (syncCheck === 'pending') return <>Every device is online. Checking configuration sync…</>;
-    if (syncCheck === 'failed') return <>Every device is online. Configuration sync could not be checked.</>;
-    return <>Every device is online. Configuration sync was only partly checked.</>;
-  }
+  if (counts.attention === 0 && counts.offline === 0) return <>{intl.formatMessage(SUBTITLE_SYNC[syncCheck])}</>;
 
-  const lead = counts.online * 2 >= shown ? 'Most of the fleet is healthy. ' : '';
+  const lead = String(counts.online * 2 >= shown);
   if (counts.attention === 0) {
-    return (
-      <>
-        {lead}
-        <Num>{counts.offline}</Num> {plural(counts.offline, 'device is', 'devices are')} offline.
-      </>
-    );
+    return <FormattedMessage {...messages.subOffline} values={{ lead, offline: counts.offline, ...NUM_TAG }} />;
   }
-  const n = counts.attention;
-  const reason = topReason(devices, issues, now);
-  const why = reason ? `, ${reason.share === 'all' ? 'all' : 'mostly'} for ${reason.phrase}` : '';
+  const reason = topReasonPhrase(intl, devices, issues, now);
   return (
-    <>
-      {lead}
-      {syncCheck === 'partial' ? 'At least ' : null}
-      <Num>{n}</Num> {plural(n, 'device needs', 'devices need')} attention{why}
-      {counts.offline > 0 ? (
-        <>
-          , and <Num>{counts.offline}</Num> {plural(counts.offline, 'is', 'are')} offline
-        </>
-      ) : null}
-      .
-    </>
+    <FormattedMessage
+      {...messages.subAttention}
+      values={{
+        lead,
+        partial: String(syncCheck === 'partial'),
+        attention: counts.attention,
+        hasReason: String(!!reason),
+        share: reason?.share ?? 'most',
+        reason: reason?.phrase ?? '',
+        offline: counts.offline,
+        ...NUM_TAG,
+      }}
+    />
   );
 }
 
 /** "● Updated 20s ago": when the data last loaded (warn mark when the latest refresh failed). */
 function UpdatedAt({ loadedAt, failed }: { loadedAt: number | null; failed: boolean }) {
+  const intl = useIntl();
   if (loadedAt === null) return null;
   return (
     <span className="v2-ov-updated">
       <StatusDot tone={failed ? 'warn' : 'ok'} size={7} />
-      <RelativeTime value={loadedAt} seconds prefix="Updated " />
+      <RelativeTime value={loadedAt} seconds prefix={intl.formatMessage(messages.updatedPrefix)} />
     </span>
   );
 }
@@ -321,12 +541,13 @@ function UpdatedAt({ loadedAt, failed }: { loadedAt: number | null; failed: bool
 /* ---- stats beside the fleet bar ---------------------------------------------------------------------------------- */
 
 function SyncStat({ summary, failed }: { summary: ConfigSyncSummary[] | null; failed: boolean }) {
+  const intl = useIntl();
   if (!summary) {
     return (
       <StatCell
-        label="Configuration in sync"
+        label={intl.formatMessage(messages.syncLabel)}
         value="—"
-        notes={[failed ? { text: 'Could not be checked', tone: 'alert' } : { text: 'Checking…' }]}
+        notes={[failed ? { text: intl.formatMessage(messages.syncFailed), tone: 'alert' } : { text: intl.formatMessage(messages.syncChecking) }]}
       />
     );
   }
@@ -341,27 +562,28 @@ function SyncStat({ summary, failed }: { summary: ConfigSyncSummary[] | null; fa
     { total: 0, inSync: 0, outOfSync: 0, unsupported: 0, neverSeen: 0 },
   );
   const notes: StatNote[] = [];
-  if (t.outOfSync > 0) notes.push({ text: `${t.outOfSync} out of sync`, tone: 'warn' });
-  if (t.unsupported > 0) notes.push({ text: `${t.unsupported} agent too old`, tone: 'warn' });
-  if (t.neverSeen > 0) notes.push({ text: `${t.neverSeen} not reported` });
-  if (t.total === 0) notes.push({ text: 'No device has a configuration' });
-  else if (notes.length === 0) notes.push({ text: 'All in sync', tone: 'ok' });
-  return <StatCell label="Configuration in sync" value={t.inSync} of={`/${t.total}`} notes={notes.slice(0, 2)} />;
+  if (t.outOfSync > 0) notes.push({ text: intl.formatMessage(messages.syncOutOfSync, { count: t.outOfSync }), tone: 'warn' });
+  if (t.unsupported > 0) notes.push({ text: intl.formatMessage(messages.syncAgentTooOld, { count: t.unsupported }), tone: 'warn' });
+  if (t.neverSeen > 0) notes.push({ text: intl.formatMessage(messages.syncNotReported, { count: t.neverSeen }) });
+  if (t.total === 0) notes.push({ text: intl.formatMessage(messages.syncNoConfig) });
+  else if (notes.length === 0) notes.push({ text: intl.formatMessage(messages.syncAll), tone: 'ok' });
+  return <StatCell label={intl.formatMessage(messages.syncLabel)} value={t.inSync} of={`/${t.total}`} notes={notes.slice(0, 2)} />;
 }
 
 /** While an agent rollout runs: devices updated in its current stage (Settings → Agent rollout has the controls). */
 function RolloutStat({ rollout }: { rollout: ActiveRollout }) {
+  const intl = useIntl();
   const fleet = rollout.stage === 'fleet' ? rollout.progress.fleet : null;
   const c = fleet ?? rollout.progress.canary;
-  const notes: StatNote[] = [{ text: fleet ? 'Rolling out to the fleet' : 'Canary devices first' }];
-  if (c.pending > 0) notes.push({ text: `${c.pending} installing`, tone: 'warn' });
-  else if (c.outstanding > 0) notes.push({ text: `${c.outstanding} queued` });
-  else if (c.ineligible > 0) notes.push({ text: `${c.ineligible} too old to update` });
+  const notes: StatNote[] = [{ text: intl.formatMessage(fleet ? messages.rolloutFleet : messages.rolloutCanary) }];
+  if (c.pending > 0) notes.push({ text: intl.formatMessage(messages.rolloutInstalling, { count: c.pending }), tone: 'warn' });
+  else if (c.outstanding > 0) notes.push({ text: intl.formatMessage(messages.rolloutQueued, { count: c.outstanding }) });
+  else if (c.ineligible > 0) notes.push({ text: intl.formatMessage(messages.rolloutTooOld, { count: c.ineligible }) });
   return (
     <StatCell
       label={
         <Link to={SETTINGS_ROLLOUT} className="v2-ov-statlink">
-          Agent {rollout.targetVersion} rollout
+          {intl.formatMessage(messages.rolloutLabel, { version: rollout.targetVersion })}
         </Link>
       }
       value={c.updated}
@@ -393,6 +615,7 @@ function NeedsAttention({
   /** Every enrolled device was wiped: none is online, so "All clear" would say the opposite. */
   allWiped: boolean;
 }) {
+  const intl = useIntl();
   const toast = useToast();
   const [busy, setBusy] = useState<Record<string, boolean>>({});
   // Syncing and rolling out write to devices (ext/core/access.ts): a role without edit_devices opens the device.
@@ -402,10 +625,17 @@ function NeedsAttention({
     setBusy((b) => ({ ...b, [d.number]: true }));
     try {
       const { connected } = await forceSync(d.number);
-      if (connected === false) toast.push('warn', ...notConnected(d.number, 'sync'));
-      else toast.push('ok', 'Sync requested', `${d.number} checks in now and picks up its configuration.`);
+      if (connected === false) {
+        toast.push(
+          'warn',
+          intl.formatMessage(messages.notConnectedTitle, { number: d.number }),
+          intl.formatMessage(messages.notConnectedBody),
+        );
+      } else {
+        toast.push('ok', intl.formatMessage(messages.syncRequested), intl.formatMessage(messages.syncRequestedBody, { number: d.number }));
+      }
     } catch (e) {
-      toast.push('err', 'Sync failed', e instanceof Error ? e.message : '');
+      toast.push('err', intl.formatMessage(messages.syncFailedToast), apiErrorText(intl, e));
     } finally {
       setBusy((b) => ({ ...b, [d.number]: false }));
     }
@@ -414,20 +644,21 @@ function NeedsAttention({
   const shown = rows.slice(0, ATTENTION_ROWS);
   const items: AttentionItem[] = shown.map((d) => {
     const issue = isOnline(d.lastUpdate, now) ? issues[d.id] : undefined;
-    const r = reasonFor(issue);
+    const r = reasonFor(issue, intl);
+    const reasonLabel = reasonText(intl, issue).text;
     const to = paths.device(d.number);
     const name = d.description || d.number;
     let action: ReactNode;
     if (r.action === 'sync' && canEdit) {
       action = (
-        <Button size="sm" disabled={!!busy[d.number]} aria-label={`Sync now: ${name}`} onClick={() => void syncNow(d)}>
-          {busy[d.number] ? 'Syncing…' : 'Sync now'}
+        <Button size="sm" disabled={!!busy[d.number]} aria-label={intl.formatMessage(messages.syncNowNamed, { name })} onClick={() => void syncNow(d)}>
+          {intl.formatMessage(busy[d.number] ? messages.syncing : messages.syncNow)}
         </Button>
       );
     } else if (r.action === 'agent' && canEdit) {
       action = (
-        <ButtonLink size="sm" to={SETTINGS_ROLLOUT} aria-label={`Update agent: ${name}`}>
-          Update agent
+        <ButtonLink size="sm" to={SETTINGS_ROLLOUT} aria-label={intl.formatMessage(messages.updateAgentNamed, { name })}>
+          {intl.formatMessage(messages.updateAgent)}
         </ButtonLink>
       );
     }
@@ -442,7 +673,7 @@ function NeedsAttention({
           kind={deriveDeviceKind({ kioskMode: d.kioskMode, name: d.description })}
         />
       ),
-      reason: r.text,
+      reason: reasonLabel,
       tone: r.tone,
       when: <RelativeTime value={d.lastUpdate} />,
       action,
@@ -450,44 +681,38 @@ function NeedsAttention({
   });
 
   let body: ReactNode;
-  if (loading) body = <SkeletonRows count={5} label="Loading devices that need attention…" />;
+  if (loading) body = <SkeletonRows count={5} label={intl.formatMessage(messages.loadingAttention)} />;
   else if (unknown)
     body = (
-      <EmptyState bare title="Not known">
-        The devices couldn’t be loaded, so it isn’t known which need attention.
+      <EmptyState bare title={intl.formatMessage(messages.notKnown)}>
+        {intl.formatMessage(messages.notKnownBody)}
       </EmptyState>
     );
   else if (!hasDevices)
     body = (
-      <EmptyState bare title="No devices yet">
-        Devices that are offline or whose configuration didn’t apply show up here.
+      <EmptyState bare title={intl.formatMessage(messages.noDevices)}>
+        {intl.formatMessage(messages.noDevicesBody)}
       </EmptyState>
     );
   else if (allWiped)
     body = (
-      <EmptyState bare title="No active devices">
-        Every enrolled device was wiped.
+      <EmptyState bare title={intl.formatMessage(messages.noActive)}>
+        {intl.formatMessage(messages.subAllWiped)}
       </EmptyState>
     );
   else if (items.length === 0)
     body = (
-      <EmptyState bare icon={<IconCheck />} title={syncCheck === 'complete' ? 'All clear' : 'All online'}>
-        {syncCheck === 'complete'
-          ? 'Every device is online and in sync.'
-          : syncCheck === 'pending'
-            ? 'Every device is online. Checking configuration sync…'
-            : syncCheck === 'failed'
-              ? 'Every device is online. Configuration sync could not be checked.'
-              : 'Every device is online. Configuration sync was only partly checked.'}
+      <EmptyState bare icon={<IconCheck />} title={intl.formatMessage(syncCheck === 'complete' ? messages.allClear : messages.allOnline)}>
+        {intl.formatMessage(SUBTITLE_SYNC[syncCheck])}
       </EmptyState>
     );
-  else body = <AttentionList aria-label="Devices that need attention" items={items} />;
+  else body = <AttentionList aria-label={intl.formatMessage(messages.attentionListLabel)} items={items} />;
 
   return (
     <Card padding="list" clip aria-labelledby="v2-ov-att" className="v2-ov-att">
       <CardHeader
         inset
-        title="Needs attention"
+        title={intl.formatMessage(messages.attentionTitle)}
         titleId="v2-ov-att"
         actions={
           !loading && rows.length > 0 ? (
@@ -525,6 +750,7 @@ function ByConfiguration({
   loading: boolean;
   unknown?: boolean;
 }) {
+  const intl = useIntl();
   const rows = useMemo<ConfigRow[]>(() => {
     // Devices per configuration from the device list (the classic card); sync detail from the summary when loaded.
     const byId = new Map<number, number>();
@@ -538,7 +764,8 @@ function ByConfiguration({
     for (const s of sums.values()) if (s.total > 0 && configurations[String(s.configurationId)]) ids.add(s.configurationId);
     const out: ConfigRow[] = [...ids].map((id) => {
       const s = sums.get(id);
-      const name = configurations[String(id)]?.name ?? `Configuration ${id}`;
+      const stored = configurations[String(id)]?.name;
+      const name = stored != null ? configName(intl, { id, name: stored }) : intl.formatMessage(messages.configurationFallback, { id });
       const to = paths.configuration(id);
       if (!s || s.total === 0) {
         return {
@@ -547,15 +774,15 @@ function ByConfiguration({
           to,
           count: byId.get(id) ?? 0,
           segments: [],
-          note: wipedOnlyLine(s) ?? (summary ? 'Sync not reported' : 'Sync status unavailable'),
+          note: wipedOnlyLine(s, intl) ?? intl.formatMessage(summary ? messages.syncNotReportedNote : messages.syncUnavailable),
           tone: 'muted',
         };
       }
-      const parts = [s.inSync === s.total ? 'All in sync' : `${s.inSync} in sync`];
-      if (s.outOfSync) parts.push(`${s.outOfSync} out of sync`);
-      if (s.unsupported) parts.push(`${s.unsupported} agent too old`);
-      if (s.neverSeen) parts.push(`${s.neverSeen} not reported`);
-      if (s.deferred) parts.push(`${s.deferred} deferred settings`);
+      const parts = [s.inSync === s.total ? intl.formatMessage(messages.noteAllInSync) : intl.formatMessage(messages.noteInSync, { count: s.inSync })];
+      if (s.outOfSync) parts.push(intl.formatMessage(messages.noteOutOfSync, { count: s.outOfSync }));
+      if (s.unsupported) parts.push(intl.formatMessage(messages.noteAgentTooOld, { count: s.unsupported }));
+      if (s.neverSeen) parts.push(intl.formatMessage(messages.noteNotReported, { count: s.neverSeen }));
+      if (s.deferred) parts.push(intl.formatMessage(messages.noteDeferred, { count: s.deferred }));
       return {
         key: String(id),
         name,
@@ -574,33 +801,33 @@ function ByConfiguration({
     if (none > 0) {
       out.push({
         key: 'none',
-        name: 'No configuration',
+        name: intl.formatMessage(messages.noConfiguration),
         count: none,
         segments: [{ value: none, tone: 'pending' }],
-        note: `${none} ${plural(none, 'device has', 'devices have')} nothing assigned`,
+        note: intl.formatMessage(messages.nothingAssigned, { count: none }),
         tone: 'muted',
       });
     }
     return out;
-  }, [devices, configurations, summary]);
+  }, [devices, configurations, summary, intl]);
 
   return (
     <Card aria-labelledby="v2-ov-cfg">
       <CardHeader
         spacing={8}
-        title="By configuration"
+        title={intl.formatMessage(messages.byConfigTitle)}
         titleId="v2-ov-cfg"
-        actions={<Link to={paths.configurations}>Manage</Link>}
+        actions={<Link to={paths.configurations}>{intl.formatMessage(messages.manage)}</Link>}
       />
       {loading ? (
-        <SkeletonFacts count={3} label="Loading configurations…" />
+        <SkeletonFacts count={3} label={intl.formatMessage(messages.loadingConfigs)} />
       ) : unknown ? (
-        <EmptyState bare title="Not known">
-          The devices couldn’t be loaded.
+        <EmptyState bare title={intl.formatMessage(messages.notKnown)}>
+          {intl.formatMessage(messages.byConfigUnknownBody)}
         </EmptyState>
       ) : rows.length === 0 ? (
-        <EmptyState bare title="No devices yet">
-          Devices are counted here by the configuration they use.
+        <EmptyState bare title={intl.formatMessage(messages.noDevices)}>
+          {intl.formatMessage(messages.byConfigEmptyBody)}
         </EmptyState>
       ) : (
         <ul className="v2-ov-cfgs">
@@ -631,12 +858,6 @@ function ByConfiguration({
 type ActivityFilter = 'all' | 'commands' | 'events';
 
 
-const FILTERS: ReadonlyArray<{ value: ActivityFilter; label: string }> = [
-  { value: 'all', label: 'All' },
-  { value: 'commands', label: 'Commands' },
-  { value: 'events', label: 'Device events' },
-];
-
 function RecentActivity({
   activity,
   appNames,
@@ -646,6 +867,12 @@ function RecentActivity({
   appNames: Record<string, string>;
   unknown?: boolean;
 }) {
+  const intl = useIntl();
+  const filters: ReadonlyArray<{ value: ActivityFilter; label: string }> = [
+    { value: 'all', label: intl.formatMessage(messages.filterAll) },
+    { value: 'commands', label: intl.formatMessage(messages.filterCommands) },
+    { value: 'events', label: intl.formatMessage(messages.filterEvents) },
+  ];
   const [filter, setFilter] = useState<ActivityFilter>('all');
   const rows = (activity ?? [])
     .filter((a) =>
@@ -656,24 +883,22 @@ function RecentActivity({
   let body: ReactNode;
   if (unknown)
     body = (
-      <EmptyState bare title="Not known">
-        The devices couldn’t be loaded, so their recent activity isn’t known.
+      <EmptyState bare title={intl.formatMessage(messages.notKnown)}>
+        {intl.formatMessage(messages.activityUnknownBody)}
       </EmptyState>
     );
-  else if (activity === null) body = <SkeletonRows count={6} compact label="Loading activity…" />;
+  else if (activity === null) body = <SkeletonRows count={6} compact label={intl.formatMessage(messages.loadingActivity)} />;
   else if (rows.length === 0)
     body = (
-      <EmptyState bare title={filter === 'commands' ? 'No command results' : 'No recent events'}>
-        {filter === 'commands'
-          ? 'Results of commands run by the most recently seen devices show up here.'
-          : 'Events from the most recently seen devices show up here.'}
+      <EmptyState bare title={intl.formatMessage(filter === 'commands' ? messages.noCommandResults : messages.noRecentEvents)}>
+        {intl.formatMessage(filter === 'commands' ? messages.commandResultsBody : messages.recentEventsBody)}
       </EmptyState>
     );
   else
     body = (
-      <ActivityList aria-label="Recent activity">
+      <ActivityList aria-label={intl.formatMessage(messages.activityListLabel)}>
         {rows.map((a) => {
-          const v = eventView(a.ev, appNames, a.commands);
+          const v = eventView(a.ev, appNames, a.commands, intl);
           return (
             <ActivityRow
               key={a.key}
@@ -694,9 +919,9 @@ function RecentActivity({
     <Card padding="list" clip aria-labelledby="v2-ov-act">
       <CardHeader
         inset
-        title="Recent activity"
+        title={intl.formatMessage(messages.activityTitle)}
         titleId="v2-ov-act"
-        actions={<Segmented size="sm" aria-label="Filter activity" options={FILTERS} value={filter} onChange={setFilter} />}
+        actions={<Segmented size="sm" aria-label={intl.formatMessage(messages.filterActivity)} options={filters} value={filter} onChange={setFilter} />}
       />
       {body}
     </Card>

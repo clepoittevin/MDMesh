@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { defineMessages, useIntl, type MessageDescriptor } from 'react-intl';
 import { listApplications, saveAndroidApplication, type Application } from '../api/applications';
 import { searchFdroid, type FDroidApp } from '../api/fdroid';
 import {
@@ -25,6 +26,54 @@ import { errorText } from './appsModel';
 const FETCH_LIMIT = 100;
 const PAGE = 12;
 
+const messageDefs = defineMessages({
+  addedTitle: { id: 'apps.fdroid.addedTitle', defaultMessage: 'Added to Library' },
+  addedBody: {
+    id: 'apps.fdroid.addedBody',
+    defaultMessage: '{name} is in your Library — now assignable to a configuration.',
+  },
+  alreadyTitle: { id: 'apps.fdroid.alreadyTitle', defaultMessage: 'Already in Library' },
+  alreadyBody: { id: 'apps.fdroid.alreadyBody', defaultMessage: '{name} is already in your Library.' },
+  addFailedTitle: { id: 'apps.fdroid.addFailedTitle', defaultMessage: 'Could not add to Library' },
+  addFailedBody: { id: 'apps.fdroid.addFailedBody', defaultMessage: 'The server rejected the save.' },
+  searchLabel: { id: 'apps.fdroid.searchLabel', defaultMessage: 'Search F-Droid' },
+  searchPlaceholder: { id: 'apps.fdroid.searchPlaceholder', defaultMessage: 'Search the F-Droid catalogue' },
+  matchesInfo: {
+    id: 'apps.fdroid.matchesInfo',
+    defaultMessage:
+      'Matches from the f-droid.org catalogue. Devices download the app straight from f-droid.org, and MDMesh checks it against the catalogue’s checksum.',
+  },
+  browseInfo: {
+    id: 'apps.fdroid.browseInfo',
+    defaultMessage:
+      'The f-droid.org catalogue, A to Z. Devices download the app straight from f-droid.org, and MDMesh checks it against the catalogue’s checksum.',
+  },
+  loadThing: { id: 'apps.fdroid.loadThing', defaultMessage: 'the F-Droid catalogue' },
+  gridLabel: { id: 'apps.fdroid.gridLabel', defaultMessage: 'F-Droid apps' },
+  searching: { id: 'apps.fdroid.searching', defaultMessage: 'Searching F-Droid…' },
+  noMatch: { id: 'apps.fdroid.noMatch', defaultMessage: 'No apps match your search' },
+  inLibrary: { id: 'apps.fdroid.inLibrary', defaultMessage: 'In library' },
+  noChecksum: {
+    id: 'apps.fdroid.noChecksum',
+    defaultMessage: 'No checksum in the catalogue, can’t deploy',
+  },
+  deployNamed: { id: 'apps.fdroid.deployNamed', defaultMessage: 'Deploy {name}' },
+  deploy: { id: 'apps.fdroid.deploy', defaultMessage: 'Deploy' },
+  adding: { id: 'apps.fdroid.adding', defaultMessage: 'Adding…' },
+  addToLibrary: { id: 'apps.fdroid.addToLibrary', defaultMessage: 'Add to library' },
+  // Read out after the visible words (2.5.3, label in name): a space while adding, a colon otherwise.
+  nameSuffix: {
+    id: 'apps.fdroid.nameSuffix',
+    defaultMessage: '{busy, select, true { {name}} other {: {name}}}',
+  },
+  capped: {
+    id: 'apps.fdroid.capped',
+    defaultMessage: 'Showing the first {count} matches. Search to narrow them down.',
+  },
+});
+// Widened so values can be passed (react-intl would otherwise type them from the ICU text).
+const messages: { [K in keyof typeof messageDefs]: MessageDescriptor } = messageDefs;
+
 /**
  * F-Droid: search the catalogue the server caches, add an app to the library or deploy it straight from
  * f-droid.org. Apps without a SHA-256 in the index can't be deployed (devices could not verify them).
@@ -44,6 +93,7 @@ export function AppsFdroid({
   onDeploy?: (s: DeploySubject) => void;
   onLibraryChanged: () => void;
 }) {
+  const intl = useIntl();
   const toast = useToast();
   const [q, setQ] = useState('');
   const [apps, setApps] = useState<FDroidApp[] | null>(null);
@@ -128,15 +178,15 @@ export function AppsFdroid({
         type: 'app',
       });
       setAdded((m) => new Map(m).set(a.packageName, saved.id));
-      toast.push('ok', 'Added to Library', `${a.name} is in your Library — now assignable to a configuration.`);
+      toast.push('ok', intl.formatMessage(messages.addedTitle), intl.formatMessage(messages.addedBody, { name: a.name }));
       onLibraryChanged();
     } catch (e) {
       const existing = (await listApplications(a.packageName).catch(() => [])).find((x) => x.pkg === a.packageName);
       if (existing?.id) {
-        toast.push('ok', 'Already in Library', `${a.name} is already in your Library.`);
+        toast.push('ok', intl.formatMessage(messages.alreadyTitle), intl.formatMessage(messages.alreadyBody, { name: a.name }));
         onLibraryChanged();
       } else {
-        toast.push('err', 'Could not add to Library', errorText(e) || 'The server rejected the save.');
+        toast.push('err', intl.formatMessage(messages.addFailedTitle), errorText(e, intl) || intl.formatMessage(messages.addFailedBody));
       }
     } finally {
       setAdding((s) => {
@@ -157,8 +207,8 @@ export function AppsFdroid({
         <span className="v2-apps-toolbar__spacer" />
         <SearchInput
           className="v2-apps-fd__search"
-          aria-label="Search F-Droid"
-          placeholder="Search the F-Droid catalogue"
+          aria-label={intl.formatMessage(messages.searchLabel)}
+          placeholder={intl.formatMessage(messages.searchPlaceholder)}
           value={q}
           onChange={setQ}
         />
@@ -167,17 +217,16 @@ export function AppsFdroid({
       <p className="v2-apps-fd__info">
         <IconInfo size={16} />
         <span>
-          {q.trim() ? 'Matches from the f-droid.org catalogue.' : 'The f-droid.org catalogue, A to Z.'} Devices download the app
-          straight from f-droid.org, and MDMesh checks it against the catalogue’s checksum.
+          {intl.formatMessage(q.trim() ? messages.matchesInfo : messages.browseInfo)}
         </span>
       </p>
 
-      {error ? <ErrorState thing="the F-Droid catalogue" onRetry={() => setTick((t) => t + 1)} /> : null}
+      {error ? <ErrorState thing={intl.formatMessage(messages.loadThing)} onRetry={() => setTick((t) => t + 1)} /> : null}
 
       {apps === null ? (
-        <ul className="v2-apps-fd__grid" aria-busy="true" aria-label="F-Droid apps">
+        <ul className="v2-apps-fd__grid" aria-busy="true" aria-label={intl.formatMessage(messages.gridLabel)}>
           <li className="v2-visually-hidden" role="status">
-            Searching F-Droid…
+            {intl.formatMessage(messages.searching)}
           </li>
           {Array.from({ length: 6 }, (_, i) => (
             <li key={i} className="v2-apps-fd__card is-loading" aria-hidden="true">
@@ -198,12 +247,12 @@ export function AppsFdroid({
       ) : apps.length === 0 ? (
         error ? null : (
           <Card>
-            <EmptyState icon={<IconSearch />} title="No apps match your search" />
+            <EmptyState icon={<IconSearch />} title={intl.formatMessage(messages.noMatch)} />
           </Card>
         )
       ) : (
         <>
-          <ul className="v2-apps-fd__grid" aria-label="F-Droid apps" aria-busy={searching || undefined}>
+          <ul className="v2-apps-fd__grid" aria-label={intl.formatMessage(messages.gridLabel)} aria-busy={searching || undefined}>
             {visible.map((a) => {
               const inLib = byPkg.has(a.packageName) || added.has(a.packageName);
               const busy = adding.has(a.packageName);
@@ -226,23 +275,23 @@ export function AppsFdroid({
                         {inLib ? (
                           <span className="v2-apps-fd__inlib">
                             <IconCheck size={14} />
-                            In library
+                            {intl.formatMessage(messages.inLibrary)}
                           </span>
                         ) : null}
                         <span className="v2-apps-fd__blocked">
                           <IconWarning size={14} />
-                          No checksum in the catalogue, can’t deploy
+                          {intl.formatMessage(messages.noChecksum)}
                         </span>
                       </>
                     ) : inLib ? (
                       <>
                         <span className="v2-apps-fd__inlib">
                           <IconCheck size={14} />
-                          In library
+                          {intl.formatMessage(messages.inLibrary)}
                         </span>
                         {deployable(a) ? (
-                          <Button size="sm" onClick={() => deploy(a)} aria-label={`Deploy ${a.name}`}>
-                            Deploy
+                          <Button size="sm" onClick={() => deploy(a)} aria-label={intl.formatMessage(messages.deployNamed, { name: a.name })}>
+                            {intl.formatMessage(messages.deploy)}
                           </Button>
                         ) : null}
                       </>
@@ -251,13 +300,13 @@ export function AppsFdroid({
                         {canAdd ? (
                           <Button size="sm" disabled={busy} onClick={() => void addToLibrary(a)}>
                             {/* The name starts with the visible words (2.5.3, label in name); the app's name follows. */}
-                            {busy ? 'Adding…' : 'Add to library'}
-                            <span className="v2-visually-hidden">{busy ? ` ${a.name}` : `: ${a.name}`}</span>
+                            {intl.formatMessage(busy ? messages.adding : messages.addToLibrary)}
+                            <span className="v2-visually-hidden">{intl.formatMessage(messages.nameSuffix, { busy: String(busy), name: a.name })}</span>
                           </Button>
                         ) : null}
                         {deployable(a) ? (
-                          <Button size="sm" variant="primary" onClick={() => deploy(a)} aria-label={`Deploy ${a.name}`}>
-                            Deploy
+                          <Button size="sm" variant="primary" onClick={() => deploy(a)} aria-label={intl.formatMessage(messages.deployNamed, { name: a.name })}>
+                            {intl.formatMessage(messages.deploy)}
                           </Button>
                         ) : null}
                       </>
@@ -270,7 +319,7 @@ export function AppsFdroid({
           {shown < apps.length ? (
             <ShowMore onClick={() => setShown((n) => n + PAGE)} />
           ) : capped ? (
-            <p className="v2-apps-fd__capped">Showing the first {FETCH_LIMIT} matches. Search to narrow them down.</p>
+            <p className="v2-apps-fd__capped">{intl.formatMessage(messages.capped, { count: FETCH_LIMIT })}</p>
           ) : null}
         </>
       )}

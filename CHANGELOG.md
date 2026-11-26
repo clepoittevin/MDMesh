@@ -9,6 +9,12 @@ Unreleased.
 
 ## Unreleased
 
+New
+- Console in French. Settings → Appearance → Language picks Browser, English or Français; a browser set to French
+  gets it at once. Dates, times, sizes and numbers follow the language. The seeded roles (the upstream project's
+  Russian names, or the installers' English ones) and the seeded configurations show in the console's language; the
+  database keeps their names.
+
 ## v0.6.0 — 2026-11-27
 
 Upgrading

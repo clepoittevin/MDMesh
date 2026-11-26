@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { defineMessages, useIntl } from 'react-intl';
 import { AuthLayout } from './AuthLayout';
 import { Button } from './Button';
 
@@ -11,6 +12,32 @@ export function isChunkLoadError(error: unknown): boolean {
   const msg = error instanceof Error ? `${error.name} ${error.message}` : String(error);
   return /ChunkLoadError|LazyLoadError|dynamically imported module|Importing a module script failed|error loading dynamically|Failed to fetch/i.test(
     msg,
+  );
+}
+
+const messages = defineMessages({
+  title: { id: 'shell.appCrash.title', defaultMessage: 'Couldn’t load the console' },
+  stale: {
+    id: 'shell.appCrash.stale',
+    defaultMessage: 'The console was probably updated while this tab was open. Reload to get the current version.',
+  },
+  wrong: { id: 'shell.appCrash.wrong', defaultMessage: 'Something went wrong while starting it. Reload to try again.' },
+  reload: { id: 'shell.appCrash.reload', defaultMessage: 'Reload' },
+});
+
+function AppCrash({ chunk }: { chunk: boolean }) {
+  const intl = useIntl();
+  return (
+    <div role="alert">
+      <AuthLayout
+        title={intl.formatMessage(messages.title)}
+        subtitle={intl.formatMessage(chunk ? messages.stale : messages.wrong)}
+      >
+        <Button variant="primary" size="lg" block onClick={() => window.location.reload()}>
+          {intl.formatMessage(messages.reload)}
+        </Button>
+      </AuthLayout>
+    </div>
   );
 }
 
@@ -39,22 +66,6 @@ export class AppErrorBoundary extends Component<{ children: ReactNode }, State> 
 
   render() {
     if (!this.state.crashed) return this.props.children;
-    const chunk = isChunkLoadError(this.state.error);
-    return (
-      <div role="alert">
-        <AuthLayout
-          title="Couldn’t load the console"
-          subtitle={
-            chunk
-              ? 'The console was probably updated while this tab was open. Reload to get the current version.'
-              : 'Something went wrong while starting it. Reload to try again.'
-          }
-        >
-          <Button variant="primary" size="lg" block onClick={() => window.location.reload()}>
-            Reload
-          </Button>
-        </AuthLayout>
-      </div>
-    );
+    return <AppCrash chunk={isChunkLoadError(this.state.error)} />;
   }
 }

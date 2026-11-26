@@ -1,11 +1,36 @@
 import { useRef, useState, type FormEvent } from 'react';
+import { defineMessages, useIntl, type MessageDescriptor } from 'react-intl';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
 import { useAuth } from '../auth/AuthContext';
 import type { AuthUser } from '../api/auth';
 import { paths } from '../routes';
 import { AuthFooter, AuthLayout, Button, Callout, Field, IconAlert, IconCheck, IconClock, Input, PasswordInput } from '../ui';
 import { safeReturnPath } from '../auth/safeReturnPath';
-import { isTooManyAttempts, isUnreachable, TOO_MANY, UNREACHABLE } from './authCommon';
+import { authMessages } from '../api/authMessages';
+import { isTooManyAttempts, isUnreachable } from './authCommon';
+
+const messages = defineMessages({
+  wrong: { id: 'auth.login.wrong', defaultMessage: 'Wrong username or password.' },
+  passwordChanged: {
+    id: 'auth.login.passwordChanged',
+    defaultMessage: 'Password updated. Sign in with your new password.',
+  },
+  resetExpired: {
+    id: 'auth.login.resetExpired',
+    defaultMessage: 'That password change expired. Sign in again to set your password.',
+  },
+  sessionExpired: {
+    id: 'auth.login.sessionExpired',
+    defaultMessage: 'Your session expired. Sign in again to pick up where you left off.',
+  },
+  title: { id: 'auth.login.title', defaultMessage: 'Sign in' },
+  username: { id: 'auth.login.username', defaultMessage: 'Username' },
+  usernameMissing: { id: 'auth.login.usernameMissing', defaultMessage: 'Enter your username.' },
+  password: { id: 'auth.login.password', defaultMessage: 'Password' },
+  passwordMissing: { id: 'auth.login.passwordMissing', defaultMessage: 'Enter your password.' },
+  signingIn: { id: 'auth.login.signingIn', defaultMessage: 'Signing in…' },
+  signIn: { id: 'auth.login.signIn', defaultMessage: 'Sign in' },
+});
 
 interface LoginState {
   /** A return path in navigation state (ProtectedRoute itself uses `?from=`). */
@@ -25,6 +50,7 @@ interface LoginState {
  */
 export function LoginPage() {
   const { signIn } = useAuth();
+  const intl = useIntl();
   const navigate = useNavigate();
   const location = useLocation();
   const [params] = useSearchParams();
@@ -34,7 +60,7 @@ export function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [missing, setMissing] = useState<{ user?: boolean; pw?: boolean }>({});
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<MessageDescriptor | null>(null);
   const [busy, setBusy] = useState(false);
   const userRef = useRef<HTMLInputElement>(null);
   const pwRef = useRef<HTMLInputElement>(null);
@@ -55,7 +81,9 @@ export function LoginPage() {
     try {
       u = await signIn(username, password);
     } catch (err) {
-      setError(isUnreachable(err) ? UNREACHABLE : isTooManyAttempts(err) ? TOO_MANY : 'Wrong username or password.');
+      setError(
+        isUnreachable(err) ? authMessages.unreachable : isTooManyAttempts(err) ? authMessages.tooMany : messages.wrong,
+      );
       return;
     } finally {
       setBusy(false);
@@ -73,30 +101,33 @@ export function LoginPage() {
   const notice = error
     ? null
     : state?.passwordChanged
-      ? { tone: 'ok' as const, icon: <IconCheck size={16} />, text: 'Password updated. Sign in with your new password.' }
+      ? { tone: 'ok' as const, icon: <IconCheck size={16} />, text: intl.formatMessage(messages.passwordChanged) }
       : state?.resetExpired
         ? {
             tone: 'info' as const,
             icon: <IconClock size={16} />,
-            text: 'That password change expired. Sign in again to set your password.',
+            text: intl.formatMessage(messages.resetExpired),
           }
         : state?.sessionExpired
           ? {
               tone: 'info' as const,
               icon: <IconClock size={16} />,
-              text: 'Your session expired. Sign in again to pick up where you left off.',
+              text: intl.formatMessage(messages.sessionExpired),
             }
           : null;
 
   return (
-    <AuthLayout title="Sign in" onSubmit={onSubmit} footer={<AuthFooter showVersion />}>
+    <AuthLayout title={intl.formatMessage(messages.title)} onSubmit={onSubmit} footer={<AuthFooter showVersion />}>
       {notice ? (
         <Callout tone={notice.tone} icon={notice.icon} role="status">
           {notice.text}
         </Callout>
       ) : null}
 
-      <Field label="Username" error={missing.user ? 'Enter your username.' : undefined}>
+      <Field
+        label={intl.formatMessage(messages.username)}
+        error={missing.user ? intl.formatMessage(messages.usernameMissing) : undefined}
+      >
         <Input
           ref={userRef}
           size="lg"
@@ -115,7 +146,10 @@ export function LoginPage() {
         />
       </Field>
 
-      <Field label="Password" error={missing.pw ? 'Enter your password.' : undefined}>
+      <Field
+        label={intl.formatMessage(messages.password)}
+        error={missing.pw ? intl.formatMessage(messages.passwordMissing) : undefined}
+      >
         <PasswordInput
           ref={pwRef}
           name="password"
@@ -131,12 +165,12 @@ export function LoginPage() {
 
       {error ? (
         <Callout tone="alert" icon={<IconAlert size={16} />} role="alert">
-          {error}
+          {intl.formatMessage(error)}
         </Callout>
       ) : null}
 
       <Button type="submit" variant="primary" size="lg" disabled={busy}>
-        {busy ? 'Signing in…' : 'Sign in'}
+        {intl.formatMessage(busy ? messages.signingIn : messages.signIn)}
       </Button>
     </AuthLayout>
   );

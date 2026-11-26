@@ -1,4 +1,6 @@
 import { Component, Suspense, type ErrorInfo, type ReactNode } from 'react';
+import { defineMessages, FormattedMessage, useIntl, type IntlShape } from 'react-intl';
+import { untyped } from '../data/configIntl';
 import { isChunkLoadError } from '../ui/AppErrorBoundary';
 import { Badge } from '../ui/Badge';
 import { LinkButton } from '../ui/Button';
@@ -37,23 +39,47 @@ interface State {
   error: unknown;
 }
 
-function crashedWhat(entry: SlotEntry): string {
-  return entry.extension.core ? 'This part of the page' : `The “${entry.extension.title}” extension`;
+const messages = untyped(
+  defineMessages({
+    coreLoad: { id: 'ext.crash.coreLoad', defaultMessage: 'This part of the page couldn’t load.' },
+    coreProblem: { id: 'ext.crash.coreProblem', defaultMessage: 'This part of the page ran into a problem.' },
+    extensionLoad: { id: 'ext.crash.extensionLoad', defaultMessage: 'The “{title}” extension couldn’t load.' },
+    extensionProblem: { id: 'ext.crash.extensionProblem', defaultMessage: 'The “{title}” extension ran into a problem.' },
+    reload: { id: 'ext.crash.reload', defaultMessage: 'Reload' },
+    retry: { id: 'ext.crash.retry', defaultMessage: 'Retry' },
+    error: { id: 'ext.crash.error', defaultMessage: 'Error' },
+  }),
+);
+
+/** "This part of the page ran into a problem." (couldn’t load, for a chunk that failed), or the extension's. */
+function crashSentence(intl: IntlShape, entry: SlotEntry, chunk: boolean): string {
+  if (entry.extension.core) return intl.formatMessage(chunk ? messages.coreLoad : messages.coreProblem);
+  return intl.formatMessage(chunk ? messages.extensionLoad : messages.extensionProblem, { title: entry.extension.title });
+}
+
+/** The inline mark: "Error", the sentence in its tooltip. */
+function InlineCrash({ entry }: { entry: SlotEntry }) {
+  const intl = useIntl();
+  return (
+    <Badge tone="alert" title={crashSentence(intl, entry, false)}>
+      {intl.formatMessage(messages.error)}
+    </Badge>
+  );
 }
 
 function CrashCallout({ entry, error, note, onRetry }: { entry: SlotEntry; error: unknown; note?: string; onRetry: () => void }) {
+  const intl = useIntl();
   const chunk = isChunkLoadError(error);
-  const what = crashedWhat(entry);
   return (
     <Callout tone="alert" role="alert" icon={<IconWarning size={16} />}>
-      {what} {chunk ? 'couldn’t load.' : 'ran into a problem.'} {note ? `${note} ` : ''}
+      {crashSentence(intl, entry, chunk)} {note ? `${note} ` : ''}
       {chunk ? (
         <LinkButton tone="inline" onClick={() => window.location.reload()}>
-          Reload
+          <FormattedMessage {...messages.reload} />
         </LinkButton>
       ) : (
         <LinkButton tone="inline" onClick={onRetry}>
-          Retry
+          <FormattedMessage {...messages.retry} />
         </LinkButton>
       )}
     </Callout>
@@ -89,9 +115,7 @@ export class ExtensionBoundary extends Component<Props, State> {
     if (fallback === 'page') return <PageCrash error={error} onRetry={this.retry} />;
     const shown =
       fallback === 'inline' ? (
-        <Badge tone="alert" title={`${crashedWhat(entry)} ran into a problem.`}>
-          Error
-        </Badge>
+        <InlineCrash entry={entry} />
       ) : (
         <CrashCallout entry={entry} error={error} note={this.props.crashNote} onRetry={this.retry} />
       );

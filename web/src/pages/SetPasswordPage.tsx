@@ -1,4 +1,5 @@
 import { useRef, useState, type FormEvent, type MouseEvent } from 'react';
+import { defineMessages, useIntl, type MessageDescriptor } from 'react-intl';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
 import { useAuth } from '../auth/AuthContext';
 import { submitForcedPasswordReset } from '../api/auth';
@@ -6,10 +7,27 @@ import { ApiError } from '../api/client';
 import { paths } from '../routes';
 import { AuthFooter, AuthLayout, Button, Callout, Field, IconAlert, PasswordInput, RuleList, type Rule } from '../ui';
 import { safeReturnPath } from '../auth/safeReturnPath';
-import { isUnreachable, UNREACHABLE } from './authCommon';
+import { authMessages } from '../api/authMessages';
+import { isUnreachable } from './authCommon';
 
 const MIN_LENGTH = 8;
 const RULES_ID = 'v2-setpw-rules';
+
+const messages = defineMessages<'ruleMatch' | 'errLength' | 'errMatch' | 'failed' | 'title' | 'subtitle' | 'back' | 'submit' | 'note'>({
+  ruleMatch: { id: 'auth.setPassword.ruleMatch', defaultMessage: 'Both passwords match' },
+  errLength: { id: 'auth.setPassword.errLength', defaultMessage: 'Use at least {min} characters.' },
+  errMatch: { id: 'auth.setPassword.errMatch', defaultMessage: 'Passwords do not match.' },
+  failed: { id: 'auth.setPassword.failed', defaultMessage: 'Could not set the password. Please try again.' },
+  title: { id: 'auth.setPassword.title', defaultMessage: 'Choose a new password' },
+  subtitle: {
+    id: 'auth.setPassword.subtitle',
+    defaultMessage:
+      'You’re signed in as <account>{login}</account> with a temporary password. Replace it before you continue.',
+  },
+  back: { id: 'auth.setPassword.back', defaultMessage: 'Back to sign in' },
+  submit: { id: 'auth.setPassword.submit', defaultMessage: 'Set password' },
+  note: { id: 'auth.setPassword.note', defaultMessage: 'You’ll sign in once more with the new password.' },
+}) as Record<'ruleMatch' | 'errLength' | 'errMatch' | 'failed' | 'title' | 'subtitle' | 'back' | 'submit' | 'note', MessageDescriptor>;
 
 /**
  * Forced password change, without the shell. Reached when sign-in returns `passwordReset: true` (the
@@ -20,6 +38,7 @@ const RULES_ID = 'v2-setpw-rules';
  */
 export function SetPasswordPage() {
   const { user, signOut } = useAuth();
+  const intl = useIntl();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const from = safeReturnPath(params.get('from'), '');
@@ -28,6 +47,7 @@ export function SetPasswordPage() {
   const [pw, setPw] = useState('');
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const say = (m: MessageDescriptor, values?: Record<string, string | number>) => intl.formatMessage(m, values);
   const [busy, setBusy] = useState(false);
   // Set while this page signs the flagged session out on purpose: the guard below must not redirect then, or its
   // state-less <Navigate> replaces ours and the "Password updated" notice is lost (the classic page has that bug).
@@ -43,8 +63,8 @@ export function SetPasswordPage() {
   const matches = pw === confirm;
   const valid = longEnough && matches;
   const rules: Rule[] = [
-    { key: 'length', label: `At least ${MIN_LENGTH} characters`, met: pw === '' ? null : longEnough },
-    { key: 'match', label: 'Both passwords match', met: confirm === '' ? null : matches },
+    { key: 'length', label: say(authMessages.minLength, { min: MIN_LENGTH }), met: pw === '' ? null : longEnough },
+    { key: 'match', label: say(messages.ruleMatch), met: confirm === '' ? null : matches },
   ];
 
   async function onSubmit(e: FormEvent) {
@@ -52,11 +72,11 @@ export function SetPasswordPage() {
     if (busy) return;
     setError(null);
     if (!longEnough) {
-      setError(`Use at least ${MIN_LENGTH} characters.`);
+      setError(say(messages.errLength, { min: MIN_LENGTH }));
       return;
     }
     if (!matches) {
-      setError('Passwords do not match.');
+      setError(say(messages.errMatch));
       return;
     }
     setBusy(true);
@@ -73,7 +93,7 @@ export function SetPasswordPage() {
         navigate(loginPath, { replace: true, state: { resetExpired: true } });
         return;
       }
-      setError(isUnreachable(err) ? UNREACHABLE : 'Could not set the password. Please try again.');
+      setError(isUnreachable(err) ? say(authMessages.unreachable) : say(messages.failed));
     } finally {
       setBusy(false);
     }
@@ -90,25 +110,23 @@ export function SetPasswordPage() {
 
   return (
     <AuthLayout
-      title="Choose a new password"
-      subtitle={
-        <>
-          You’re signed in as <span className="v2-login-account">{user.login}</span> with a temporary password.
-          Replace it before you continue.
-        </>
-      }
+      title={say(messages.title)}
+      subtitle={intl.formatMessage(messages.subtitle, {
+        login: user.login,
+        account: (chunks) => <span className="v2-login-account">{chunks}</span>,
+      })}
       onSubmit={onSubmit}
       footer={
         <AuthFooter>
           <Link to={loginPath} replace onClick={(e) => void backToSignIn(e)}>
-            Back to sign in
+            {say(messages.back)}
           </Link>
         </AuthFooter>
       }
     >
-      <Field label="New password">
+      <Field label={say(authMessages.newPassword)}>
         <PasswordInput
-          toggleLabel="Show new password"
+          toggleLabel={say(authMessages.showNew)}
           name="new-password"
           autoComplete="new-password"
           autoFocus
@@ -119,9 +137,9 @@ export function SetPasswordPage() {
         />
       </Field>
 
-      <Field label="Type it again">
+      <Field label={say(authMessages.typeAgain)}>
         <PasswordInput
-          toggleLabel="Show the password typed again"
+          toggleLabel={say(authMessages.showAgain)}
           name="confirm-password"
           autoComplete="new-password"
           required
@@ -142,9 +160,9 @@ export function SetPasswordPage() {
 
       <div className="v2-login-submit">
         <Button type="submit" variant="primary" size="lg" disabled={busy || !valid}>
-          {busy ? 'Saving…' : 'Set password'}
+          {busy ? say(authMessages.saving) : say(messages.submit)}
         </Button>
-        <p className="v2-login-submit__note">You’ll sign in once more with the new password.</p>
+        <p className="v2-login-submit__note">{say(messages.note)}</p>
       </div>
     </AuthLayout>
   );

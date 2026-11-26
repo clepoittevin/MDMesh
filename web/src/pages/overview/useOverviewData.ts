@@ -9,7 +9,6 @@
 // reloaded. A failed refresh keeps the last good data and reports the error.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { listApplications } from '../../api/applications';
-import { ApiError } from '../../api/client';
 import { listCommandHistory, type CommandHistoryItem } from '../../api/commands';
 import { getConfigStatus, getSyncSummary, summarizeStatus, type ConfigSyncSummary } from '../../api/configSync';
 import { searchDevices, type ConfigurationLookup, type DeviceView } from '../../api/devices';
@@ -19,7 +18,7 @@ import type { UpdateStatus } from '../../api/updates';
 import { ATTENTION_PROBE_CAP, isConfigIssue, suspectDevices, type SyncCheck } from '../../data/fleetHealth';
 import { rolloutActive } from '../../data/rollout';
 import { useSupervisor } from '../../data/useSupervisor';
-import { LOAD_DEVICES_FAILED } from '../../data/useDevices';
+import { loadErrorOf } from '../../data/useDevices';
 import type { ConfigIssue } from './attention';
 
 export const REFRESH_MS = 60_000;
@@ -62,14 +61,8 @@ export interface OverviewData {
   refresh: () => void;
 }
 
-/** Same wording as the classic useDevices hook. */
-function messageFor(err: unknown): string {
-  if (err instanceof ApiError) {
-    if (err.httpStatus === 401 || err.httpStatus === 403) return 'Your session has expired. Sign in again.';
-    if (err.httpStatus === 0) return 'Cannot reach the server.';
-  }
-  return LOAD_DEVICES_FAILED;
-}
+/** Same wording as the classic useDevices hook (the page shows it translated, loadErrorText). */
+const messageFor = loadErrorOf;
 
 export function useOverviewData(): OverviewData {
   const [devices, setDevices] = useState<DeviceView[]>([]);

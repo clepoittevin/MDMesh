@@ -1,5 +1,6 @@
 // The Overview's Server card: the running version, and an update on offer, running or failed.
 import type { ReactNode } from 'react';
+import { defineMessage, defineMessages, useIntl } from 'react-intl';
 import { isApplyTerminal, type UpdateStatus } from '../../api/updates';
 import {
   applyPhaseLabel,
@@ -13,40 +14,86 @@ import {
 import { UPDATES_HREF } from '../../routes';
 import { ButtonAnchor, ButtonLink, Card, CardHeader, cx, IconCheck, IconShield, RelativeTime, StatusDot } from '../../ui';
 
+const messages = defineMessages({
+  viewProgress: { id: 'overview.server.viewProgress', defaultMessage: 'View progress' },
+  rolledBack: { id: 'overview.server.rolledBack', defaultMessage: 'Update rolled back' },
+  failed: { id: 'overview.server.failed', defaultMessage: 'Update failed' },
+  openRecovery: { id: 'overview.server.openRecovery', defaultMessage: 'Open recovery' },
+  reviewUpdate: { id: 'overview.server.reviewUpdate', defaultMessage: 'Review update' },
+  title: { id: 'overview.server.title', defaultMessage: 'Server' },
+  checkFailed: { id: 'overview.server.checkFailed', defaultMessage: 'The last update check failed.' },
+  seeWhy: { id: 'overview.server.seeWhy', defaultMessage: 'See why' },
+  // Read before a relative time ("checked 5 minutes ago"); keeps its trailing space.
+  checkedPrefix: { id: 'overview.server.checkedPrefix', defaultMessage: 'checked ' },
+});
+const cantInstall = defineMessage<{ version: string }>({
+  id: 'overview.server.cantInstall',
+  defaultMessage: '{version} can’t be installed here',
+});
+const unverified = defineMessage<{ version: string }>({
+  id: 'overview.server.unverified',
+  defaultMessage: '{version} was found, but its signature couldn’t be verified.',
+});
+const updatingTo = defineMessage<{ version: string }>({
+  id: 'overview.server.updatingTo',
+  defaultMessage: 'Updating to {version}',
+});
+const isAvailable = defineMessage<{ version: string }>({
+  id: 'overview.server.isAvailable',
+  defaultMessage: '{version} is available',
+});
+const signatureVerified = defineMessage<{ hasChannel: string; channel: string }>({
+  id: 'overview.server.signatureVerified',
+  defaultMessage: 'Signature verified{hasChannel, select, true { · {channel} channel} other {}}',
+});
+const signatureNotVerified = defineMessage<{ hasChannel: string; channel: string }>({
+  id: 'overview.server.signatureNotVerified',
+  defaultMessage: 'Signature not verified{hasChannel, select, true { · {channel} channel} other {}}',
+});
+const running = defineMessage<{ version: string }>({
+  id: 'overview.server.running',
+  defaultMessage: 'Running {version}',
+});
+const upToDateLine = defineMessage<{ hasChannel: string; channel: string }>({
+  id: 'overview.server.upToDate',
+  defaultMessage: 'Up to date{hasChannel, select, true { · {channel} channel} other {}}',
+});
+
 /**
  * The server's version, and an update as an inset callout with its action: "0.1.15 is available", its signature and
  * channel, "Review update" (the sidebar's card says the same and links to the same place). A running or failed
  * update shows its progress or the way to recovery instead.
  */
 export function ServerCard({ status }: { status: UpdateStatus }) {
+  const intl = useIntl();
   const apply = status.apply;
   const active = !!apply && !isApplyTerminal(apply.phase);
   const failed = !!apply && (apply.phase === 'failed' || apply.phase === 'rolled_back');
-  const channel = status.channel ? ` · ${status.channel} channel` : '';
+  const channel = { hasChannel: String(!!status.channel), channel: status.channel ?? '' };
 
   const offer = updateOffer(status);
   let panel: ReactNode = null;
   if (active && apply) {
     panel = (
       <div className="v2-ov-srv__panel">
-        <span className="v2-ov-srv__title">Updating to {apply.toVersion}</span>
+        <span className="v2-ov-srv__title">{intl.formatMessage(updatingTo, { version: apply.toVersion })}</span>
         <span className="v2-ov-srv__line is-warn">
           <StatusDot tone="warn" />
-          {applyPhaseLabel(apply.phase)}
+          {applyPhaseLabel(apply.phase, intl)}
         </span>
         <ButtonLink size="sm" to={UPDATES_HREF}>
-          View progress
+          {intl.formatMessage(messages.viewProgress)}
         </ButtonLink>
       </div>
     );
   } else if (failed && apply) {
     panel = (
       <div className="v2-ov-srv__panel">
-        <span className="v2-ov-srv__title">{apply.phase === 'rolled_back' ? 'Update rolled back' : 'Update failed'}</span>
+        <span className="v2-ov-srv__title">{intl.formatMessage(apply.phase === 'rolled_back' ? messages.rolledBack : messages.failed)}</span>
         {apply.error ? <span className="v2-ov-srv__line is-alert">{apply.error}</span> : null}
         {/* /recovery is served outside the SPA. */}
         <ButtonAnchor size="sm" href="/recovery">
-          Open recovery
+          {intl.formatMessage(messages.openRecovery)}
         </ButtonAnchor>
       </div>
     );
@@ -54,17 +101,17 @@ export function ServerCard({ status }: { status: UpdateStatus }) {
     // Found but not installable here (the sidebar's card says the same): amber only when it leaves security fixes missing.
     panel = (
       <div className="v2-ov-srv__panel">
-        <span className="v2-ov-srv__title">{offer.latest} can&rsquo;t be installed here</span>
+        <span className="v2-ov-srv__title">{intl.formatMessage(cantInstall, { version: offer.latest })}</span>
         <span className={cx('v2-ov-srv__line v2-ov-srv__line--long', offer.missed.length > 0 && 'is-warn')}>
           {offer.missed.length > 0 ? (
             <span className="v2-ov-srv__icon" aria-hidden="true">
               <IconShield size={14} />
             </span>
           ) : null}
-          <span>{blockedShort(status, offer.missed)}</span>
+          <span>{blockedShort(status, offer.missed, intl)}</span>
         </span>
         <ButtonLink size="sm" to={UPDATES_HREF}>
-          See why
+          {intl.formatMessage(messages.seeWhy)}
         </ButtonLink>
       </div>
     );
@@ -73,27 +120,27 @@ export function ServerCard({ status }: { status: UpdateStatus }) {
     const missed = offer.missed;
     panel = (
       <div className="v2-ov-srv__panel">
-        <span className="v2-ov-srv__title">{offer.latest} is available</span>
+        <span className="v2-ov-srv__title">{intl.formatMessage(isAvailable, { version: offer.latest })}</span>
         {missed.length > 0 ? (
           <span className="v2-ov-srv__line v2-ov-srv__line--long is-warn">
             <span className="v2-ov-srv__icon" aria-hidden="true">
               <IconShield size={14} />
             </span>
-            <span>{missedSecurityShort(missed)}</span>
+            <span>{missedSecurityShort(missed, intl)}</span>
           </span>
         ) : status.verified ? (
           <span className="v2-ov-srv__line is-ok">
             <IconCheck size={14} />
-            Signature verified{channel}
+            {intl.formatMessage(signatureVerified, channel)}
           </span>
         ) : (
           <span className="v2-ov-srv__line is-warn">
             <StatusDot tone="warn" />
-            Signature not verified{channel}
+            {intl.formatMessage(signatureNotVerified, channel)}
           </span>
         )}
         <ButtonLink size="sm" to={UPDATES_HREF}>
-          Review update
+          {intl.formatMessage(messages.reviewUpdate)}
         </ButtonLink>
       </div>
     );
@@ -101,26 +148,24 @@ export function ServerCard({ status }: { status: UpdateStatus }) {
 
   return (
     <Card gap={12} aria-labelledby="v2-ov-srv">
-      <CardHeader title="Server" titleId="v2-ov-srv" />
+      <CardHeader title={intl.formatMessage(messages.title)} titleId="v2-ov-srv" />
       <div className="v2-ov-srv__run">
         <StatusDot tone="ok" size={8} />
-        <span>Running {status.current}</span>
+        <span>{intl.formatMessage(running, { version: status.current })}</span>
       </div>
       {panel ??
         // A newer release that didn't verify comes with the check's error too: the more specific line first.
         (unverifiedRelease(status) ? (
-          <span className="v2-ov-srv__meta">
-            {status.latest} was found, but its signature couldn&rsquo;t be verified.
-          </span>
+          <span className="v2-ov-srv__meta">{intl.formatMessage(unverified, { version: status.latest ?? '' })}</span>
         ) : lastCheckError(status) ? (
-          <span className="v2-ov-srv__meta">The last update check failed.</span>
+          <span className="v2-ov-srv__meta">{intl.formatMessage(messages.checkFailed)}</span>
         ) : upToDate(status) ? (
           <span className="v2-ov-srv__meta">
-            Up to date{channel}
+            {intl.formatMessage(upToDateLine, channel)}
             {status.checkedAt ? (
               <>
                 {' · '}
-                <RelativeTime value={status.checkedAt} style="long" prefix="checked " />
+                <RelativeTime value={status.checkedAt} style="long" prefix={intl.formatMessage(messages.checkedPrefix)} />
               </>
             ) : null}
           </span>

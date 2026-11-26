@@ -1,4 +1,6 @@
+import { defineMessages, type IntlShape, type MessageDescriptor } from 'react-intl';
 import { ApiError, apiClient } from './client';
+import { EN_INTL } from '../data/configIntl';
 
 // Endpoint (see server: com.hmdm.rest.resource.DeviceResource#getAllDevices):
 //   POST /rest/private/devices/search   body: DeviceSearchRequest
@@ -102,19 +104,28 @@ export function bulkDeletePartial(e: unknown): { deleted: number[]; notDeleted: 
   return { deleted: ids(data.deleted), notDeleted: ids(data.notDeleted) };
 }
 
-const bulkMessages: Record<string, string> = {
-  'error.permission.denied': 'You can’t change one or more of these devices, so nothing was changed.',
-  'error.device.configuration.required': 'Choose a configuration to move the devices to.',
-  [BULK_DELETE_PARTIAL]: 'Some devices weren’t deleted. Try again.',
+const bulkMessages = defineMessages({
+  denied: { id: 'devices.bulk.error.denied', defaultMessage: 'You can’t change one or more of these devices, so nothing was changed.' },
+  deniedConfiguration: {
+    id: 'devices.bulk.error.deniedConfiguration',
+    defaultMessage: 'You can’t change one or more of these devices, or use this configuration, so nothing was changed.',
+  },
+  configurationRequired: { id: 'devices.bulk.error.configurationRequired', defaultMessage: 'Choose a configuration to move the devices to.' },
+  deletePartial: { id: 'devices.bulk.error.deletePartial', defaultMessage: 'Some devices weren’t deleted. Try again.' },
+});
+const BULK_ERRORS: Record<string, MessageDescriptor> = {
+  'error.permission.denied': bulkMessages.denied,
+  'error.device.configuration.required': bulkMessages.configurationRequired,
+  [BULK_DELETE_PARTIAL]: bulkMessages.deletePartial,
 };
 /** What a refused bulk device change says, by the server's error key; other messages as they are. A change to a
- *  configuration can also be refused for the configuration, so its refusal says so. */
-export function bulkErrorText(e: unknown, change: 'devices' | 'configuration' = 'devices'): string {
+ *  configuration can also be refused for the configuration, so its refusal says so. In the console's language when
+ *  the caller passes its `intl`, else in English. */
+export function bulkErrorText(e: unknown, change: 'devices' | 'configuration' = 'devices', intl: IntlShape = EN_INTL): string {
   const message = e instanceof Error ? e.message : '';
-  if (change === 'configuration' && message === 'error.permission.denied') {
-    return 'You can’t change one or more of these devices, or use this configuration, so nothing was changed.';
-  }
-  return bulkMessages[message] ?? message;
+  if (change === 'configuration' && message === 'error.permission.denied') return intl.formatMessage(bulkMessages.deniedConfiguration);
+  const known = Object.prototype.hasOwnProperty.call(BULK_ERRORS, message) ? BULK_ERRORS[message] : undefined;
+  return known ? intl.formatMessage(known) : message;
 }
 
 /** Rename a device's friendly description — POST /private/devices/{id}/description

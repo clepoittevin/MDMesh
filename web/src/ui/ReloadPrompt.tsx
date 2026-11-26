@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { FormattedMessage, useIntl } from 'react-intl';
 import { applyRunning, useSupervisor } from '../data/useSupervisor';
 import { Button } from './Button';
 import { Notice } from './Card';
@@ -16,6 +17,7 @@ const POLL_MS = 60 * 1000;
  * Hidden while an update is still applying (the sidebar card shows that) and once dismissed.
  */
 export function ReloadPrompt() {
+  const intl = useIntl();
   const supervisor = useSupervisor(APP_VERSION === 'dev' ? undefined : POLL_MS);
   const [dismissed, setDismissed] = useState(false);
   const s = supervisor.status;
@@ -26,20 +28,24 @@ export function ReloadPrompt() {
     <Notice
       tone="idle"
       icon={<IconSync size={16} />}
-      aria-label="New console version"
+      aria-label={intl.formatMessage({ id: 'shell.reload.label', defaultMessage: 'New console version' })}
       action={
         <>
           <Button variant="primary" size="sm" onClick={() => window.location.reload()}>
-            Reload
+            <FormattedMessage id="shell.reload.reload" defaultMessage="Reload" />
           </Button>
           <Button variant="ghost" size="sm" onClick={() => setDismissed(true)}>
-            Later
+            <FormattedMessage id="shell.reload.later" defaultMessage="Later" />
           </Button>
         </>
       }
     >
       <span>
-        Console <b className="v2-mono">v{live}</b> is live. Reload to load it.
+        <FormattedMessage
+          id="shell.reload.message"
+          defaultMessage="Console <mono>v{version}</mono> is live. Reload to load it."
+          values={{ version: live, mono: (chunks) => <b className="v2-mono">{chunks}</b> }}
+        />
       </span>
     </Notice>
   );

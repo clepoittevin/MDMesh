@@ -1,7 +1,21 @@
 import { useId, useRef } from 'react';
+import { defineMessages, FormattedMessage, useIntl } from 'react-intl';
+import { untyped } from '../data/configIntl';
 import { Button } from './Button';
 import { cx } from './cx';
 import './ColourInput.css';
+
+const messages = untyped(
+  defineMessages({
+    default: { id: 'ui.colour.default', defaultMessage: 'Default' },
+    reset: { id: 'ui.colour.reset', defaultMessage: 'Reset' },
+    named: {
+      id: 'ui.colour.named',
+      defaultMessage: '{label}: {value}',
+      description: 'Accessible name: the field label, then the colour shown (a hex code or "Default").',
+    },
+  }),
+);
 
 export interface ColourInputProps {
   /** "#RRGGBB", or null for "use the launcher default". */
@@ -27,12 +41,14 @@ export function ColourInput({
   value,
   onChange,
   allowReset = true,
-  defaultLabel = 'Default',
+  defaultLabel: defaultLabelProp,
   disabled,
   className,
   'aria-labelledby': labelledBy,
   'aria-label': label,
 }: ColourInputProps) {
+  const intl = useIntl();
+  const defaultLabel = defaultLabelProp ?? intl.formatMessage(messages.default);
   const picker = useRef<HTMLInputElement>(null);
   const valueId = useId();
   const hex = value && /^#[0-9a-f]{6}$/i.test(value) ? value : null;
@@ -41,7 +57,7 @@ export function ColourInput({
   const name = labelledBy
     ? { 'aria-labelledby': `${labelledBy} ${valueId}` }
     : label
-      ? { 'aria-label': `${label}: ${shown}` }
+      ? { 'aria-label': intl.formatMessage(messages.named, { label, value: shown }) }
       : {};
   return (
     <span className={cx('v2-colour', className)}>
@@ -69,7 +85,7 @@ export function ColourInput({
       />
       {allowReset && hex ? (
         <Button variant="ghost" size="sm" disabled={disabled} onClick={() => onChange(null)}>
-          Reset
+          <FormattedMessage {...messages.reset} />
         </Button>
       ) : null}
     </span>

@@ -3,7 +3,10 @@ import { scanApps, fetchIcons, getLatestScan, type AppInfo } from '../api/device
 import { listApplications, appCategory, type Application } from '../api/applications';
 import { getConfiguration } from '../api/configurations';
 import { Link } from 'react-router';
-import { queueCommand, type CommandHistoryItem } from '../api/commands';
+import { FormattedMessage, defineMessages, useIntl, type MessageDescriptor } from 'react-intl';
+import { formatCommandError, queueCommand, type CommandHistoryItem } from '../api/commands';
+import { apiErrorText } from '../api/apiErrorText';
+import { deviceAppsErrorText } from '../data/deviceApps';
 import {
   LOCK_VOLUME_AGENT,
   buildKioskPayload,
@@ -11,15 +14,14 @@ import {
   cachedIcon,
   configuredKioskCommand,
   configuredKioskSummary,
-  EXIT_PIN_HELP,
-  EXIT_PIN_PLACEHOLDER,
+  exitPinHelp,
+  kioskMessages,
   kioskTheme,
-  NO_PIN_MEANS,
   versionAtLeast,
   type ConfiguredKiosk,
   type KioskTheme,
 } from '../data/kiosk';
-import { EXIT_PIN_RULE, exitPinValid } from '../data/configurationRules';
+import { exitPinRule, exitPinValid } from '../data/configurationRules';
 import { paths } from '../routes';
 import { fmtDateTime } from '../ui/format';
 import {
@@ -54,7 +56,132 @@ interface PickItem {
   badge?: string;
 }
 
-const CATEGORY_LABEL: Record<string, string> = { uploaded: 'Uploaded', system: 'System', web: 'Web app' };
+const messagesRaw = defineMessages({
+  categoryUploaded: { id: 'deviceKiosk.category.uploaded', defaultMessage: 'Uploaded' },
+  categorySystem: { id: 'deviceKiosk.category.system', defaultMessage: 'System' },
+  categoryWeb: { id: 'deviceKiosk.category.web', defaultMessage: 'Web app' },
+  themeError: {
+    id: 'deviceKiosk.themeError',
+    defaultMessage: 'Could not load the configuration theme; the kiosk will use the default look.',
+  },
+  libraryFailed: { id: 'deviceKiosk.libraryFailed', defaultMessage: 'Failed to load library' },
+  noAppsReported: {
+    id: 'deviceKiosk.noAppsReported',
+    defaultMessage: 'The device reported no apps. Give it a moment after an update, then retry.',
+  },
+  scanFailed: { id: 'deviceKiosk.scanFailed', defaultMessage: 'Scan failed' },
+  iconFetchFailed: { id: 'deviceKiosk.iconFetchFailed', defaultMessage: 'Icon fetch failed' },
+  queuedTitle: { id: 'deviceKiosk.queuedTitle', defaultMessage: 'Custom kiosk queued' },
+  queuedBody: { id: 'deviceKiosk.queuedBody', defaultMessage: '{count, plural, one {# app} other {# apps}}' },
+  failedTitle: { id: 'deviceKiosk.failedTitle', defaultMessage: 'Custom kiosk failed' },
+  title: { id: 'deviceKiosk.title', defaultMessage: 'Custom kiosk' },
+  description: {
+    id: 'deviceKiosk.description',
+    defaultMessage: 'A one-time kiosk with apps you pick now, from your library or from a scan of the device.',
+  },
+  descriptionNamed: {
+    id: 'deviceKiosk.descriptionNamed',
+    defaultMessage:
+      'A one-time kiosk with apps you pick now, from your library or from a scan of the device. {name} doesn’t define it.',
+  },
+  itsConfiguration: { id: 'deviceKiosk.itsConfiguration', defaultMessage: 'Its configuration' },
+  cancel: { id: 'deviceKiosk.cancel', defaultMessage: 'Cancel' },
+  sending: { id: 'deviceKiosk.sending', defaultMessage: 'Sending…' },
+  enterKioskWithApps: {
+    id: 'deviceKiosk.enterKioskWithApps',
+    defaultMessage: 'Enter kiosk with {count, plural, one {# app} other {# apps}}',
+  },
+  enterKiosk: { id: 'deviceKiosk.enterKiosk', defaultMessage: 'Enter kiosk' },
+  loadingTheme: { id: 'deviceKiosk.loadingTheme', defaultMessage: 'Loading the configuration’s launcher look' },
+  appsFrom: { id: 'deviceKiosk.appsFrom', defaultMessage: 'Apps from' },
+  sourceLibrary: { id: 'deviceKiosk.sourceLibrary', defaultMessage: 'Library' },
+  sourceDevice: { id: 'deviceKiosk.sourceDevice', defaultMessage: 'Device apps' },
+  kioskLabel: { id: 'deviceKiosk.kioskLabel', defaultMessage: 'Kiosk' },
+  modeLauncher: { id: 'deviceKiosk.modeLauncher', defaultMessage: 'Allowed apps (launcher grid)' },
+  modeSingle: { id: 'deviceKiosk.modeSingle', defaultMessage: 'Pin a single app' },
+  searchLabel: { id: 'deviceKiosk.searchLabel', defaultMessage: 'Search apps' },
+  searchPlaceholder: { id: 'deviceKiosk.searchPlaceholder', defaultMessage: 'Search apps…' },
+  showSystem: { id: 'deviceKiosk.showSystem', defaultMessage: 'Show system apps' },
+  loadingIcons: { id: 'deviceKiosk.loadingIcons', defaultMessage: 'Loading icons…' },
+  loadIcons: { id: 'deviceKiosk.loadIcons', defaultMessage: 'Load icons' },
+  scanning: { id: 'deviceKiosk.scanning', defaultMessage: 'Scanning…' },
+  rescan: { id: 'deviceKiosk.rescan', defaultMessage: 'Re-scan' },
+  savedScan: {
+    id: 'deviceKiosk.savedScan',
+    defaultMessage:
+      'Saved scan from {date} · {count, plural, one {# app} other {# apps}}. Re-scan to refresh.',
+  },
+  unsavedScan: {
+    id: 'deviceKiosk.unsavedScan',
+    defaultMessage: '{count, plural, one {# app} other {# apps}}. Re-scan to refresh.',
+  },
+  scanningDevice: { id: 'deviceKiosk.scanningDevice', defaultMessage: 'Scanning device…' },
+  scanDeviceApps: { id: 'deviceKiosk.scanDeviceApps', defaultMessage: 'Scan device apps' },
+  asking: { id: 'deviceKiosk.asking', defaultMessage: 'Asking the device for its installed apps…' },
+  appsGroup: { id: 'deviceKiosk.appsGroup', defaultMessage: 'Apps' },
+  loadingLibrary: { id: 'deviceKiosk.loadingLibrary', defaultMessage: 'Loading the library' },
+  noMatch: { id: 'deviceKiosk.noMatch', defaultMessage: 'No apps match.' },
+  exitMode: { id: 'deviceKiosk.exitMode', defaultMessage: 'Exit mode' },
+  exitGesture: { id: 'deviceKiosk.exitGesture', defaultMessage: 'Gesture (7-tap corner)' },
+  exitVisible: { id: 'deviceKiosk.exitVisible', defaultMessage: 'Visible button' },
+  exitRemote: { id: 'deviceKiosk.exitRemote', defaultMessage: 'Remote only' },
+  exitPin: { id: 'deviceKiosk.exitPin', defaultMessage: 'Kiosk exit PIN' },
+  exitPinHelp: { id: 'deviceKiosk.exitPinHelp', defaultMessage: '6 to 12 digits' },
+
+  returnTitle: { id: 'deviceKiosk.return.title', defaultMessage: 'Return to configured kiosk?' },
+  returnDescription: {
+    id: 'deviceKiosk.return.description',
+    defaultMessage:
+      'Puts the device back into the kiosk that {name} defines: its main app, allowed apps, kiosk options, exit PIN and launcher look.',
+  },
+  returnButton: { id: 'deviceKiosk.return.button', defaultMessage: 'Return to kiosk' },
+  returnQueued: { id: 'deviceKiosk.return.queued', defaultMessage: 'Return to configured kiosk queued' },
+  returnQueuedBody: { id: 'deviceKiosk.return.queuedBody', defaultMessage: 'Command {id}' },
+  notAccepted: { id: 'deviceKiosk.return.notAccepted', defaultMessage: 'The server didn’t accept the command.' },
+  factKiosk: { id: 'deviceKiosk.return.factKiosk', defaultMessage: 'Kiosk' },
+  factApps: { id: 'deviceKiosk.return.factApps', defaultMessage: 'Apps' },
+  factExit: { id: 'deviceKiosk.return.factExit', defaultMessage: 'Exit' },
+  factExitPin: { id: 'deviceKiosk.return.factExitPin', defaultMessage: 'Exit PIN' },
+  exitButtonVisible: { id: 'deviceKiosk.return.exitButtonVisible', defaultMessage: 'Visible exit button' },
+  exitButtonGesture: {
+    id: 'deviceKiosk.return.exitButtonGesture',
+    defaultMessage: 'Hidden gesture: 7 taps in the top-right corner',
+  },
+  pinConfigured: { id: 'deviceKiosk.return.pinConfigured', defaultMessage: 'The configuration’s PIN' },
+  pinNone: { id: 'deviceKiosk.return.pinNone', defaultMessage: 'None: {meaning}' },
+  mainAppLeftOut: {
+    id: 'deviceKiosk.return.mainAppLeftOut',
+    defaultMessage:
+      'The main app set in {name} isn’t set to Install and shown in kiosk, so this kiosk leaves it out. The configuration’s own kiosk does the same.',
+  },
+  pinnedMissing: {
+    id: 'deviceKiosk.return.pinnedMissing',
+    defaultMessage:
+      '{app} wasn’t on the device at its last app scan{hasDate, select, true { ({date})} other {}}. Until it is installed, the kiosk shows a launcher grid instead of pinning it. Use Install configuration apps first.',
+  },
+  listMissing: {
+    id: 'deviceKiosk.return.listMissing',
+    defaultMessage:
+      'Not on the device at its last app scan{hasDate, select, true { ({date})} other {}}: {apps}. The kiosk can’t open an app that isn’t installed. Use Install configuration apps first.',
+  },
+  oldAgentForVolume: {
+    id: 'deviceKiosk.return.oldAgentForVolume',
+    defaultMessage:
+      'This device runs agent {version}. Agents before {minimum} ignore Lock volume buttons, so the kiosk starts without that lock. <link>Update the agent</link> to apply it.',
+  },
+  notReported: {
+    id: 'deviceKiosk.return.notReported',
+    defaultMessage: 'This device hasn’t reported from the MDMesh agent yet. The command waits until it checks in.',
+  },
+  queueFailed: { id: 'deviceKiosk.return.queueFailed', defaultMessage: 'Couldn’t queue the command: {error}' },
+});
+const messages: Record<keyof typeof messagesRaw, MessageDescriptor> = messagesRaw;
+
+const CATEGORY_LABEL: Record<string, MessageDescriptor> = {
+  uploaded: messages.categoryUploaded,
+  system: messages.categorySystem,
+  web: messages.categoryWeb,
+};
 
 /**
  * Custom kiosk (classic KioskEnterModal on the console's Modal): a one-time kiosk the configuration doesn't define. Pick
@@ -77,6 +204,7 @@ export function DeviceKioskDialog({
   onQueued: () => void;
 }) {
   const toast = useToast();
+  const intl = useIntl();
   const ids = useId();
   const [source, setSource] = useState<Source>('library');
   const [query, setQuery] = useState('');
@@ -123,7 +251,7 @@ export function DeviceKioskDialog({
         if (!cancelled) setTheme(kioskTheme(c));
       })
       .catch(() => {
-        if (!cancelled) setThemeError('Could not load the configuration theme; the kiosk will use the default look.');
+        if (!cancelled) setThemeError(intl.formatMessage(messages.themeError));
       })
       .finally(() => {
         if (!cancelled) setThemeLoading(false);
@@ -136,7 +264,7 @@ export function DeviceKioskDialog({
   useEffect(() => {
     listApplications()
       .then(setLib)
-      .catch((e) => setLibErr(e instanceof Error ? e.message : 'Failed to load library'));
+      .catch((e) => setLibErr(apiErrorText(intl, e) || intl.formatMessage(messages.libraryFailed)));
   }, []);
 
   function primeFrom(list: AppInfo[]) {
@@ -171,10 +299,10 @@ export function DeviceKioskDialog({
       setApps(list);
       setScannedAt(Date.now());
       primeFrom(list);
-      if (!list.length) setScanErr('The device reported no apps. Give it a moment after an update, then retry.');
+      if (!list.length) setScanErr(intl.formatMessage(messages.noAppsReported));
     } catch (e) {
       if (abortRef.current?.signal.aborted) return;
-      setScanErr(e instanceof Error ? e.message : 'Scan failed');
+      setScanErr(deviceAppsErrorText(intl, e) || intl.formatMessage(messages.scanFailed));
     } finally {
       setScanning(false);
     }
@@ -229,7 +357,7 @@ export function DeviceKioskDialog({
       );
     } catch (e) {
       if (abortRef.current?.signal.aborted) return;
-      toast.push('err', 'Icon fetch failed', e instanceof Error ? e.message : '');
+      toast.push('err', intl.formatMessage(messages.iconFetchFailed), deviceAppsErrorText(intl, e));
     } finally {
       setLoadingIcons(false);
     }
@@ -251,7 +379,7 @@ export function DeviceKioskDialog({
   }
 
   // The configuration's PIN rule: a custom kiosk's PIN is new, so it must follow it.
-  const pinError = exitPinValid(password) ? undefined : EXIT_PIN_RULE;
+  const pinError = exitPinValid(password) ? undefined : exitPinRule(intl);
   const canApply =
     !themeLoading && selected.size > 0 && (mode === 'launcher' || selected.size === 1) && pinError == null;
 
@@ -261,11 +389,11 @@ export function DeviceKioskDialog({
     setBusy(true);
     try {
       await queueCommand(device.number, { type: 'kiosk.enter', payload: JSON.stringify(payload) });
-      toast.push('ok', 'Custom kiosk queued', `${pkgs.length} app${pkgs.length === 1 ? '' : 's'}`);
+      toast.push('ok', intl.formatMessage(messages.queuedTitle), intl.formatMessage(messages.queuedBody, { count: pkgs.length }));
       onQueued();
       onClose();
     } catch (e) {
-      toast.push('err', 'Custom kiosk failed', e instanceof Error ? e.message : '');
+      toast.push('err', intl.formatMessage(messages.failedTitle), formatCommandError(intl, e));
     } finally {
       setBusy(false);
     }
@@ -279,19 +407,26 @@ export function DeviceKioskDialog({
       onClose={onClose}
       size="lg"
       dismissOnBackdrop={false}
-      title="Custom kiosk"
+      title={intl.formatMessage(messages.title)}
       description={
-        'A one-time kiosk with apps you pick now, from your library or from a scan of the device.' +
-        (device.configurationId != null ? ` ${configName ?? 'Its configuration'} doesn’t define it.` : '')
+        device.configurationId != null
+          ? intl.formatMessage(messages.descriptionNamed, {
+              name: configName ?? intl.formatMessage(messages.itsConfiguration),
+            })
+          : intl.formatMessage(messages.description)
       }
       className="v2-device-kiosk"
       footer={
         <>
           <Button size="lg" disabled={busy} onClick={onClose}>
-            Cancel
+            {intl.formatMessage(messages.cancel)}
           </Button>
           <Button size="lg" variant="primary" disabled={busy || !canApply} onClick={() => void apply()}>
-            {busy ? 'Sending…' : selected.size ? `Enter kiosk with ${selected.size} app${selected.size === 1 ? '' : 's'}` : 'Enter kiosk'}
+            {busy
+              ? intl.formatMessage(messages.sending)
+              : selected.size
+                ? intl.formatMessage(messages.enterKioskWithApps, { count: selected.size })
+                : intl.formatMessage(messages.enterKiosk)}
           </Button>
         </>
       }
@@ -300,7 +435,7 @@ export function DeviceKioskDialog({
         <DialogTarget device={device} />
         {themeLoading ? (
           <span className="v2-visually-hidden" role="status">
-            Loading the configuration’s launcher look
+            {intl.formatMessage(messages.loadingTheme)}
           </span>
         ) : null}
         {themeError ? (
@@ -311,29 +446,29 @@ export function DeviceKioskDialog({
 
         <div className="v2-device-kiosk__row">
           <span className="v2-device-kiosk__label" id={`${ids}-src`}>
-            Apps from
+            {intl.formatMessage(messages.appsFrom)}
           </span>
           <Segmented<Source>
             aria-labelledby={`${ids}-src`}
             value={source}
             onChange={setSource}
             options={[
-              { value: 'library', label: 'Library' },
-              { value: 'device', label: 'Device apps' },
+              { value: 'library', label: intl.formatMessage(messages.sourceLibrary) },
+              { value: 'device', label: intl.formatMessage(messages.sourceDevice) },
             ]}
           />
         </div>
         <div className="v2-device-kiosk__row">
           <span className="v2-device-kiosk__label" id={`${ids}-mode`}>
-            Kiosk
+            {intl.formatMessage(messages.kioskLabel)}
           </span>
           <Segmented<Mode>
             aria-labelledby={`${ids}-mode`}
             value={mode}
             onChange={switchMode}
             options={[
-              { value: 'launcher', label: 'Allowed apps (launcher grid)' },
-              { value: 'single', label: 'Pin a single app' },
+              { value: 'launcher', label: intl.formatMessage(messages.modeLauncher) },
+              { value: 'single', label: intl.formatMessage(messages.modeSingle) },
             ]}
           />
         </div>
@@ -341,21 +476,21 @@ export function DeviceKioskDialog({
         <div className="v2-device-kiosk__toolbar">
           <SearchInput
             className="v2-device-kiosk__search"
-            aria-label="Search apps"
-            placeholder="Search apps…"
+            aria-label={intl.formatMessage(messages.searchLabel)}
+            placeholder={intl.formatMessage(messages.searchPlaceholder)}
             value={query}
             onChange={setQuery}
           />
           {source === 'device' ? (
-            <Checkbox label="Show system apps" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} />
+            <Checkbox label={intl.formatMessage(messages.showSystem)} checked={showAll} onChange={(e) => setShowAll(e.target.checked)} />
           ) : null}
           {source === 'device' && apps ? (
             <>
               <Button size="md" disabled={loadingIcons} onClick={() => void loadDeviceIcons()}>
-                {loadingIcons ? 'Loading icons…' : 'Load icons'}
+                {intl.formatMessage(loadingIcons ? messages.loadingIcons : messages.loadIcons)}
               </Button>
               <Button size="md" disabled={scanning} onClick={() => void scan()}>
-                {scanning ? 'Scanning…' : 'Re-scan'}
+                {intl.formatMessage(scanning ? messages.scanning : messages.rescan)}
               </Button>
             </>
           ) : null}
@@ -363,8 +498,9 @@ export function DeviceKioskDialog({
 
         {source === 'device' && apps ? (
           <p className="v2-device-kiosk__note">
-            {scannedAt ? `Saved scan from ${fmtDateTime(scannedAt)} · ${apps.length} apps` : `${apps.length} apps`}. Re-scan to
-            refresh.
+            {scannedAt
+              ? intl.formatMessage(messages.savedScan, { date: fmtDateTime(scannedAt), count: apps.length })
+              : intl.formatMessage(messages.unsavedScan, { count: apps.length })}
           </p>
         ) : null}
         {source === 'device' && apps && scanErr ? (
@@ -376,11 +512,11 @@ export function DeviceKioskDialog({
         {source === 'device' && !apps ? (
           <div className="v2-device-kiosk__scan">
             <Button variant="primary" size="lg" disabled={scanning} onClick={() => void scan()}>
-              {scanning ? 'Scanning device…' : 'Scan device apps'}
+              {intl.formatMessage(scanning ? messages.scanningDevice : messages.scanDeviceApps)}
             </Button>
             {scanning ? (
               <p className="v2-device-kiosk__note" role="status">
-                Asking the device for its installed apps…
+                {intl.formatMessage(messages.asking)}
               </p>
             ) : null}
             {scanErr ? (
@@ -392,13 +528,13 @@ export function DeviceKioskDialog({
         ) : null}
 
         {listShown ? (
-          <div className="v2-device-kiosk__list" role="group" aria-label="Apps">
+          <div className="v2-device-kiosk__list" role="group" aria-label={intl.formatMessage(messages.appsGroup)}>
             {source === 'library' && libErr ? (
               <Callout tone="alert" role="alert" icon={<IconWarning size={16} />}>
                 {libErr}
               </Callout>
             ) : null}
-            {source === 'library' && !lib && !libErr ? <SkeletonRows compact count={4} label="Loading the library" /> : null}
+            {source === 'library' && !lib && !libErr ? <SkeletonRows compact count={4} label={intl.formatMessage(messages.loadingLibrary)} /> : null}
             {items.map((i) => {
               const on = selected.has(i.pkg);
               // I8: the checkbox leads the row; the whole row is its label.
@@ -425,32 +561,32 @@ export function DeviceKioskDialog({
                   </span>
                   {i.badge ? (
                     <Badge tone={i.system ? 'neutral' : 'outline'} size="sm">
-                      {CATEGORY_LABEL[i.badge] ?? i.badge}
+                      {CATEGORY_LABEL[i.badge] ? intl.formatMessage(CATEGORY_LABEL[i.badge]) : i.badge}
                     </Badge>
                   ) : null}
                 </label>
               );
             })}
             {!items.length && (source === 'library' ? lib : apps) ? (
-              <p className="v2-device-kiosk__note v2-device-kiosk__empty">No apps match.</p>
+              <p className="v2-device-kiosk__note v2-device-kiosk__empty">{intl.formatMessage(messages.noMatch)}</p>
             ) : null}
           </div>
         ) : null}
 
         <div className="v2-device-kiosk__exit">
-          <Field label="Exit mode">
+          <Field label={intl.formatMessage(messages.exitMode)}>
             <Select value={exitMode} onChange={(e) => setExitMode(e.target.value as ExitMode)}>
-              <option value="gesture">Gesture (7-tap corner)</option>
-              <option value="visible">Visible button</option>
-              <option value="remote">Remote only</option>
+              <option value="gesture">{intl.formatMessage(messages.exitGesture)}</option>
+              <option value="visible">{intl.formatMessage(messages.exitVisible)}</option>
+              <option value="remote">{intl.formatMessage(messages.exitRemote)}</option>
             </Select>
           </Field>
           <Field
-            label="Kiosk exit PIN"
-            help={pinLeft && pinError ? undefined : '6 to 12 digits'}
+            label={intl.formatMessage(messages.exitPin)}
+            help={pinLeft && pinError ? undefined : intl.formatMessage(messages.exitPinHelp)}
             error={pinLeft ? pinError : undefined}
           >
-            <Tooltip content={EXIT_PIN_HELP}>
+            <Tooltip content={exitPinHelp(intl)}>
               <Input
                 type="password"
                 autoComplete="new-password"
@@ -458,7 +594,7 @@ export function DeviceKioskDialog({
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 onBlur={() => setPinLeft(true)}
-                placeholder={EXIT_PIN_PLACEHOLDER}
+                placeholder={intl.formatMessage(kioskMessages.exitPinPlaceholder)}
               />
             </Tooltip>
           </Field>
@@ -519,6 +655,7 @@ export function ConfiguredKioskDialog({
   onQueued: (id: number | string | undefined) => void;
 }) {
   const toast = useToast();
+  const intl = useIntl();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const p = kiosk.payload;
@@ -536,7 +673,7 @@ export function ConfiguredKioskDialog({
     return list.length ? { list, at: scan.at } : null;
   }, [history, kiosk.apps]);
 
-  const scanWhen = missing?.at ? ` (${fmtDateTime(missing.at)})` : '';
+  const scanDate = missing?.at ? fmtDateTime(missing.at) : undefined;
   const pinnedMissing = p.mode === 'single' && missing?.list.some((a) => a.pkg === p.pinPackage);
   const oldAgentForVolume = p.features.lockVolume === true && versionAtLeast(agentVersion, LOCK_VOLUME_AGENT) === false;
 
@@ -545,11 +682,15 @@ export function ConfiguredKioskDialog({
     setError(null);
     try {
       const res = await queueCommand(device.number, { type: 'kiosk.enter', payload: configuredKioskCommand(kiosk) });
-      toast.push('ok', 'Return to configured kiosk queued', res?.id != null ? `Command ${res.id}` : '');
+      toast.push(
+        'ok',
+        intl.formatMessage(messages.returnQueued),
+        res?.id != null ? intl.formatMessage(messages.returnQueuedBody, { id: res.id }) : '',
+      );
       onQueued(res?.id);
       onClose();
     } catch (e) {
-      setError(e instanceof Error && e.message ? e.message : 'The server didn’t accept the command.');
+      setError(formatCommandError(intl, e) || intl.formatMessage(messages.notAccepted));
     } finally {
       setBusy(false);
     }
@@ -561,16 +702,16 @@ export function ConfiguredKioskDialog({
       open={open}
       size="sm"
       onClose={busy ? () => undefined : onClose}
-      title="Return to configured kiosk?"
-      description={`Puts the device back into the kiosk that ${configName} defines: its main app, allowed apps, kiosk options, exit PIN and launcher look.`}
+      title={intl.formatMessage(messages.returnTitle)}
+      description={intl.formatMessage(messages.returnDescription, { name: configName })}
       className="v2-device-kreturn"
       footer={
         <>
           <Button size="lg" disabled={busy} onClick={onClose}>
-            Cancel
+            {intl.formatMessage(messages.cancel)}
           </Button>
           <Button size="lg" variant="primary" disabled={busy} onClick={() => void send()}>
-            {busy ? 'Sending…' : 'Return to kiosk'}
+            {intl.formatMessage(busy ? messages.sending : messages.returnButton)}
           </Button>
         </>
       }
@@ -579,44 +720,62 @@ export function ConfiguredKioskDialog({
       <KeyValueList
         variant="facts"
         items={[
-          { key: 'kiosk', label: 'Kiosk', value: configuredKioskSummary(kiosk) },
-          ...(p.mode === 'launcher' ? [{ key: 'apps', label: 'Apps', value: appNames }] : []),
+          { key: 'kiosk', label: intl.formatMessage(messages.factKiosk), value: configuredKioskSummary(kiosk, intl) },
+          ...(p.mode === 'launcher' ? [{ key: 'apps', label: intl.formatMessage(messages.factApps), value: appNames }] : []),
           {
             key: 'exit',
-            label: 'Exit',
-            value: p.exitMode === 'visible' ? 'Visible exit button' : 'Hidden gesture: 7 taps in the top-right corner',
+            label: intl.formatMessage(messages.factExit),
+            value: intl.formatMessage(p.exitMode === 'visible' ? messages.exitButtonVisible : messages.exitButtonGesture),
           },
-          { key: 'pin', label: 'Exit PIN', value: p.password ? 'The configuration’s PIN' : `None: ${NO_PIN_MEANS}` },
+          {
+            key: 'pin',
+            label: intl.formatMessage(messages.factExitPin),
+            value: p.password
+              ? intl.formatMessage(messages.pinConfigured)
+              : intl.formatMessage(messages.pinNone, { meaning: intl.formatMessage(kioskMessages.noPinMeans) }),
+          },
         ]}
       />
       {kiosk.mainAppLeftOut ? (
         <Callout tone="warn" icon={<IconWarning size={16} />}>
-          The main app set in {configName} isn’t set to Install and shown in kiosk, so this kiosk leaves it out. The
-          configuration’s own kiosk does the same.
+          <FormattedMessage {...messages.mainAppLeftOut} values={{ name: configName }} />
         </Callout>
       ) : null}
       {missing ? (
         <Callout tone="warn" icon={<IconWarning size={16} />}>
           {pinnedMissing
-            ? `${missing.list.find((a) => a.pkg === p.pinPackage)?.name} wasn’t on the device at its last app scan${scanWhen}. Until it is installed, the kiosk shows a launcher grid instead of pinning it.`
-            : `Not on the device at its last app scan${scanWhen}: ${missing.list.map((a) => a.name).join(', ')}. The kiosk can’t open an app that isn’t installed.`}{' '}
-          Use Install configuration apps first.
+            ? intl.formatMessage(messages.pinnedMissing, {
+                app: missing.list.find((a) => a.pkg === p.pinPackage)?.name ?? '',
+                hasDate: String(scanDate != null),
+                date: scanDate ?? '',
+              })
+            : intl.formatMessage(messages.listMissing, {
+                apps: missing.list.map((a) => a.name).join(', '),
+                hasDate: String(scanDate != null),
+                date: scanDate ?? '',
+              })}
         </Callout>
       ) : null}
       {oldAgentForVolume ? (
         <Callout tone="warn" icon={<IconWarning size={16} />}>
-          This device runs agent {agentVersion}. Agents before {LOCK_VOLUME_AGENT} ignore Lock volume buttons, so the
-          kiosk starts without that lock. <Link to={`${paths.settings}#updates`}>Update the agent</Link> to apply it.
+          <FormattedMessage
+            {...messages.oldAgentForVolume}
+            values={{
+              version: agentVersion,
+              minimum: LOCK_VOLUME_AGENT,
+              link: (chunks) => <Link to={`${paths.settings}#updates`}>{chunks}</Link>,
+            }}
+          />
         </Callout>
       ) : null}
       {!agentReported ? (
         <Callout tone="info">
-          This device hasn’t reported from the MDMesh agent yet. The command waits until it checks in.
+          <FormattedMessage {...messages.notReported} />
         </Callout>
       ) : null}
       {error ? (
         <Callout tone="alert" role="alert" icon={<IconWarning size={16} />}>
-          Couldn’t queue the command: {error}
+          <FormattedMessage {...messages.queueFailed} values={{ error }} />
         </Callout>
       ) : null}
     </Modal>

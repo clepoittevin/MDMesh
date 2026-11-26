@@ -1,12 +1,20 @@
 // Not exported from the ui barrel: it pulls in the `qrcode` library, which should stay in the Enroll page's chunk.
 // Import it directly: `import { QrPanel } from './QrPanel'`.
 import { useState, type ReactNode } from 'react';
+import { defineMessages, useIntl } from 'react-intl';
 import { QrCode } from './QrCode';
 import { Button } from './Button';
 import { Modal } from './Modal';
 import { IconSync } from './icons';
 import { cx } from './cx';
 import './QrPanel.css';
+
+const messages = defineMessages({
+  scanToEnroll: { id: 'enroll.qrPanel.scanToEnroll', defaultMessage: 'Scan to enroll' },
+  makingCode: { id: 'enroll.qrPanel.makingCode', defaultMessage: 'Making a code…' },
+  newCode: { id: 'enroll.qrPanel.newCode', defaultMessage: 'New code' },
+  fullScreen: { id: 'enroll.qrPanel.fullScreen', defaultMessage: 'Full screen' },
+});
 
 export interface QrPanelProps {
   /** QR payload (the provisioning JSON). */
@@ -28,7 +36,8 @@ export interface QrPanelProps {
  * underneath. The frame stays white in dark mode: scanners need dark modules on a light ground. Full screen opens
  * a viewport-sized Modal with the code as large as fits.
  */
-export function QrPanel({ value, label, onNewCode, newCodeBusy, fullScreenTitle = 'Scan to enroll', fullScreenNote, className }: QrPanelProps) {
+export function QrPanel({ value, label, onNewCode, newCodeBusy, fullScreenTitle, fullScreenNote, className }: QrPanelProps) {
+  const intl = useIntl();
   const [full, setFull] = useState(false);
   return (
     <div className={cx('v2-qr', className)}>
@@ -38,14 +47,12 @@ export function QrPanel({ value, label, onNewCode, newCodeBusy, fullScreenTitle 
       <div className="v2-qr__actions">
         {onNewCode ? (
           <Button icon={<IconSync size={14} />} onClick={onNewCode} disabled={newCodeBusy}>
-            {newCodeBusy ? 'Making a code…' : 'New code'}
+            {intl.formatMessage(newCodeBusy ? messages.makingCode : messages.newCode)}
           </Button>
         ) : null}
-        <Button onClick={() => setFull(true)}>
-          Full screen
-        </Button>
+        <Button onClick={() => setFull(true)}>{intl.formatMessage(messages.fullScreen)}</Button>
       </div>
-      <Modal open={full} onClose={() => setFull(false)} size="full" title={fullScreenTitle}>
+      <Modal open={full} onClose={() => setFull(false)} size="full" title={fullScreenTitle ?? intl.formatMessage(messages.scanToEnroll)}>
         <div role="img" aria-label={label} className="v2-qr__frame v2-qr__frame--full">
           <QrCode text={value} />
         </div>

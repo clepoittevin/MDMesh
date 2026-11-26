@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { FormattedMessage, defineMessages, useIntl, type IntlShape, type MessageDescriptor } from 'react-intl';
+import { configName } from '../data/seededConfigs';
 import { useNavigate, useSearchParams } from 'react-router';
-import { forceSync } from '../api/commands';
+import { forceSync, formatCommandError } from '../api/commands';
 import { listConfigurations, type ConfigurationSummary } from '../api/configurations';
 import type { DeviceView } from '../api/devices';
-import { LOAD_DEVICES_FAILED, useDevices } from '../data/useDevices';
+import { LOAD_DEVICES_FAILED, loadErrorText, useDevices } from '../data/useDevices';
 import { CORE_ACTION_ACCESS } from '../ext/core/access';
 import { withCoreDevicesParts } from '../ext/core/lists';
 import { ORDER } from '../ext/core/order';
@@ -16,6 +18,7 @@ import {
   type PlacedColumn,
 } from '../ext/hosts/lists';
 import { usePermission } from '../ext/permissions';
+import { DEVICE_RESET_LABEL, SOME_DEFERRED_LABEL } from '../api/configSync';
 import { orDash } from '../ui/format';
 import { paths } from '../routes';
 import {
@@ -67,11 +70,14 @@ import {
   shiftSpace,
 } from '../ui';
 import { ChangeConfigurationModal, DeleteDevicesModal, RunActionModal } from '../ui/BulkModals';
-import { ISSUE_ORDER, ISSUE_REASON, issueKind, type IssueKind, type Presence } from '../data/fleetHealth';
+import { deviceKindMessages } from '../ui/DeviceCells';
+import { STATUS_LABEL_MESSAGES } from '../ui/Status';
+import { ISSUE_ORDER, issueKind, type IssueKind, type Presence } from '../data/fleetHealth';
 import { notConnected } from '../data/presence';
 import { useFleetSync } from '../data/useFleetSync';
-import { ISSUE_CHIP, syncKind, syncLabel } from './devicesStatus';
+import { ISSUE_CHIP, syncKind } from './devicesStatus';
 import './DevicesPage.css';
+import { apiErrorText } from '../api/apiErrorText';
 
 type View = 'table' | 'cards';
 type StatusFilter = 'all' | Presence;
@@ -97,13 +103,165 @@ const SORT_DEFAULT_DIR: Record<SortKey, SortDir> = {
   config: 'ascending',
   android: 'descending',
 };
-const SORT_LABEL: Record<SortKey, string> = {
-  attention: 'Needs attention first',
-  lastSeen: 'Last seen',
-  name: 'Name',
-  config: 'Configuration',
-  android: 'Android version',
+const messages: Record<string, MessageDescriptor> = defineMessages({
+  title: { id: 'devices.page.title', defaultMessage: 'Devices' },
+  enroll: { id: 'devices.page.enroll', defaultMessage: 'Enroll device' },
+  sortAttention: { id: 'devices.sort.attention', defaultMessage: 'Needs attention first' },
+  sortLastSeen: { id: 'devices.sort.lastSeen', defaultMessage: 'Last seen' },
+  sortName: { id: 'devices.sort.name', defaultMessage: 'Name' },
+  sortConfig: { id: 'devices.sort.configuration', defaultMessage: 'Configuration' },
+  sortAndroid: { id: 'devices.sort.android', defaultMessage: 'Android version' },
+  sortSuffix: { id: 'devices.pager.sortSuffix', defaultMessage: '· {sort}' },
+  noun: { id: 'devices.pager.noun', defaultMessage: 'devices' },
+  unassigned: { id: 'devices.config.unassigned', defaultMessage: 'Unassigned' },
+  configNumber: { id: 'devices.config.number', defaultMessage: 'Configuration #{id}' },
+  configurationKey: { id: 'devices.config.label', defaultMessage: 'Configuration' },
+  configsLoadFailed: {
+    id: 'devices.config.loadFailed',
+    defaultMessage: 'Could not load the configurations. Reload the page to try again.',
+  },
+  configsLoadFailedDetail: {
+    id: 'devices.config.loadFailedDetail',
+    defaultMessage: 'Could not load the configurations ({detail}). Reload the page to try again.',
+  },
+  syncRequested: { id: 'devices.toast.syncRequested', defaultMessage: 'Sync requested' },
+  syncFailed: { id: 'devices.toast.syncFailed', defaultMessage: 'Sync failed' },
+  rowMove: { id: 'devices.row.changeConfiguration', defaultMessage: 'Change configuration' },
+  rowDelete: {
+    id: 'devices.row.delete',
+    defaultMessage: 'Delete',
+    description: 'DESTRUCTIVE: removes the device from MDMesh',
+  },
+  syncNow: { id: 'devices.row.syncNow', defaultMessage: 'Sync now' },
+  syncNowFor: { id: 'devices.row.syncNowFor', defaultMessage: 'Sync now: {number}' },
+  moreActions: { id: 'devices.row.moreActions', defaultMessage: 'More actions for {number}' },
+  neverCheckedIn: { id: 'devices.status.neverCheckedIn', defaultMessage: 'Never checked in' },
+  wipedPrefix: { id: 'devices.status.wipedPrefix', defaultMessage: 'Wiped' },
+  colDevice: { id: 'devices.table.device', defaultMessage: 'Device' },
+  colStatus: { id: 'devices.table.status', defaultMessage: 'Status' },
+  colAndroid: { id: 'devices.table.android', defaultMessage: 'Android' },
+  colLastSeen: { id: 'devices.table.lastSeen', defaultMessage: 'Last seen' },
+  colActions: { id: 'devices.table.actions', defaultMessage: 'Actions' },
+  subtitle: {
+    id: 'devices.page.subtitle',
+    defaultMessage:
+      '{capped, select, true {<num>{total}</num> devices; } other {}}<num>{online}</num> of {capped, select, true {the first } other {}}<num>{active}</num> online now{showAttention, select, true {, <num>{attention}</num> need attention} other {}}{showOffline, select, true {, <num>{offline}</num> offline} other {}}.',
+  },
+  loadFailedThing: { id: 'devices.page.loadFailedThing', defaultMessage: 'devices' },
+  capped: {
+    id: 'devices.page.capped',
+    defaultMessage: 'Showing the first {shown} of {total} devices. Search to find the others.',
+  },
+  attentionLabel: { id: 'devices.attention.label', defaultMessage: 'Needs attention' },
+  rollOutAgent: { id: 'devices.attention.rollOutAgent', defaultMessage: 'Roll out an agent update' },
+  attentionTitle: { id: 'devices.attention.title', defaultMessage: '{count, plural, one {#} other {#}} need attention' },
+  searchLabel: { id: 'devices.toolbar.searchLabel', defaultMessage: 'Search devices' },
+  searchPlaceholder: { id: 'devices.toolbar.searchPlaceholder', defaultMessage: 'Search name, number, IMEI, configuration' },
+  statusLabel: { id: 'devices.toolbar.statusLabel', defaultMessage: 'Status' },
+  statusAll: { id: 'devices.toolbar.statusAll', defaultMessage: 'All' },
+  filters: { id: 'devices.filters.label', defaultMessage: 'Filters' },
+  filter: { id: 'devices.filters.button', defaultMessage: 'Filter' },
+  filterOn: { id: 'devices.filters.buttonOn', defaultMessage: 'Filter, {count, plural, one {#} other {#}} on' },
+  typeField: { id: 'devices.filters.type', defaultMessage: 'Type' },
+  allTypes: { id: 'devices.filters.allTypes', defaultMessage: 'All types' },
+  configurationField: { id: 'devices.filters.configuration', defaultMessage: 'Configuration' },
+  allConfigurations: { id: 'devices.filters.allConfigurations', defaultMessage: 'All configurations' },
+  androidField: { id: 'devices.filters.android', defaultMessage: 'Android' },
+  allVersions: { id: 'devices.filters.allVersions', defaultMessage: 'All versions' },
+  sortField: { id: 'devices.filters.sort', defaultMessage: 'Sort' },
+  onlyDuplicates: { id: 'devices.filters.onlyDuplicates', defaultMessage: 'Only duplicates' },
+  duplicatesHelp: {
+    id: 'devices.filters.duplicatesHelp',
+    defaultMessage: 'Devices that share a hardware ID with another row: likely one device enrolled more than once.',
+  },
+  clearFilters: { id: 'devices.filters.clear', defaultMessage: 'Clear filters' },
+  viewLabel: { id: 'devices.toolbar.viewLabel', defaultMessage: 'View' },
+  viewTable: { id: 'devices.toolbar.viewTable', defaultMessage: 'Table' },
+  viewCards: { id: 'devices.toolbar.viewCards', defaultMessage: 'Cards' },
+  bulkHint: { id: 'devices.bulk.hint', defaultMessage: 'Shift-click for a range' },
+  emptySearch: { id: 'devices.empty.noSearchMatch', defaultMessage: 'No devices match this search' },
+  emptyNone: { id: 'devices.empty.none', defaultMessage: 'No devices yet' },
+  clearSearch: { id: 'devices.empty.clearSearch', defaultMessage: 'Clear search' },
+  emptyNoneHint: { id: 'devices.empty.noneHint', defaultMessage: 'Enroll one to see it, and manage it, here.' },
+  emptyNoMatch: { id: 'devices.empty.noFilterMatch', defaultMessage: 'No devices match these filters' },
+  emptySyncFailed: {
+    id: 'devices.empty.syncFailed',
+    defaultMessage: 'The configuration sync state could not be loaded, so devices that need attention can’t be found.',
+  },
+  emptyChecking: { id: 'devices.empty.checking', defaultMessage: 'Still checking which devices need attention…' },
+  emptyWipedHint: { id: 'devices.empty.wipedHint', defaultMessage: 'Wiped devices show under Wiped.' },
+  selectRow: { id: 'devices.select.row', defaultMessage: 'Select {number}' },
+  selectAllOnPage: { id: 'devices.select.allOnPage', defaultMessage: 'Select all on this page' },
+  loadingDevices: { id: 'devices.list.loading', defaultMessage: 'Loading devices…' },
+  deviceList: { id: 'devices.list.sectionLabel', defaultMessage: 'Device list' },
+  devicesList: { id: 'devices.list.label', defaultMessage: 'Devices' },
+  deferredSync: { id: 'devices.sync.deferred', defaultMessage: 'In sync (some settings deferred)' },
+  resetSync: { id: 'devices.sync.outOfDate', defaultMessage: 'Out of date on the device' },
+  outOfSync: { id: 'devices.sync.outOfSync', defaultMessage: 'Out of sync' },
+  reasonFailed: { id: 'devices.reason.failed', defaultMessage: 'Configuration failed to apply' },
+  reasonOutOfSync: { id: 'devices.reason.outOfSync', defaultMessage: 'Configuration out of sync' },
+  reasonAgentTooOld: { id: 'devices.reason.agentTooOld', defaultMessage: 'Agent too old for configuration sync' },
+  reasonDeferred: { id: 'devices.reason.deferred', defaultMessage: 'Some settings deferred' },
+  reasonReset: { id: 'devices.reason.reset', defaultMessage: 'Configuration out of date on the device' },
+  chipFailed: {
+    id: 'devices.chip.failed',
+    defaultMessage: '{count, plural, one {# configuration failed} other {# configuration failed}}',
+  },
+  chipOutOfSync: { id: 'devices.chip.outOfSync', defaultMessage: '{count, plural, one {# out of sync} other {# out of sync}}' },
+  chipAgentTooOld: {
+    id: 'devices.chip.agentTooOld',
+    defaultMessage: '{count, plural, one {# agent too old} other {# agent too old}}',
+  },
+  chipDeferred: {
+    id: 'devices.chip.deferred',
+    defaultMessage: '{count, plural, one {# settings deferred} other {# settings deferred}}',
+  },
+  chipReset: {
+    id: 'devices.chip.reset',
+    defaultMessage: '{count, plural, one {# out of date on the device} other {# out of date on the device}}',
+  },
+});
+
+const SORT_LABEL: Record<SortKey, MessageDescriptor> = {
+  attention: messages.sortAttention,
+  lastSeen: messages.sortLastSeen,
+  name: messages.sortName,
+  config: messages.sortConfig,
+  android: messages.sortAndroid,
 };
+const ISSUE_REASON_MESSAGE: Record<IssueKind, MessageDescriptor> = {
+  failed: messages.reasonFailed,
+  outOfSync: messages.reasonOutOfSync,
+  agentTooOld: messages.reasonAgentTooOld,
+  deferred: messages.reasonDeferred,
+  reset: messages.reasonReset,
+};
+const ISSUE_CHIP_MESSAGE: Record<IssueKind, MessageDescriptor> = {
+  failed: messages.chipFailed,
+  outOfSync: messages.chipOutOfSync,
+  agentTooOld: messages.chipAgentTooOld,
+  deferred: messages.chipDeferred,
+  reset: messages.chipReset,
+};
+
+/** The sync line's wording (a SyncVerdict's English label, as summarizeStatus words it) in the console's language. */
+function syncLabelText(intl: IntlShape, label: string): string {
+  const known: Record<string, MessageDescriptor> = {
+    'No configuration': STATUS_LABEL_MESSAGES.noConfiguration,
+    'Agent too old': STATUS_LABEL_MESSAGES.agentTooOld,
+    'In sync': STATUS_LABEL_MESSAGES.inSync,
+    'Applying…': STATUS_LABEL_MESSAGES.applying,
+    'Apply failed': STATUS_LABEL_MESSAGES.applyFailed,
+    // The board's "Not reported" for summarizeStatus's "Not reported yet".
+    'Not reported yet': STATUS_LABEL_MESSAGES.notReported,
+    'Out of sync': messages.outOfSync,
+    [SOME_DEFERRED_LABEL]: messages.deferredSync,
+    [DEVICE_RESET_LABEL]: messages.resetSync,
+  };
+  return Object.prototype.hasOwnProperty.call(known, label) ? intl.formatMessage(known[label]) : label;
+}
+
+const num = (chunks: ReactNode) => <span className="v2-num">{chunks}</span>;
 const VIEW_DEFAULT_SORT: Record<View, Sort> = {
   table: { key: 'lastSeen', dir: 'descending' },
   cards: { key: 'attention', dir: 'ascending' },
@@ -128,12 +286,12 @@ function writeStorage(key: string, value: string) {
 
 const deviceName = (d: DeviceView) => d.description?.trim() || d.number;
 const compareText = (a: string, b: string) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
-const errText = (e: unknown) => (e instanceof Error ? e.message : '');
 
 /** Interactive descendants handle their own clicks; a click elsewhere on a row or card opens (or selects) it. */
 
 /** Devices, table and cards. Classic: pages/DevicesPage.tsx. */
 export function DevicesPage() {
+  const intl = useIntl();
   const navigate = useNavigate();
   const toast = useToast();
   const [params, setParams] = useSearchParams();
@@ -227,9 +385,15 @@ export function DevicesPage() {
     listConfigurations()
       .then((l) => setAllConfigs([...l].sort((a, b) => compareText(a.name, b.name))))
       .catch((e) => {
-        const detail = errText(e);
-        setAllConfigsError(`Could not load the configurations${detail ? ` (${detail})` : ''}. Reload the page to try again.`);
+        const detail = apiErrorText(intl, e);
+        setAllConfigsError(
+          detail
+            ? intl.formatMessage(messages.configsLoadFailedDetail, { detail })
+            : intl.formatMessage(messages.configsLoadFailed),
+        );
       });
+    // loaded once; the message is worded in the language at that moment
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Online / offline decays as devices go quiet.
@@ -258,12 +422,14 @@ export function DevicesPage() {
     return () => clearTimeout(t);
   }, [q, reload]);
 
-  const configName = useCallback(
+  const configNameOf = useCallback(
     (d: DeviceView) =>
       d.configurationId == null
-        ? 'Unassigned'
-        : (configurations[String(d.configurationId)]?.name ?? `Configuration #${d.configurationId}`),
-    [configurations],
+        ? intl.formatMessage(messages.unassigned)
+        : configurations[String(d.configurationId)]?.name != null
+          ? configName(intl, { id: d.configurationId, name: configurations[String(d.configurationId)]?.name })
+          : intl.formatMessage(messages.configNumber, { id: d.configurationId }),
+    [configurations, intl],
   );
 
   // Type is derived: kiosk mode → kiosk, else hints from the name. The list API has no telemetry and no
@@ -302,7 +468,7 @@ export function DevicesPage() {
         if (type !== 'all' && kind(d) !== type) return false;
         if (dupOnly && dupOf(d) <= 1) return false;
         if (textFilter) {
-          const hay = [d.number, d.description, d.serial, d.imei, d.info?.imei, ...(d.reportedImeis ?? []), d.phone, configName(d), ...(d.groups ?? []).map((g) => g.name)]
+          const hay = [d.number, d.description, d.serial, d.imei, d.info?.imei, ...(d.reportedImeis ?? []), d.phone, configNameOf(d), configurations[String(d.configurationId)]?.name, ...(d.groups ?? []).map((g) => g.name)]
             .filter(Boolean)
             .join(' ')
             .toLowerCase();
@@ -310,7 +476,7 @@ export function DevicesPage() {
         }
         return true;
       }),
-    [devices, configFilter, android, type, kind, dupOnly, dupOf, textFilter, needle, configName],
+    [devices, configFilter, android, type, kind, dupOnly, dupOf, textFilter, needle, configNameOf, configurations],
   );
 
   const [visible, setVisible] = useState<DeviceView[]>([]);
@@ -381,7 +547,7 @@ export function DevicesPage() {
         case 'name':
           return sign * byName(a, b);
         case 'config':
-          return sign * compareText(configName(a), configName(b)) || byName(a, b);
+          return sign * compareText(configNameOf(a), configNameOf(b)) || byName(a, b);
         case 'android':
           return sign * compareText(a.androidVersion ?? '', b.androidVersion ?? '') || byName(a, b);
         default:
@@ -389,7 +555,7 @@ export function DevicesPage() {
       }
     };
     return [...filtered].sort(cmp);
-  }, [filtered, sort, presence, syncOf, configName, extensionColumns]);
+  }, [filtered, sort, presence, syncOf, configNameOf, extensionColumns]);
 
   const pages = Math.max(1, Math.ceil(sorted.length / pageSize));
   const current = Math.min(page, pages);
@@ -419,18 +585,21 @@ export function DevicesPage() {
     let unassigned = false;
     for (const d of devices) {
       if (d.configurationId == null) unassigned = true;
-      else m.set(String(d.configurationId), configName(d));
+      else m.set(String(d.configurationId), configNameOf(d));
     }
     // A linked configuration with no devices loaded still shows as selected.
     if (configFilter !== 'all' && configFilter !== 'none' && !m.has(configFilter)) {
       const known = configurations[configFilter]?.name ?? allConfigs?.find((c) => String(c.id) === configFilter)?.name;
-      m.set(configFilter, known ?? `Configuration #${configFilter}`);
+      m.set(
+        configFilter,
+        known != null ? configName(intl, { id: Number(configFilter), name: known }) : intl.formatMessage(messages.configNumber, { id: configFilter }),
+      );
     }
     return {
       list: [...m.entries()].sort((a, b) => compareText(a[1], b[1])),
       unassigned: unassigned || configFilter === 'none',
     };
-  }, [devices, configName, configFilter, configurations, allConfigs]);
+  }, [devices, configNameOf, configFilter, configurations, allConfigs, intl]);
   const androidOptions = useMemo(() => {
     const s = new Set<string>();
     for (const d of devices) if (d.androidVersion) s.add(d.androidVersion);
@@ -519,11 +688,11 @@ export function DevicesPage() {
     setSyncing((s) => new Set(s).add(d.id));
     try {
       const { connected } = await forceSync(d.number);
-      if (connected === false) toast.push('warn', ...notConnected(d.number, 'sync'));
-      else toast.push('ok', 'Sync requested', d.number);
+      if (connected === false) toast.push('warn', ...notConnected(d.number, 'sync', intl));
+      else toast.push('ok', intl.formatMessage(messages.syncRequested), d.number);
       refresh(d);
     } catch (e) {
-      toast.push('err', 'Sync failed', errText(e));
+      toast.push('err', intl.formatMessage(messages.syncFailed), formatCommandError(intl, e));
     } finally {
       setSyncing((s) => {
         const next = new Set(s);
@@ -539,12 +708,12 @@ export function DevicesPage() {
     row: {
       move: (d) => ({
         key: 'move',
-        label: 'Change configuration',
+        label: intl.formatMessage(messages.rowMove),
         onSelect: () => setDialog({ kind: 'move', ids: [d.id], label: d.number, fromSelection: false }),
       }),
       delete: (d) => ({
         key: 'delete',
-        label: 'Delete',
+        label: intl.formatMessage(messages.rowDelete),
         danger: true,
         onSelect: () => setDialog({ kind: 'delete', ids: [d.id], label: d.number, fromSelection: false }),
       }),
@@ -565,9 +734,9 @@ export function DevicesPage() {
     return (
       <div className={cx('v2-rowactions', size === 'sm' && 'v2-devices-actions--card')}>
         {canEdit ? (
-          <Tooltip content="Sync now">
+          <Tooltip content={intl.formatMessage(messages.syncNow)}>
             <IconButton
-              label={`Sync now: ${d.number}`}
+              label={intl.formatMessage(messages.syncNowFor, { number: d.number })}
               size={size === 'sm' ? 'sm' : 'xs'}
               disabled={syncing.has(d.id) || wiped}
               onClick={() => void syncNow(d)}
@@ -576,7 +745,7 @@ export function DevicesPage() {
             </IconButton>
           </Tooltip>
         ) : null}
-        {items.length ? <Menu label={`More actions for ${d.number}`} iconSize={size === 'sm' ? 'sm' : 'xs'} items={items} /> : null}
+        {items.length ? <Menu label={intl.formatMessage(messages.moreActions, { number: d.number })} iconSize={size === 'sm' ? 'sm' : 'xs'} items={items} /> : null}
       </div>
     );
   };
@@ -586,20 +755,20 @@ export function DevicesPage() {
     const p = presence(d);
     const k = issueKind(syncOf(d));
     let reason: ReactNode;
-    if (p === 'attention' && k) reason = ISSUE_REASON[k];
-    else if (p === 'offline' && !d.lastUpdate) reason = 'Never checked in';
-    else if (p === 'wiped') reason = <RelativeTime value={d.wipedAt} prefix="Wiped " />;
+    if (p === 'attention' && k) reason = intl.formatMessage(ISSUE_REASON_MESSAGE[k]);
+    else if (p === 'offline' && !d.lastUpdate) reason = intl.formatMessage(messages.neverCheckedIn);
+    else if (p === 'wiped') reason = <RelativeTime value={d.wipedAt} prefix={`${intl.formatMessage(messages.wipedPrefix)} `} />;
     return { p, reason };
   };
 
   const configCell = (d: DeviceView, layout: 'stack' | 'row') => {
     const s = syncOf(d);
-    const name = configName(d);
-    if (s) return <ConfigSync layout={layout} name={name} sync={syncKind(s)} syncLabel={syncLabel(s)} />;
+    const name = configNameOf(d);
+    if (s) return <ConfigSync layout={layout} name={name} sync={syncKind(s)} syncLabel={syncLabelText(intl, s.label)} />;
     // Sync state unknown (summary unavailable, or the per-device check failed): the name alone.
     return layout === 'row' ? (
       <div className="v2-cfgsync v2-cfgsync--row">
-        <span className="v2-cfgsync__key">Configuration</span>
+        <span className="v2-cfgsync__key">{intl.formatMessage(messages.configurationKey)}</span>
         <span className="v2-cfgsync__name">{name}</span>
       </div>
     ) : (
@@ -624,23 +793,23 @@ export function DevicesPage() {
   // cards view and its sort menu share them. Extension columns take their places among them (ORDER.devicesColumn).
   const C = ORDER.devicesColumn;
   const coreColumns: PlacedColumn<DeviceView>[] = [
-    { key: 'name', order: C.device, header: 'Device', sortable: true, cell: (d) => identity(d, 'row') },
+    { key: 'name', order: C.device, header: intl.formatMessage(messages.colDevice), sortable: true, cell: (d) => identity(d, 'row') },
     {
       key: 'attention',
       order: C.status,
-      header: 'Status',
+      header: intl.formatMessage(messages.colStatus),
       sortable: true,
       cell: (d) => {
         const s = statusOf(d);
         return <PresenceStatus status={s.p} reason={s.reason} />;
       },
     },
-    { key: 'config', order: C.configuration, header: 'Configuration', sortable: true, cell: (d) => configCell(d, 'stack') },
-    { key: 'android', order: C.android, header: 'Android', sortable: true, mono: true, cell: (d) => orDash(d.androidVersion) },
+    { key: 'config', order: C.configuration, header: intl.formatMessage(messages.configurationKey), sortable: true, cell: (d) => configCell(d, 'stack') },
+    { key: 'android', order: C.android, header: intl.formatMessage(messages.colAndroid), sortable: true, mono: true, cell: (d) => orDash(d.androidVersion) },
     {
       key: 'lastSeen',
       order: C.lastSeen,
-      header: 'Last seen',
+      header: intl.formatMessage(messages.colLastSeen),
       sortable: true,
       className: 'v2-devices-seen',
       cell: (d) => <RelativeTime value={d.lastUpdate} />,
@@ -648,7 +817,7 @@ export function DevicesPage() {
   ];
   const columns = extensionColumns.place(
     coreColumns,
-    hasRowActions ? [{ key: 'actions', header: 'Actions', headerHidden: true, shrink: true, cell: (d) => rowActions(d, 'md') }] : [],
+    hasRowActions ? [{ key: 'actions', header: intl.formatMessage(messages.colActions), headerHidden: true, shrink: true, cell: (d) => rowActions(d, 'md') }] : [],
   );
 
   const onSort = (key: string) => {
@@ -663,20 +832,26 @@ export function DevicesPage() {
   const partial = check === 'partial';
   const attentionKnown = check === 'partial' || check === 'complete';
   const attentionText = `${counts.attention}${partial ? '+' : ''}`;
-  const mono = (v: number | string) => <span className="v2-num">{v}</span>;
   // Written once every count is in (the sync check settled), so it never rewrites itself as data arrives; its line
   // is reserved meanwhile.
   let subtitle: ReactNode = null;
   if (settled && !error && active > 0) {
+    // A capped list (over 1000) counts only the loaded devices: the message says so next to the server total.
     subtitle = (
-      <>
-        {/* A capped list (over 1000) counts only the loaded devices: say so next to the server total. */}
-        {total > devices.length ? <>{mono(total)} devices; </> : null}
-        {mono(counts.online)} of {total > devices.length ? 'the first ' : ''}
-        {mono(active)} online now
-        {attentionKnown && counts.attention > 0 ? <>, {mono(attentionText)} need attention</> : null}
-        {counts.offline > 0 ? <>, {mono(counts.offline)} offline</> : null}.
-      </>
+      <FormattedMessage
+        {...messages.subtitle}
+        values={{
+          num,
+          capped: String(total > devices.length),
+          total: String(total),
+          online: String(counts.online),
+          active: String(active),
+          showAttention: String(attentionKnown && counts.attention > 0),
+          attention: attentionText,
+          showOffline: String(counts.offline > 0),
+          offline: String(counts.offline),
+        }}
+      />
     );
   }
 
@@ -731,7 +906,7 @@ export function DevicesPage() {
       total={filtered.length}
       onSelectAll={() => setSelected(new Set(filtered.map((d) => d.id)))}
       onClear={clearSel}
-      hint="Shift-click for a range"
+      hint={intl.formatMessage(messages.bulkHint)}
     >
       <BulkActions actions={bulkActions} rows={selectedRows} helpers={helpers} />
     </BulkSelectionBar>
@@ -741,7 +916,7 @@ export function DevicesPage() {
     sorted.length > 0 ? (
       <Pagination
         variant={view === 'table' ? 'inset' : 'plain'}
-        noun="devices"
+        noun={intl.formatMessage(messages.noun)}
         page={current}
         pageSize={pageSize}
         total={sorted.length}
@@ -755,7 +930,11 @@ export function DevicesPage() {
               }
             : undefined
         }
-        suffix={view === 'cards' && isCoreSort(sort.key) ? `· ${SORT_LABEL[sort.key].toLowerCase()}` : undefined}
+        suffix={
+          view === 'cards' && isCoreSort(sort.key)
+            ? intl.formatMessage(messages.sortSuffix, { sort: intl.formatMessage(SORT_LABEL[sort.key]).toLocaleLowerCase(intl.locale) })
+            : undefined
+        }
       />
     ) : null;
 
@@ -763,31 +942,31 @@ export function DevicesPage() {
     devices.length === 0 ? (
       <EmptyState
         icon={<IconDevices />}
-        title={serverQuery ? 'No devices match this search' : 'No devices yet'}
+        title={intl.formatMessage(serverQuery ? messages.emptySearch : messages.emptyNone)}
         action={
           serverQuery ? (
-            <Button onClick={clearFilters}>Clear search</Button>
+            <Button onClick={clearFilters}>{intl.formatMessage(messages.clearSearch)}</Button>
           ) : canEdit ? (
             <ButtonLink to={paths.enroll} variant="primary" size="lg" icon={<IconPlus />}>
-              Enroll device
+              {intl.formatMessage(messages.enroll)}
             </ButtonLink>
           ) : undefined
         }
       >
-        {serverQuery ? undefined : 'Enroll one to see it, and manage it, here.'}
+        {serverQuery ? undefined : intl.formatMessage(messages.emptyNoneHint)}
       </EmptyState>
     ) : (
       <EmptyState
         icon={<IconDevices />}
-        title="No devices match these filters"
-        action={filtersActive ? <Button onClick={clearFilters}>Clear filters</Button> : undefined}
+        title={intl.formatMessage(messages.emptyNoMatch)}
+        action={filtersActive ? <Button onClick={clearFilters}>{intl.formatMessage(messages.clearFilters)}</Button> : undefined}
       >
         {status === 'attention' && check === 'failed'
-          ? 'The configuration sync state could not be loaded, so devices that need attention can’t be found.'
+          ? intl.formatMessage(messages.emptySyncFailed)
           : status === 'attention' && check === 'pending'
-            ? 'Still checking which devices need attention…'
+            ? intl.formatMessage(messages.emptyChecking)
             : status === 'all' && baseFiltered.some((d) => presence(d) === 'wiped')
-              ? 'Wiped devices show under Wiped.'
+              ? intl.formatMessage(messages.emptyWipedHint)
               : undefined}
       </EmptyState>
     );
@@ -805,8 +984,8 @@ export function DevicesPage() {
             }
             return next;
           }),
-        rowLabel: (d) => `Select ${d.number}`,
-        allLabel: 'Select all on this page',
+        rowLabel: (d) => intl.formatMessage(messages.selectRow, { number: d.number }),
+        allLabel: intl.formatMessage(messages.selectAllOnPage),
       }
     : undefined;
 
@@ -814,20 +993,20 @@ export function DevicesPage() {
   if (!settled && !(error && devices.length === 0)) {
     body = (
       <Card padding="none" clip aria-busy="true">
-        <SkeletonRows count={view === 'table' ? Math.min(pageSize, 10) : 6} label="Loading devices…" />
+        <SkeletonRows count={view === 'table' ? Math.min(pageSize, 10) : 6} label={intl.formatMessage(messages.loadingDevices)} />
       </Card>
     );
   } else if (error && devices.length === 0) {
     body = null;
   } else if (view === 'table') {
     body = (
-      <Card as="section" padding="none" clip aria-label="Device list" aria-busy={loading || undefined}>
+      <Card as="section" padding="none" clip aria-label={intl.formatMessage(messages.deviceList)} aria-busy={loading || undefined}>
         {bulkBar}
         {pageRows.length === 0 ? (
           <div className="v2-devices-empty">{empty}</div>
         ) : (
           <Table<DeviceView>
-            aria-label="Devices"
+            aria-label={intl.formatMessage(messages.devicesList)}
             columns={columns}
             rows={pageRows}
             rowKey={(d) => d.id}
@@ -847,7 +1026,7 @@ export function DevicesPage() {
         {pageRows.length === 0 ? (
           <Card>{empty}</Card>
         ) : (
-          <ul className="v2-devices-cards" aria-label="Devices" aria-busy={loading || undefined}>
+          <ul className="v2-devices-cards" aria-label={intl.formatMessage(messages.devicesList)} aria-busy={loading || undefined}>
             {pageRows.map((d) => {
               const s = statusOf(d);
               const on = selected.has(d.id);
@@ -865,7 +1044,7 @@ export function DevicesPage() {
                     {canSelect ? (
                       <Checkbox
                         className="v2-devices-card__check"
-                        aria-label={`Select ${d.number}`}
+                        aria-label={intl.formatMessage(messages.selectRow, { number: d.number })}
                         checked={on}
                         onChange={(e) => pick(d, shiftOf(e.nativeEvent))}
                         onKeyDown={(e) => shiftSpace(e, () => pick(d, true))}
@@ -878,11 +1057,11 @@ export function DevicesPage() {
                   <div className="v2-devices-card__config">{configCell(d, 'row')}</div>
                   <dl className="v2-devices-card__facts">
                     <div>
-                      <dt>Android</dt>
+                      <dt>{intl.formatMessage(messages.colAndroid)}</dt>
                       <dd className="v2-num">{orDash(d.androidVersion)}</dd>
                     </div>
                     <div>
-                      <dt>Last seen</dt>
+                      <dt>{intl.formatMessage(messages.colLastSeen)}</dt>
                       <dd>
                         <RelativeTime value={d.lastUpdate} />
                       </dd>
@@ -912,43 +1091,43 @@ export function DevicesPage() {
   return (
     <>
       <PageHeader
-        title="Devices"
+        title={intl.formatMessage(messages.title)}
         subtitle={subtitle}
         actions={
           canEdit ? (
             <ButtonLink to={paths.enroll} variant="primary" size="lg" icon={<IconPlus />}>
-              Enroll device
+              {intl.formatMessage(messages.enroll)}
             </ButtonLink>
           ) : undefined
         }
       />
 
-      {error ? <ErrorState thing="devices" detail={error === LOAD_DEVICES_FAILED ? undefined : error} onRetry={() => void refreshList()} /> : null}
+      {error ? <ErrorState thing={intl.formatMessage(messages.loadFailedThing)} detail={error === LOAD_DEVICES_FAILED ? undefined : loadErrorText(error, intl)} onRetry={() => void refreshList()} /> : null}
 
       {total > devices.length && !loading ? (
         <Callout tone="info">
-          Showing the first {devices.length} of {total} devices. Search to find the others.
+          {intl.formatMessage(messages.capped, { shown: devices.length, total })}
         </Callout>
       ) : null}
 
       {settled && attentionKnown && counts.attention > 0 ? (
         <Notice
-          aria-label="Needs attention"
+          aria-label={intl.formatMessage(messages.attentionLabel)}
           icon={<IconWarning />}
           action={
             (issues.agentTooOld ?? 0) > 0 ? (
               <ButtonLink to={`${paths.settings}#agent-rollout`} size="sm">
-                Roll out an agent update
+                {intl.formatMessage(messages.rollOutAgent)}
               </ButtonLink>
             ) : undefined
           }
         >
-          <span className="v2-devices-attn__title">{attentionText} need attention</span>
+          <span className="v2-devices-attn__title">{intl.formatMessage(messages.attentionTitle, { count: attentionText })}</span>
           {issueEntries.length > 0 ? (
             <span className="v2-devices-attn__chips">
               {issueEntries.map((k) => (
                 <Chip key={k} tone={ISSUE_CHIP[k].tone} pressed={issue === k} onClick={() => pickIssue(k)}>
-                  {ISSUE_CHIP[k].text(issues[k] ?? 0)}
+                  {intl.formatMessage(ISSUE_CHIP_MESSAGE[k], { count: issues[k] ?? 0 })}
                 </Chip>
               ))}
             </span>
@@ -959,64 +1138,67 @@ export function DevicesPage() {
       <div className="v2-devices-toolbar">
         <SearchInput
           className="v2-devices-search"
-          aria-label="Search devices"
-          placeholder="Search name, number, IMEI, configuration"
+          aria-label={intl.formatMessage(messages.searchLabel)}
+          placeholder={intl.formatMessage(messages.searchPlaceholder)}
           value={q}
           onChange={setQ}
         />
         <Segmented<StatusFilter>
-          aria-label="Status"
+          aria-label={intl.formatMessage(messages.statusLabel)}
           value={status}
           onChange={(v) => {
             setStatus(v);
             setIssue(null);
           }}
           options={[
-            { value: 'all', label: 'All', count: active },
-            { value: 'online', label: 'Online', count: counts.online },
-            { value: 'attention', label: 'Needs attention', count: attentionKnown ? attentionText : '–' },
-            { value: 'offline', label: 'Offline', count: counts.offline },
+            { value: 'all', label: intl.formatMessage(messages.statusAll), count: active },
+            { value: 'online', label: intl.formatMessage(STATUS_LABEL_MESSAGES.online), count: counts.online },
+            { value: 'attention', label: intl.formatMessage(STATUS_LABEL_MESSAGES.attention), count: attentionKnown ? attentionText : '–' },
+            { value: 'offline', label: intl.formatMessage(STATUS_LABEL_MESSAGES.offline), count: counts.offline },
             // Only once there is one (or a link asks for it), like Duplicates.
             ...(counts.wiped > 0 || status === 'wiped'
-              ? [{ value: 'wiped' as const, label: 'Wiped', count: counts.wiped }]
+              ? [{ value: 'wiped' as const, label: intl.formatMessage(STATUS_LABEL_MESSAGES.wiped), count: counts.wiped }]
               : []),
           ]}
         />
         <Popover
-          label="Filters"
+          label={intl.formatMessage(messages.filters)}
           align="start"
           trigger={
-            <Button icon={<IconFilter />} aria-label={filterCount ? `Filter, ${filterCount} on` : 'Filter'}>
-              Filter
+            <Button
+              icon={<IconFilter />}
+              aria-label={filterCount ? intl.formatMessage(messages.filterOn, { count: filterCount }) : intl.formatMessage(messages.filter)}
+            >
+              {intl.formatMessage(messages.filter)}
               {filterCount ? <span className="v2-devices-filtercount">{filterCount}</span> : null}
             </Button>
           }
         >
           <div className="v2-devices-filters">
-            <Field label="Type">
+            <Field label={intl.formatMessage(messages.typeField)}>
               <Select value={type} onChange={(e) => setType(e.target.value as 'all' | DeviceKind)}>
-                <option value="all">All types</option>
+                <option value="all">{intl.formatMessage(messages.allTypes)}</option>
                 {typeOptions.map((k) => (
                   <option key={k} value={k}>
-                    {DEVICE_KIND_LABEL[k]}
+                    {intl.formatMessage(deviceKindMessages[k])}
                   </option>
                 ))}
               </Select>
             </Field>
-            <Field label="Configuration">
+            <Field label={intl.formatMessage(messages.configurationField)}>
               <Select value={configFilter} onChange={(e) => setConfigFilter(e.target.value)}>
-                <option value="all">All configurations</option>
+                <option value="all">{intl.formatMessage(messages.allConfigurations)}</option>
                 {configOptions.list.map(([id, name]) => (
                   <option key={id} value={id}>
                     {name}
                   </option>
                 ))}
-                {configOptions.unassigned ? <option value="none">Unassigned</option> : null}
+                {configOptions.unassigned ? <option value="none">{intl.formatMessage(messages.unassigned)}</option> : null}
               </Select>
             </Field>
-            <Field label="Android">
+            <Field label={intl.formatMessage(messages.androidField)}>
               <Select value={android} onChange={(e) => setAndroid(e.target.value)}>
-                <option value="all">All versions</option>
+                <option value="all">{intl.formatMessage(messages.allVersions)}</option>
                 {androidOptions.map((a) => (
                   <option key={a} value={a}>
                     {a}
@@ -1025,7 +1207,7 @@ export function DevicesPage() {
               </Select>
             </Field>
             {view === 'cards' ? (
-              <Field label="Sort">
+              <Field label={intl.formatMessage(messages.sortField)}>
                 <Select
                   value={sort.key}
                   onChange={(e) => {
@@ -1035,7 +1217,7 @@ export function DevicesPage() {
                 >
                   {(Object.keys(SORT_LABEL) as SortKey[]).map((k) => (
                     <option key={k} value={k}>
-                      {SORT_LABEL[k]}
+                      {intl.formatMessage(SORT_LABEL[k])}
                     </option>
                   ))}
                 </Select>
@@ -1046,10 +1228,10 @@ export function DevicesPage() {
                 label={
                   <span className="v2-devices-filters__dup">
                     <span>
-                      Only duplicates <span className="v2-num v2-secondary">{dupTotal}</span>
+                      {intl.formatMessage(messages.onlyDuplicates)} <span className="v2-num v2-secondary">{dupTotal}</span>
                     </span>
                     <span className="v2-devices-filters__help">
-                      Devices that share a hardware ID with another row: likely one device enrolled more than once.
+                      {intl.formatMessage(messages.duplicatesHelp)}
                     </span>
                   </span>
                 }
@@ -1059,7 +1241,7 @@ export function DevicesPage() {
             ) : null}
             {filterCount ? (
               <Button variant="ghost" size="sm" className="v2-devices-filters__clear" onClick={clearMenuFilters}>
-                Clear filters
+                {intl.formatMessage(messages.clearFilters)}
               </Button>
             ) : null}
           </div>
@@ -1067,12 +1249,12 @@ export function DevicesPage() {
         <span className="v2-devices-toolbar__spacer" />
         {!narrow ? (
           <Segmented<View>
-            aria-label="View"
+            aria-label={intl.formatMessage(messages.viewLabel)}
             value={view}
             onChange={setView}
             options={[
-              { value: 'table', label: 'Table', icon: <IconTable /> },
-              { value: 'cards', label: 'Cards', icon: <IconCards /> },
+              { value: 'table', label: intl.formatMessage(messages.viewTable), icon: <IconTable /> },
+              { value: 'cards', label: intl.formatMessage(messages.viewCards), icon: <IconCards /> },
             ]}
           />
         ) : null}

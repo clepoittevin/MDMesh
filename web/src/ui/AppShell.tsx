@@ -1,4 +1,5 @@
 import { Suspense, useEffect, useRef, useState, type MouseEvent, type RefObject } from 'react';
+import { FormattedMessage, useIntl } from 'react-intl';
 import { Outlet, useLocation } from 'react-router';
 import { ReloadPrompt } from './ReloadPrompt';
 import { SupervisorProvider } from '../data/useSupervisor';
@@ -16,7 +17,9 @@ import './AppShell.css';
 function PageSkeleton() {
   return (
     <div className="v2-pageskel" role="status">
-      <span className="v2-visually-hidden">Loading page…</span>
+      <span className="v2-visually-hidden">
+        <FormattedMessage id="shell.page.loading" defaultMessage="Loading page…" />
+      </span>
       <Skeleton width="180px" height="title" />
       <div className="v2-pageskel__card">
         <SkeletonRows count={6} />
@@ -93,6 +96,7 @@ function useHashTarget(main: RefObject<HTMLElement | null>) {
  */
 export function AppShell() {
   const location = useLocation();
+  const intl = useIntl();
   const mobile = useMediaQuery(MOBILE_QUERY);
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLButtonElement>(null);
@@ -142,7 +146,7 @@ export function AppShell() {
       <WhatsNewProvider>
         <div className="v2-shell">
           <a href="#v2-main" className="v2-skip" inert={(mobile && open) || undefined} onClick={skip}>
-            Skip to content
+            <FormattedMessage id="shell.skipToContent" defaultMessage="Skip to content" />
           </a>
           <div
             ref={drawerRef}
@@ -161,7 +165,11 @@ export function AppShell() {
                 <IconButton
                   ref={menuRef}
                   size="md"
-                  label={open ? 'Close navigation' : 'Open navigation'}
+                  label={
+                    open
+                      ? intl.formatMessage({ id: 'shell.nav.close', defaultMessage: 'Close navigation' })
+                      : intl.formatMessage({ id: 'shell.nav.open', defaultMessage: 'Open navigation' })
+                  }
                   aria-expanded={open}
                   aria-controls="v2-sidebar"
                   onClick={() => setOpen((v) => !v)}

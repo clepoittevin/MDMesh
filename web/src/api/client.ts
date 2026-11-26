@@ -31,6 +31,26 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Why the console itself raised an ApiError, when the text is its own (English) rather than the server's: `network`
+ * (fetch failed), `unauthenticated` (401/403), `http` (a non-OK status without a server message), `nonJson` (a body
+ * that isn't the JSON envelope) and `server` (an error envelope without a message). apiErrorText translates them.
+ */
+export type ApiErrorCode = 'network' | 'unauthenticated' | 'http' | 'nonJson' | 'server';
+
+// Kept beside the error rather than on it, so the SDK's ApiError (src/sdk) keeps its shape.
+const errorCodes = new WeakMap<ApiError, ApiErrorCode>();
+
+function tagged(code: ApiErrorCode, e: ApiError): ApiError {
+  errorCodes.set(e, code);
+  return e;
+}
+
+/** The console-side reason of an ApiError (ApiErrorCode); undefined when its message is the server's own text. */
+export function apiErrorCode(e: unknown): ApiErrorCode | undefined {
+  return e instanceof ApiError ? errorCodes.get(e) : undefined;
+}
+
 type SessionExpiredListener = () => void;
 const sessionExpiredListeners = new Set<SessionExpiredListener>();
 
@@ -91,24 +111,18 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
   try {
     res = await fetch(url, init);
   } catch (e) {
-    throw new ApiError(
-      `Network error contacting the server: ${(e as Error).message}`,
-      'ERROR',
-      0,
-    );
+    throw tagged('network', new ApiError(`Network error contacting the server: ${(e as Error).message}`, 'ERROR', 0));
   }
 
   if (res.status === 401 || res.status === 403) {
     notifySessionExpired();
-    throw new ApiError('Not authenticated', 'ERROR', res.status);
+    throw tagged('unauthenticated', new ApiError('Not authenticated', 'ERROR', res.status));
   }
 
   if (!res.ok) {
-    throw new ApiError(
-      (res.status === 400 && (await badRequestMessage(res))) || `Request failed with HTTP ${res.status}`,
-      'ERROR',
-      res.status,
-    );
+    const sent = res.status === 400 ? await badRequestMessage(res) : null;
+    if (sent) throw new ApiError(sent, 'ERROR', res.status);
+    throw tagged('http', new ApiError(`Request failed with HTTP ${res.status}`, 'ERROR', res.status));
   }
 
   // Most endpoints return the JSON envelope. Some (logout) return no body.
@@ -122,15 +136,13 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
     envelope = JSON.parse(text) as ApiEnvelope<T>;
   } catch {
     // e.g. an HTML error page from a proxy — surface it as an API error, not a crash.
-    throw new ApiError('Unexpected non-JSON response from server', 'ERROR', res.status);
+    throw tagged('nonJson', new ApiError('Unexpected non-JSON response from server', 'ERROR', res.status));
   }
   if (envelope.status && envelope.status !== 'OK') {
-    throw new ApiError(
-      envelope.message ?? 'The server returned an error',
-      envelope.status,
-      res.status,
-      envelope.data ?? undefined,
-    );
+    if (envelope.message == null) {
+      throw tagged('server', new ApiError('The server returned an error', envelope.status, res.status, envelope.data ?? undefined));
+    }
+    throw new ApiError(envelope.message, envelope.status, res.status, envelope.data ?? undefined);
   }
   return envelope.data;
 }

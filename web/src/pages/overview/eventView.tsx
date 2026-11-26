@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
+import type { IntlShape } from 'react-intl';
 import type { CommandHistoryItem } from '../../api/commands';
 import type { DeviceEvent } from '../../api/events';
-import { EVENT_VERBS, eventDetail, parseCommandResult } from '../../data/deviceActivity';
+import { eventDetail, eventVerb, parseCommandResult } from '../../data/deviceActivity';
 import {
   IconAlert,
   IconBattery,
@@ -22,14 +23,16 @@ import {
  * How the Overview's recent activity shows a device event: icon, tone, verb phrase and the event's own detail in
  * words (eventDetail: a command result names its command from the device's `commands` history; an app event, the
  * library's name for the package). An event without a detail has no detail line: never the device's description.
+ * The wording is in the console's language when the caller passes its `intl` (useIntl()), else in English.
  */
 export function eventView(
   ev: DeviceEvent,
   appNames: Record<string, string>,
   commands?: CommandHistoryItem[],
+  intl?: IntlShape,
 ): { icon: ReactNode; tone: StatusTone; what: string; detail?: string } {
-  const what = EVENT_VERBS[ev.type] ?? ev.type;
-  const detail = eventDetail(ev, { commands, appNames });
+  const what = eventVerb(ev.type, intl);
+  const detail = eventDetail(ev, { commands, appNames }, intl);
   switch (ev.type) {
     case 'enrolled':
       return { icon: <IconPlus size={15} />, tone: 'ok', what, detail };

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
+import { useIntl } from 'react-intl';
 import { useBlocker, useNavigate } from 'react-router';
 import { Button } from './Button';
 import { Modal } from './Modal';
@@ -14,6 +15,7 @@ import { Modal } from './Modal';
  * the dialog to render.
  */
 export function useLeaveGuard(dirty: boolean, count: number) {
+  const intl = useIntl();
   const navigate = useNavigate();
   const bypassed = useRef(false);
   const blocker = useBlocker(
@@ -51,12 +53,18 @@ export function useLeaveGuard(dirty: boolean, count: number) {
       onClose={() => blocker.reset?.()}
       role="alertdialog"
       size="sm"
-      title="Leave without saving?"
-      description={count === 1 ? '1 unsaved change will be lost.' : `${count} unsaved changes will be lost.`}
+      title={intl.formatMessage({ id: 'shell.leave.title', defaultMessage: 'Leave without saving?' })}
+      description={intl.formatMessage(
+        {
+          id: 'shell.leave.description',
+          defaultMessage: '{count, plural, one {# unsaved change will be lost.} other {# unsaved changes will be lost.}}',
+        },
+        { count },
+      )}
       footer={
         <>
           <Button size="lg" onClick={() => blocker.reset?.()}>
-            Keep editing
+            {intl.formatMessage({ id: 'shell.leave.keep', defaultMessage: 'Keep editing' })}
           </Button>
           <Button
             size="lg"
@@ -66,7 +74,7 @@ export function useLeaveGuard(dirty: boolean, count: number) {
               blocker.proceed?.();
             }}
           >
-            Leave without saving
+            {intl.formatMessage({ id: 'shell.leave.leave', defaultMessage: 'Leave without saving' })}
           </Button>
         </>
       }

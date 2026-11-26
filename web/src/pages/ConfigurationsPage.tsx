@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { defineMessages, useIntl } from 'react-intl';
+import { untyped } from '../data/configIntl';
+import { configDescription, configName } from '../data/seededConfigs';
 import { Link, useLocation, useNavigate } from 'react-router';
 import { getConfigurationApps, getConfigurations, type ConfigApp, type Configuration } from '../api/configurations';
 import { listApplications, type Application } from '../api/applications';
@@ -41,6 +44,66 @@ import { devicesBlockingDelete, syncLine } from './configurations/sync';
 import type { ConfigWatch } from './configurations/watch';
 import './ConfigurationsPage.css';
 
+const messages = untyped(defineMessages({
+  title: { id: 'configurations.page.title', defaultMessage: 'Configurations' },
+  subtitle: {
+    id: 'configurations.page.subtitle',
+    defaultMessage: 'The apps, kiosk rules and restrictions a device follows. Devices pick up changes on their next sync.',
+  },
+  newConfiguration: { id: 'configurations.page.new', defaultMessage: 'New configuration' },
+  loading: { id: 'configurations.page.loading', defaultMessage: 'Loading configurations…' },
+  emptyTitle: { id: 'configurations.page.emptyTitle', defaultMessage: 'No configurations yet' },
+  emptyBody: {
+    id: 'configurations.page.emptyBody',
+    defaultMessage: 'Create one to set the apps and rules your devices follow.',
+  },
+  noMatchTitle: { id: 'configurations.page.noMatchTitle', defaultMessage: 'No configurations match' },
+  noMatchBody: { id: 'configurations.page.noMatchBody', defaultMessage: 'Try another name or description.' },
+  showAll: { id: 'configurations.page.showAll', defaultMessage: 'Show all configurations' },
+  listLabel: { id: 'configurations.page.listLabel', defaultMessage: 'Configurations' },
+  search: { id: 'configurations.page.search', defaultMessage: 'Search configurations' },
+  showLabel: { id: 'configurations.page.showLabel', defaultMessage: 'Show' },
+  showAllKinds: { id: 'configurations.page.showAllKinds', defaultMessage: 'All' },
+  showCustom: { id: 'configurations.page.showCustom', defaultMessage: 'Custom' },
+  showBuiltin: { id: 'configurations.page.showBuiltin', defaultMessage: 'Built-in' },
+  unassigned: {
+    id: 'configurations.page.unassigned',
+    defaultMessage:
+      '{count, plural, one {# device has no configuration} other {# devices have no configuration}} · Assign',
+  },
+  failedConfigurations: { id: 'configurations.page.failedConfigurations', defaultMessage: 'configurations' },
+  failedLibrary: { id: 'configurations.page.failedLibrary', defaultMessage: 'the app library' },
+  failedLibraryDetail: { id: 'configurations.page.failedLibraryDetail', defaultMessage: 'Some main apps show as “—”.' },
+  builtin: { id: 'configurations.badge.builtin', defaultMessage: 'Built-in' },
+  kiosk: { id: 'configurations.badge.kiosk', defaultMessage: 'Kiosk' },
+  defaultPin: { id: 'configurations.badge.defaultPin', defaultMessage: 'Default PIN' },
+  defaultPinTip: {
+    id: 'configurations.badge.defaultPinTip',
+    defaultMessage: 'The kiosk exit PIN is a well-known default. Change it.',
+  },
+  noPin: { id: 'configurations.badge.noPin', defaultMessage: 'No PIN' },
+  noPinTip: { id: 'configurations.badge.noPinTip', defaultMessage: 'Kiosk mode has no exit PIN. Set one.' },
+  oldPin: { id: 'configurations.badge.oldPin', defaultMessage: 'Old PIN' },
+  oldPinTip: {
+    id: 'configurations.badge.oldPinTip',
+    defaultMessage:
+      'The kiosk exit PIN isn’t 6 to 12 digits (it was saved before that rule). Devices keep it. Set a new one.',
+  },
+  view: { id: 'configurations.row.view', defaultMessage: 'View' },
+  edit: { id: 'configurations.row.edit', defaultMessage: 'Edit' },
+  duplicateToEdit: { id: 'configurations.row.duplicateToEdit', defaultMessage: 'Duplicate to edit' },
+  duplicate: { id: 'configurations.row.duplicate', defaultMessage: 'Duplicate' },
+  delete: {
+    id: 'configurations.row.delete',
+    defaultMessage: 'Delete',
+    description: 'DESTRUCTIVE: opens the confirmation to delete the configuration.',
+  },
+  moreFor: { id: 'configurations.row.moreFor', defaultMessage: 'More for {name}' },
+  mainApp: { id: 'configurations.card.mainApp', defaultMessage: 'Main app' },
+  apps: { id: 'configurations.card.apps', defaultMessage: 'Apps' },
+  devices: { id: 'configurations.card.devices', defaultMessage: 'Devices' },
+}));
+
 /** Custom: made on this server (by any admin), as opposed to the built-in templates the server seeds. */
 type Show = 'all' | 'custom' | 'builtin';
 
@@ -50,6 +113,7 @@ const APPS_IN_FLIGHT = 4;
 
 /** Configurations list. Classic: pages/ConfigurationsPage.tsx. */
 export function ConfigurationsPage() {
+  const intl = useIntl();
   const navigate = useNavigate();
   const location = useLocation();
   const [configs, setConfigs] = useState<Configuration[] | null>(null);
@@ -195,14 +259,18 @@ export function ConfigurationsPage() {
     const needle = q.trim().toLowerCase();
     return (configs ?? [])
       .filter((c) => (kind === 'all' ? true : kind === 'builtin' ? isLocked(c) : !isLocked(c)))
-      .filter((c) => !needle || `${c.name} ${c.description ?? ''}`.toLowerCase().includes(needle));
-  }, [configs, q, kind]);
+      .filter(
+        (c) =>
+          !needle ||
+          `${c.name} ${c.description ?? ''} ${configName(intl, c)} ${configDescription(intl, c)}`.toLowerCase().includes(needle),
+      );
+  }, [configs, q, kind, intl]);
 
   const templates = useMemo(() => (configs ?? []).filter(isLocked), [configs]);
   // With no template the chooser would offer one option (Blank): create directly instead (K7).
   const chooses = templates.length > 0;
   const newConfig = () => (chooses ? setChooserOpen(true) : navigate(paths.configuration('new')));
-  const newLabel = 'New configuration';
+  const newLabel = intl.formatMessage(messages.newConfiguration);
   // Whether there are templates (and so the chooser) is known once the list is in: until then New configuration
   // waits. After a failed load it opens a blank one, as nothing else can be offered.
   const listing = configs === null && !error;
@@ -211,7 +279,7 @@ export function ConfigurationsPage() {
   if (configs === null) {
     body = (
       <Card padding="none" clip aria-busy="true">
-        <SkeletonRows count={4} label="Loading configurations…" />
+        <SkeletonRows count={4} label={intl.formatMessage(messages.loading)} />
       </Card>
     );
   } else if (configs.length === 0) {
@@ -219,7 +287,7 @@ export function ConfigurationsPage() {
       <Card>
         <EmptyState
           icon={<IconConfigurations />}
-          title="No configurations yet"
+          title={intl.formatMessage(messages.emptyTitle)}
           action={
             canAdd ? (
               <Button variant="primary" icon={<IconPlus />} onClick={newConfig}>
@@ -228,7 +296,7 @@ export function ConfigurationsPage() {
             ) : undefined
           }
         >
-          {canAdd ? 'Create one to set the apps and rules your devices follow.' : undefined}
+          {canAdd ? intl.formatMessage(messages.emptyBody) : undefined}
         </EmptyState>
       </Card>
     );
@@ -239,7 +307,7 @@ export function ConfigurationsPage() {
           <EmptyState
             bare
             icon={<IconSearch />}
-            title="No configurations match"
+            title={intl.formatMessage(messages.noMatchTitle)}
             action={
               <Button
                 size="sm"
@@ -248,16 +316,16 @@ export function ConfigurationsPage() {
                   setShow('all');
                 }}
               >
-                Show all configurations
+                {intl.formatMessage(messages.showAll)}
               </Button>
             }
           >
-            Try another name or description.
+            {intl.formatMessage(messages.noMatchBody)}
           </EmptyState>
         </Card>
       ) : (
         // Cards on the page grid, three to a row on wide screens; each row's cards end level (comparable content).
-        <Grid as="ul" stretch aria-label="Configurations" className="v2-configs__grid">
+        <Grid as="ul" stretch aria-label={intl.formatMessage(messages.listLabel)} className="v2-configs__grid">
           {shown.map((c) => (
             <GridCell as="li" span={4} key={c.id ?? c.name}>
               <ConfigCard
@@ -286,8 +354,8 @@ export function ConfigurationsPage() {
   return (
     <>
       <PageHeader
-        title="Configurations"
-        subtitle="The apps, kiosk rules and restrictions a device follows. Devices pick up changes on their next sync."
+        title={intl.formatMessage(messages.title)}
+        subtitle={intl.formatMessage(messages.subtitle)}
         subtitleMaxCh={72}
         actions={
           canAdd ? (
@@ -303,18 +371,18 @@ export function ConfigurationsPage() {
           className="v2-configs-toolbar__search"
           value={q}
           onChange={setQ}
-          placeholder="Search configurations"
-          aria-label="Search configurations"
+          placeholder={intl.formatMessage(messages.search)}
+          aria-label={intl.formatMessage(messages.search)}
         />
         {bothKinds ? (
           <Segmented<Show>
-            aria-label="Show"
+            aria-label={intl.formatMessage(messages.showLabel)}
             value={show}
             onChange={setShow}
             options={[
-              { value: 'all', label: 'All', count: counts.all },
-              { value: 'custom', label: 'Custom', count: counts.custom },
-              { value: 'builtin', label: 'Built-in', count: counts.builtin },
+              { value: 'all', label: intl.formatMessage(messages.showAllKinds), count: counts.all },
+              { value: 'custom', label: intl.formatMessage(messages.showCustom), count: counts.custom },
+              { value: 'builtin', label: intl.formatMessage(messages.showBuiltin), count: counts.builtin },
             ]}
           />
         ) : null}
@@ -322,14 +390,18 @@ export function ConfigurationsPage() {
         {unassigned ? (
           <Link className="v2-configs-toolbar__unassigned" to={`${paths.devices}?config=none`}>
             <span aria-hidden="true" className="v2-configs-toolbar__ring" />
-            {unassigned === 1 ? '1 device has no configuration' : `${unassigned} devices have no configuration`} · Assign
+            {intl.formatMessage(messages.unassigned, { count: unassigned })}
           </Link>
         ) : null}
       </div>
 
-      {error ? <ErrorState thing="configurations" onRetry={() => void load()} /> : null}
+      {error ? <ErrorState thing={intl.formatMessage(messages.failedConfigurations)} onRetry={() => void load()} /> : null}
       {libraryFailed && !error ? (
-        <ErrorState thing="the app library" detail="Some main apps show as “—”." onRetry={loadLibrary} />
+        <ErrorState
+          thing={intl.formatMessage(messages.failedLibrary)}
+          detail={intl.formatMessage(messages.failedLibraryDetail)}
+          onRetry={loadLibrary}
+        />
       ) : null}
 
       {body}
@@ -373,38 +445,39 @@ export function ConfigurationsPage() {
 
 /** Name (the row's link), its tags, and the description on one line. */
 function ConfigIdentity({ c }: { c: Configuration }) {
+  const intl = useIntl();
   const locked = isLocked(c);
-  const description = c.description ? String(c.description) : '';
+  const description = configDescription(intl, c);
   return (
     <div className="v2-configs-id">
       <div className="v2-configs-id__line">
         <Link to={paths.configuration(c.id ?? '')} className="v2-configs-id__name">
-          {c.name}
+          {configName(intl, c)}
         </Link>
         {locked ? (
           <Badge tone="neutral" icon={<IconLockSmall />}>
-            Built-in
+            {intl.formatMessage(messages.builtin)}
           </Badge>
         ) : null}
-        {c.kioskMode ? <Badge>Kiosk</Badge> : null}
+        {c.kioskMode ? <Badge>{intl.formatMessage(messages.kiosk)}</Badge> : null}
         {hasDefaultPin(c) ? (
-          <Tooltip content="The kiosk exit PIN is a well-known default. Change it.">
+          <Tooltip content={intl.formatMessage(messages.defaultPinTip)}>
             <Badge tone="warn" tabIndex={0}>
-              Default PIN
+              {intl.formatMessage(messages.defaultPin)}
             </Badge>
           </Tooltip>
         ) : null}
         {hasNoPin(c) ? (
-          <Tooltip content="Kiosk mode has no exit PIN. Set one.">
+          <Tooltip content={intl.formatMessage(messages.noPinTip)}>
             <Badge tone="warn" tabIndex={0}>
-              No PIN
+              {intl.formatMessage(messages.noPin)}
             </Badge>
           </Tooltip>
         ) : null}
         {hasLegacyPin(c) ? (
-          <Tooltip content="The kiosk exit PIN isn’t 6 to 12 digits (it was saved before that rule). Devices keep it. Set a new one.">
+          <Tooltip content={intl.formatMessage(messages.oldPinTip)}>
             <Badge tone="warn" tabIndex={0}>
-              Old PIN
+              {intl.formatMessage(messages.oldPin)}
             </Badge>
           </Tooltip>
         ) : null}
@@ -441,8 +514,9 @@ function MainApp({
 
 /** The sync bar and its line: how many of the configuration's devices run it. */
 function SyncCell({ row, failed, loaded }: { row?: ConfigSyncSummary; failed: boolean; loaded: boolean }) {
+  const intl = useIntl();
   if (!loaded) return <Skeleton width="60%" />;
-  const line = syncLine(row, failed);
+  const line = syncLine(row, failed, intl);
   return (
     <div className="v2-configs-sync">
       <StackedBar segments={line.segments} track />
@@ -457,11 +531,11 @@ function SyncCell({ row, failed, loaded }: { row?: ConfigSyncSummary; failed: bo
  * copy_config.
  */
 function RowMenu({ c, onDelete }: { c: Configuration; onDelete?: () => void }) {
+  const intl = useIntl();
   if (isLocked(c) || !onDelete) return null;
-  const menu: MenuEntry[] = [
-    { key: 'delete', label: 'Delete', textValue: 'Delete', icon: <IconTrash />, danger: true, onSelect: onDelete },
-  ];
-  return <Menu items={menu} label={`More for ${c.name}`} iconSize="xs" align="end" />;
+  const del = intl.formatMessage(messages.delete);
+  const menu: MenuEntry[] = [{ key: 'delete', label: del, textValue: del, icon: <IconTrash />, danger: true, onSelect: onDelete }];
+  return <Menu items={menu} label={intl.formatMessage(messages.moreFor, { name: configName(intl, c) })} iconSize="xs" align="end" />;
 }
 
 /**
@@ -489,11 +563,12 @@ function ConfigCard({
   onCopy?: () => void;
   onDelete?: () => void;
 }) {
+  const intl = useIntl();
   const locked = isLocked(c);
   const to = paths.configuration(c.id ?? '');
   const devices = sync?.total ?? (syncFailed ? '—' : syncLoaded ? 0 : undefined);
   return (
-    <Card as="article" aria-label={c.name} className="v2-configs-card">
+    <Card as="article" aria-label={configName(intl, c)} className="v2-configs-card">
       <div className="v2-configs-card__top">
         <ConfigIdentity c={c} />
         <RowMenu c={c} onDelete={onDelete} />
@@ -503,23 +578,23 @@ function ConfigCard({
         className="v2-configs-card__meta"
         columns="minmax(0, 1.6fr) repeat(2, minmax(0, 1fr))"
         cells={[
-          { key: 'main', label: 'Main app', value: <MainApp c={c} apps={apps} assigned={assigned} /> },
+          { key: 'main', label: intl.formatMessage(messages.mainApp), value: <MainApp c={c} apps={apps} assigned={assigned} /> },
           {
             key: 'apps',
-            label: 'Apps',
+            label: intl.formatMessage(messages.apps),
             value: assigned === undefined ? <Skeleton width="2ch" /> : assigned === null ? '—' : assigned.length,
           },
-          { key: 'devices', label: 'Devices', value: devices === undefined ? <Skeleton width="2ch" /> : devices },
+          { key: 'devices', label: intl.formatMessage(messages.devices), value: devices === undefined ? <Skeleton width="2ch" /> : devices },
         ]}
       />
       <SyncCell row={sync} failed={syncFailed} loaded={syncLoaded} />
       <div className="v2-configs-card__foot">
         <ButtonLink to={to} size="sm" icon={locked ? undefined : <IconPencil />}>
-          {locked ? 'View' : 'Edit'}
+          {intl.formatMessage(locked ? messages.view : messages.edit)}
         </ButtonLink>
         {onCopy ? (
           <Button size="sm" icon={<IconCopy />} onClick={onCopy}>
-            {locked ? 'Duplicate to edit' : 'Duplicate'}
+            {intl.formatMessage(locked ? messages.duplicateToEdit : messages.duplicate)}
           </Button>
         ) : null}
       </div>

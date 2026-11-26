@@ -1,8 +1,15 @@
 import { useEffect, useId, useRef, useState, type DragEvent, type ReactNode } from 'react';
+import { defineMessages, useIntl } from 'react-intl';
 import { Button } from './Button';
 import { IconUpload } from './icons';
 import { cx } from './cx';
 import './Files.css';
+
+const messages = defineMessages({
+  title: { id: 'ui.files.dropTitle', defaultMessage: 'Drop a file here, or choose one' },
+  choose: { id: 'ui.files.choose', defaultMessage: 'Choose a file' },
+  reading: { id: 'ui.files.reading', defaultMessage: 'Reading the file…' },
+});
 
 export interface FileDropZoneProps {
   /** Called with the chosen or dropped file. */
@@ -33,15 +40,19 @@ export interface FileDropZoneProps {
 export function FileDropZone({
   onFile,
   accept,
-  title = 'Drop a file here, or choose one',
+  title: titleProp,
   hint,
-  buttonLabel = 'Choose a file',
+  buttonLabel: buttonLabelProp,
   disabled,
   busy,
-  busyLabel = 'Reading the file…',
+  busyLabel: busyLabelProp,
   result,
   className,
 }: FileDropZoneProps) {
+  const intl = useIntl();
+  const title = titleProp ?? intl.formatMessage(messages.title);
+  const buttonLabel = buttonLabelProp ?? intl.formatMessage(messages.choose);
+  const busyLabel = busyLabelProp ?? intl.formatMessage(messages.reading);
   const input = useRef<HTMLInputElement>(null);
   const zone = useRef<HTMLDivElement>(null);
   const [over, setOver] = useState(false);
