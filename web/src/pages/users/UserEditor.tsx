@@ -1,5 +1,6 @@
 import { useEffect, useId, useState } from 'react';
 import { defineMessages, useIntl, type MessageDescriptor } from 'react-intl';
+import { configName } from '../../data/seededConfigs';
 import { fetchCurrentUser } from '../../api/auth';
 import { authMessages } from '../../api/authMessages';
 import { roleName } from '../../data/seededRoles';
@@ -94,6 +95,7 @@ export function AccessPicker({
   items,
   selected,
   onSelect,
+  itemLabel = (item) => item.name,
 }: {
   label: string;
   /** The "all" checkbox's label ("All device groups"). */
@@ -109,6 +111,8 @@ export function AccessPicker({
   items: AccessItem[];
   selected: AccessItem[];
   onSelect: (items: AccessItem[]) => void;
+  /** An item's label (default: its name as stored). */
+  itemLabel?: (item: AccessItem) => string;
 }) {
   const intl = useIntl();
   // Keep a selected item even if a list no longer returns it; editing a name must not silently broaden access.
@@ -138,7 +142,7 @@ export function AccessPicker({
                 onChange={(e) =>
                   onSelect(e.target.checked ? [...selected, item] : selected.filter((s) => s.id !== item.id))
                 }
-                label={item.name}
+                label={itemLabel(item)}
               />
             ))}
           </div>
@@ -440,6 +444,7 @@ export function UserEditor({
               items={configs}
               selected={draft.configurations}
               onSelect={(configurations) => update({ configurations })}
+              itemLabel={(item) => configName(intl, item)}
             />
           </fieldset>
         </form>

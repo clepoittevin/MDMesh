@@ -6,6 +6,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { FormattedMessage, defineMessages, useIntl, type IntlShape, type MessageDescriptor } from 'react-intl';
 import { listApplications, type Application } from '../api/applications';
+import { configName } from '../data/seededConfigs';
 import {
   ACTION_TEMPLATES,
   buildInstallCommand,
@@ -291,7 +292,8 @@ const SKIP_MESSAGES: Record<SkipReason, MessageDescriptor> = {
 function groupName(intl: IntlShape, g: KioskGroup): string {
   if (g.skip === 'none') return intl.formatMessage(messages.groupNone);
   if (g.unknownId != null) return intl.formatMessage(messages.groupUnknown, { id: g.unknownId });
-  return g.name;
+  // The key is the configuration's id for a configuration that loaded.
+  return configName(intl, { id: Number(g.key), name: g.name });
 }
 
 /**
@@ -893,7 +895,8 @@ export function ChangeConfigurationModal({
     setBusy(true);
     try {
       await bulkSetConfiguration(ids, Number(target));
-      const name = configurations.find((c) => c.id === Number(target))?.name ?? intl.formatMessage(messages.configurationFallback);
+      const picked = configurations.find((c) => c.id === Number(target));
+      const name = picked ? configName(intl, picked) : intl.formatMessage(messages.configurationFallback);
       toast.push('ok', intl.formatMessage(messages.configurationChanged), intl.formatMessage(messages.movedBody, { count: n, name }));
       onClose();
       await onDone();
@@ -942,7 +945,7 @@ export function ChangeConfigurationModal({
           <option value="">{intl.formatMessage(messages.selectConfiguration)}</option>
           {configurations.map((c) => (
             <option key={c.id} value={String(c.id)}>
-              {c.name}
+              {configName(intl, c)}
             </option>
           ))}
         </Select>

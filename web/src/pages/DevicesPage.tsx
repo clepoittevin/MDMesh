@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { FormattedMessage, defineMessages, useIntl, type IntlShape, type MessageDescriptor } from 'react-intl';
+import { configName } from '../data/seededConfigs';
 import { useNavigate, useSearchParams } from 'react-router';
 import { forceSync, formatCommandError } from '../api/commands';
 import { listConfigurations, type ConfigurationSummary } from '../api/configurations';
@@ -421,11 +422,13 @@ export function DevicesPage() {
     return () => clearTimeout(t);
   }, [q, reload]);
 
-  const configName = useCallback(
+  const configNameOf = useCallback(
     (d: DeviceView) =>
       d.configurationId == null
         ? intl.formatMessage(messages.unassigned)
-        : (configurations[String(d.configurationId)]?.name ?? intl.formatMessage(messages.configNumber, { id: d.configurationId })),
+        : configurations[String(d.configurationId)]?.name != null
+          ? configName(intl, { id: d.configurationId, name: configurations[String(d.configurationId)]?.name })
+          : intl.formatMessage(messages.configNumber, { id: d.configurationId }),
     [configurations, intl],
   );
 
@@ -465,7 +468,7 @@ export function DevicesPage() {
         if (type !== 'all' && kind(d) !== type) return false;
         if (dupOnly && dupOf(d) <= 1) return false;
         if (textFilter) {
-          const hay = [d.number, d.description, d.serial, d.imei, d.phone, configName(d), ...(d.groups ?? []).map((g) => g.name)]
+          const hay = [d.number, d.description, d.serial, d.imei, d.phone, configNameOf(d), configurations[String(d.configurationId)]?.name, ...(d.groups ?? []).map((g) => g.name)]
             .filter(Boolean)
             .join(' ')
             .toLowerCase();
@@ -473,7 +476,7 @@ export function DevicesPage() {
         }
         return true;
       }),
-    [devices, configFilter, android, type, kind, dupOnly, dupOf, textFilter, needle, configName],
+    [devices, configFilter, android, type, kind, dupOnly, dupOf, textFilter, needle, configNameOf, configurations],
   );
 
   const [visible, setVisible] = useState<DeviceView[]>([]);
@@ -544,7 +547,7 @@ export function DevicesPage() {
         case 'name':
           return sign * byName(a, b);
         case 'config':
-          return sign * compareText(configName(a), configName(b)) || byName(a, b);
+          return sign * compareText(configNameOf(a), configNameOf(b)) || byName(a, b);
         case 'android':
           return sign * compareText(a.androidVersion ?? '', b.androidVersion ?? '') || byName(a, b);
         default:
@@ -552,7 +555,7 @@ export function DevicesPage() {
       }
     };
     return [...filtered].sort(cmp);
-  }, [filtered, sort, presence, syncOf, configName, extensionColumns]);
+  }, [filtered, sort, presence, syncOf, configNameOf, extensionColumns]);
 
   const pages = Math.max(1, Math.ceil(sorted.length / pageSize));
   const current = Math.min(page, pages);
@@ -582,18 +585,21 @@ export function DevicesPage() {
     let unassigned = false;
     for (const d of devices) {
       if (d.configurationId == null) unassigned = true;
-      else m.set(String(d.configurationId), configName(d));
+      else m.set(String(d.configurationId), configNameOf(d));
     }
     // A linked configuration with no devices loaded still shows as selected.
     if (configFilter !== 'all' && configFilter !== 'none' && !m.has(configFilter)) {
       const known = configurations[configFilter]?.name ?? allConfigs?.find((c) => String(c.id) === configFilter)?.name;
-      m.set(configFilter, known ?? intl.formatMessage(messages.configNumber, { id: configFilter }));
+      m.set(
+        configFilter,
+        known != null ? configName(intl, { id: Number(configFilter), name: known }) : intl.formatMessage(messages.configNumber, { id: configFilter }),
+      );
     }
     return {
       list: [...m.entries()].sort((a, b) => compareText(a[1], b[1])),
       unassigned: unassigned || configFilter === 'none',
     };
-  }, [devices, configName, configFilter, configurations, allConfigs, intl]);
+  }, [devices, configNameOf, configFilter, configurations, allConfigs, intl]);
   const androidOptions = useMemo(() => {
     const s = new Set<string>();
     for (const d of devices) if (d.androidVersion) s.add(d.androidVersion);
@@ -757,7 +763,7 @@ export function DevicesPage() {
 
   const configCell = (d: DeviceView, layout: 'stack' | 'row') => {
     const s = syncOf(d);
-    const name = configName(d);
+    const name = configNameOf(d);
     if (s) return <ConfigSync layout={layout} name={name} sync={syncKind(s)} syncLabel={syncLabelText(intl, s.label)} />;
     // Sync state unknown (summary unavailable, or the per-device check failed): the name alone.
     return layout === 'row' ? (

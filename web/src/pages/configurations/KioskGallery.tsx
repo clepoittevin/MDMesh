@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { defineMessages, useIntl, type IntlShape } from 'react-intl';
 import { untyped } from '../../data/configIntl';
+import { configName } from '../../data/seededConfigs';
 import {
   deleteKioskBackgroundImage,
   listKioskBackgroundImages,
@@ -181,7 +182,7 @@ export function KioskGallery({
           {items.map((item) => {
             const current = item.fileIds.includes(currentFileId ?? -1);
             const others = item.usedByCount - item.usedBy.length;
-            const names = item.usedBy.map((u) => u.name).join(', ');
+            const names = item.usedBy.map((u) => configName(intl, u)).join(', ');
             const uses = item.usedByCount === 0
               ? intl.formatMessage(messages.notUsed)
               : others <= 0

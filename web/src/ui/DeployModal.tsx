@@ -1,5 +1,6 @@
 import { useEffect, useId, useMemo, useState } from 'react';
 import { defineMessages, useIntl, type MessageDescriptor } from 'react-intl';
+import { configName } from '../data/seededConfigs';
 import { searchDevices, type DeviceView } from '../api/devices';
 import { listConfigurationNames, type ConfigurationSummary } from '../api/configurations';
 import { getAppConfigLinks, updateAppConfigLinks, type AppConfigLink } from '../api/applications';
@@ -216,7 +217,8 @@ export function DeployModal({
         });
       }
       await updateAppConfigLinks({ applicationId: subject.applicationId, configurations: updated });
-      const name = configs.find((c) => c.id === cid)?.name ?? intl.formatMessage(messages.configurationFallback);
+      const picked = configs.find((c) => c.id === cid);
+      const name = picked ? configName(intl, picked) : intl.formatMessage(messages.configurationFallback);
       toast.push(
         'ok',
         intl.formatMessage(messages.addedTitle, { label: subject.label }),
@@ -351,7 +353,7 @@ export function DeployModal({
                 <option value="">{intl.formatMessage(messages.selectConfiguration)}</option>
                 {configs.map((c) => (
                   <option key={c.id} value={String(c.id)}>
-                    {c.name}
+                    {configName(intl, c)}
                   </option>
                 ))}
               </Select>

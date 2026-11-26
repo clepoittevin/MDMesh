@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { FormattedMessage, defineMessages, useIntl, type MessageDescriptor } from 'react-intl';
+import { configName as shownConfigName } from '../data/seededConfigs';
 import {
   getDeviceByNumber,
   searchDevices,
@@ -934,11 +935,14 @@ export function DeviceDetailPage() {
     kioskActive: ds?.kioskActive,
     name: device?.description,
   });
-  const configName =
+  const storedConfigName =
     device?.configurationId != null
       ? configs[String(device.configurationId)]?.name ??
         (configuration?.id === device.configurationId ? configuration.name : undefined)
       : undefined;
+  // Shown in the console's language for a seeded configuration (seededConfigs), as typed otherwise.
+  const configName =
+    storedConfigName != null ? shownConfigName(intl, { id: device?.configurationId, name: storedConfigName }) : undefined;
 
   const counts24h = useMemo(() => {
     const since = now - DAY;

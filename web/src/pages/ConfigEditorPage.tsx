@@ -9,6 +9,7 @@ import {
   type Configuration,
 } from '../api/configurations';
 import { ApiError } from '../api/client';
+import { configDescription, configName } from '../data/seededConfigs';
 import { commitUpload, listApplications, uploadRawFile, type Application } from '../api/applications';
 import {
   KIOSK_IMAGE_AGENT,
@@ -964,7 +965,7 @@ function Editor({
       // Its `extensions` are the loaded ones, with the namespaces the sections changed on top (saveConfiguration).
       const name = String(draft.name ?? '').trim();
       await saveConfiguration({ ...draft, name, extensions: baseline.extensions }, host.changed);
-      toast.push('ok', intl.formatMessage(isNew ? messages.created : messages.saved), name);
+      toast.push('ok', intl.formatMessage(isNew ? messages.created : messages.saved), configName(intl, { id: draft.id, name }));
       const watch: ConfigWatch | undefined =
         initial.id != null ? { id: initial.id, until: Date.now() + WATCH_MS } : undefined;
       guard.exit(paths.configurations, watch ? { watch } : undefined);
@@ -1264,10 +1265,10 @@ function Editor({
   );
 
   // ---- header ----
-  const savedName = isNew ? intl.formatMessage(messages.newTitle) : String(baseline.name ?? '');
+  const savedName = isNew ? intl.formatMessage(messages.newTitle) : configName(intl, baseline);
   const usedBy = usedByState(syncRow);
   let subtitle: ReactNode = null;
-  if (isNew) subtitle = base ? intl.formatMessage(messages.basedOn, { name: String(base.name) }) : intl.formatMessage(messages.notSavedYet);
+  if (isNew) subtitle = base ? intl.formatMessage(messages.basedOn, { name: configName(intl, base) }) : intl.formatMessage(messages.notSavedYet);
   else if (usedBy && initial.id != null)
     subtitle = (
       <FormattedMessage
@@ -1353,7 +1354,7 @@ function Editor({
           >
             <Input
               ref={nameRef}
-              value={draft.name == null ? '' : String(draft.name)}
+              value={readOnly ? configName(intl, initial) : draft.name == null ? '' : String(draft.name)}
               disabled={readOnly}
               required
               onChange={(e) => {
@@ -1372,7 +1373,7 @@ function Editor({
           >
             <Textarea
               rows={3}
-              value={draft.description == null ? '' : String(draft.description)}
+              value={readOnly ? configDescription(intl, initial) : draft.description == null ? '' : String(draft.description)}
               disabled={readOnly}
               onChange={(e) =>
                 set('description', e.target.value === '' && baseline.description == null ? baseline.description : e.target.value)

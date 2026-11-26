@@ -1,5 +1,6 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { defineMessages, FormattedMessage, useIntl, type MessageDescriptor } from 'react-intl';
+import { configName } from '../../data/seededConfigs';
 import { untyped } from '../../data/configIntl';
 import {
   copyConfiguration,
@@ -184,7 +185,7 @@ function CopyForm({
   return (
     <form className="v2-configs-modalform" onSubmit={(e) => void go(e)}>
       <p className="v2-configs-modalform__lead">
-        <FormattedMessage {...configModalMessages.duplicateLead} values={{ name: source.name }} />
+        <FormattedMessage {...configModalMessages.duplicateLead} values={{ name: configName(intl, source) }} />
       </p>
       {note ? <p className="v2-configs-modalform__lead">{note}</p> : null}
       <Field label={intl.formatMessage(configModalMessages.newName)} error={error}>
@@ -229,7 +230,7 @@ export function DeleteConfigModal({
     setBusy(true);
     try {
       await deleteConfiguration(target.id);
-      toast.push('ok', intl.formatMessage(configModalMessages.deleted), target.name);
+      toast.push('ok', intl.formatMessage(configModalMessages.deleted), configName(intl, target));
       onDeleted(target);
     } catch (e) {
       const msg = apiErrorText(intl, e);
@@ -247,7 +248,7 @@ export function DeleteConfigModal({
       role="alertdialog"
       size="sm"
       title={intl.formatMessage(configModalMessages.deleteTitle)}
-      description={shown ? intl.formatMessage(configModalMessages.deleteDescription, { name: shown.name }) : undefined}
+      description={shown ? intl.formatMessage(configModalMessages.deleteDescription, { name: configName(intl, shown) }) : undefined}
       footer={
         <>
           <Button size="lg" onClick={onClose} disabled={busy}>
@@ -296,7 +297,7 @@ export function NewConfigChooser({
     { value: 'blank', name: intl.formatMessage(configModalMessages.blank), sub: intl.formatMessage(configModalMessages.blankSub) },
     ...templates.map((t) => ({
       value: String(t.id),
-      name: intl.formatMessage(configModalMessages.basedOn, { name: t.name }),
+      name: intl.formatMessage(configModalMessages.basedOn, { name: configName(intl, t) }),
       sub: intl.formatMessage(configModalMessages.basedOnSub),
     })),
   ];

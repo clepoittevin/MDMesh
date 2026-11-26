@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ApiError } from '../api/client';
 import { getConfigurations, type Configuration } from '../api/configurations';
+import { configName } from '../data/seededConfigs';
 import { mintEnrollToken, revokeAllEnrollTokens } from '../api/enroll';
 import { getUpdateStatus, type UpdateStatus } from '../api/updates';
 import { Link } from 'react-router';
@@ -530,7 +531,7 @@ export function EnrollPage() {
   const [wifiPass, setWifiPass] = useState('');
   const [wifiSec, setWifiSec] = useState<WifiSecurity>('WPA');
   /** The configuration the Wi-Fi fields were filled from (null: nothing saved there, or typed by hand). */
-  const [wifiFrom, setWifiFrom] = useState<string | null>(null);
+  const [wifiFrom, setWifiFrom] = useState<Configuration | null>(null);
 
   const [token, setToken] = useState<Minted | null>(null);
   const [minting, setBusy] = useState(false);
@@ -620,7 +621,7 @@ export function EnrollPage() {
     setWifiPass(typeof selected.wifiPassword === 'string' ? selected.wifiPassword : '');
     setWifiSec((SECURITY_VALUES as string[]).includes(sec) ? (sec as WifiSecurity) : 'WPA');
     setWifiOn(!!ssid.trim());
-    setWifiFrom(ssid.trim() ? selected.name : null);
+    setWifiFrom(ssid.trim() ? selected : null);
   }, [selected, configs]);
 
   /**
@@ -714,7 +715,7 @@ export function EnrollPage() {
   };
 
   const givesName =
-    selected?.name ?? (cfgId ? intl.formatMessage(E.configNumbered, { id: cfgId }) : intl.formatMessage(E.serverDefault));
+    (selected ? configName(intl, selected) : null) ?? (cfgId ? intl.formatMessage(E.configNumbered, { id: cfgId }) : intl.formatMessage(E.serverDefault));
   // What the code does, not what was asked: an older server ignores both choices and makes a single-use 24 h code.
   const limitsIgnored = !!token && !token.limitsApplied && (uses !== 1 || validHours !== 24);
   let devicesHelp: string;
@@ -859,7 +860,7 @@ export function EnrollPage() {
               {configsFailed && cfgId ? <option value={cfgId}>{intl.formatMessage(E.configNumbered, { id: cfgId })}</option> : null}
               {configs.map((c) => (
                 <option key={String(c.id)} value={String(c.id)}>
-                  {String(c.id) === defaultId ? intl.formatMessage(E.defaultSuffix, { name: c.name }) : c.name}
+                  {String(c.id) === defaultId ? intl.formatMessage(E.defaultSuffix, { name: configName(intl, c) }) : configName(intl, c)}
                 </option>
               ))}
             </>
@@ -956,7 +957,7 @@ export function EnrollPage() {
               ) : null}
             </div>
             <span className="v2-enroll__help">
-              {intl.formatMessage(E.wifiFrom, { hasFrom: String(!!wifiFrom), name: wifiFrom ?? '' })}
+              {intl.formatMessage(E.wifiFrom, { hasFrom: String(!!wifiFrom), name: configName(intl, wifiFrom) })}
             </span>
           </>
         ) : null}

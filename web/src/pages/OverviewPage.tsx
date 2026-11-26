@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
+import { configName } from '../data/seededConfigs';
 import { defineMessages, FormattedMessage, useIntl, type IntlShape, type MessageDescriptor } from 'react-intl';
 import { forceSync } from '../api/commands';
 import { syncVerdictLabel, type ConfigSyncSummary } from '../api/configSync';
@@ -763,7 +764,8 @@ function ByConfiguration({
     for (const s of sums.values()) if (s.total > 0 && configurations[String(s.configurationId)]) ids.add(s.configurationId);
     const out: ConfigRow[] = [...ids].map((id) => {
       const s = sums.get(id);
-      const name = configurations[String(id)]?.name ?? intl.formatMessage(messages.configurationFallback, { id });
+      const stored = configurations[String(id)]?.name;
+      const name = stored != null ? configName(intl, { id, name: stored }) : intl.formatMessage(messages.configurationFallback, { id });
       const to = paths.configuration(id);
       if (!s || s.total === 0) {
         return {

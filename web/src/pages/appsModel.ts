@@ -1,6 +1,7 @@
 // Apps page model on top of the shared library rules (web/src/data/apps.ts): file types, where a library app
 // installs from, and the library loader the three sources share. No JSX.
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { configName } from '../data/seededConfigs';
 import { defineMessage, defineMessages, useIntl, type IntlShape, type MessageDescriptor } from 'react-intl';
 import { getAppConfigLinks, listApplications, type Application } from '../api/applications';
 import { getServerBaseUrl } from '../api/configurations';
@@ -198,7 +199,11 @@ export function useUsedIn(apps: Application[] | null, active: boolean): { usedIn
           const links = await getAppConfigLinks(a.id);
           answer = links
             .filter((l) => l.id != null)
-            .map((l) => l.configurationName || intl.formatMessage(configurationFallbackMessage, { id: l.configurationId }));
+            .map((l) =>
+              l.configurationName
+                ? configName(intl, { id: l.configurationId, name: l.configurationName })
+                : intl.formatMessage(configurationFallbackMessage, { id: l.configurationId }),
+            );
         } catch {
           answer = 'error';
         }

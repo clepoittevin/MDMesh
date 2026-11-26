@@ -2657,6 +2657,30 @@
   "configurations.rule.exitPin": {
     "defaultMessage": "Le PIN de sortie doit comporter de {min} à {max} chiffres, ou rester vide pour qu’il n’y ait aucune sortie sur l’appareil."
   },
+  "configurations.seeded.background": {
+    "defaultMessage": "Mode arrière-plan (agent)"
+  },
+  "configurations.seeded.background.description": {
+    "defaultMessage": "L’agent MDMesh tourne en arrière-plan pour installer les applications et remonter l’état de l’appareil. L’utilisateur se sert librement de l’appareil (mode permissif)."
+  },
+  "configurations.seeded.default": {
+    "defaultMessage": "Par défaut"
+  },
+  "configurations.seeded.default.description": {
+    "defaultMessage": "Configuration de base pour tous les appareils"
+  },
+  "configurations.seeded.managedLauncher": {
+    "defaultMessage": "Lanceur géré"
+  },
+  "configurations.seeded.managedLauncher.description": {
+    "defaultMessage": "Affiche un ensemble d’icônes d’applications choisies par l’administrateur. Pour afficher ou masquer des applications, utilisez l’onglet Applications."
+  },
+  "configurations.seeded.miui": {
+    "defaultMessage": "MIUI (Xiaomi Redmi)"
+  },
+  "configurations.seeded.miui.description": {
+    "defaultMessage": "Optimisée pour les appareils sous MIUI"
+  },
   "configurations.sync.agentsTooOld": {
     "defaultMessage": "{count, plural, one {# agent trop ancien} other {# agents trop anciens}}"
   },

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { defineMessages, FormattedMessage, useIntl, type IntlShape, type MessageDescriptor } from 'react-intl';
 import { Link } from 'react-router';
+import { configName } from '../data/seededConfigs';
 import { useAuth } from '../auth/AuthContext';
 import type { AuthUser } from '../api/auth';
 import { API_BASE } from '../api/client';
@@ -406,7 +407,7 @@ export function SettingsPage() {
             <option value="">{intl.formatMessage(messages.noDefault)}</option>
             {(configs ?? []).map((c) => (
               <option key={c.id} value={String(c.id)}>
-                {c.name}
+                {configName(intl, c)}
               </option>
             ))}
           </Select>

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { defineMessages, useIntl } from 'react-intl';
 import { untyped } from '../data/configIntl';
+import { configDescription, configName } from '../data/seededConfigs';
 import { Link, useLocation, useNavigate } from 'react-router';
 import { getConfigurationApps, getConfigurations, type ConfigApp, type Configuration } from '../api/configurations';
 import { listApplications, type Application } from '../api/applications';
@@ -255,8 +256,12 @@ export function ConfigurationsPage() {
     const needle = q.trim().toLowerCase();
     return (configs ?? [])
       .filter((c) => (kind === 'all' ? true : kind === 'builtin' ? isLocked(c) : !isLocked(c)))
-      .filter((c) => !needle || `${c.name} ${c.description ?? ''}`.toLowerCase().includes(needle));
-  }, [configs, q, kind]);
+      .filter(
+        (c) =>
+          !needle ||
+          `${c.name} ${c.description ?? ''} ${configName(intl, c)} ${configDescription(intl, c)}`.toLowerCase().includes(needle),
+      );
+  }, [configs, q, kind, intl]);
 
   const templates = useMemo(() => (configs ?? []).filter(isLocked), [configs]);
   // With no template the chooser would offer one option (Blank): create directly instead (K7).
@@ -429,12 +434,12 @@ export function ConfigurationsPage() {
 function ConfigIdentity({ c }: { c: Configuration }) {
   const intl = useIntl();
   const locked = isLocked(c);
-  const description = c.description ? String(c.description) : '';
+  const description = configDescription(intl, c);
   return (
     <div className="v2-configs-id">
       <div className="v2-configs-id__line">
         <Link to={paths.configuration(c.id ?? '')} className="v2-configs-id__name">
-          {c.name}
+          {configName(intl, c)}
         </Link>
         {locked ? (
           <Badge tone="neutral" icon={<IconLockSmall />}>
@@ -542,7 +547,7 @@ function RowMenu({
       onSelect: onDelete,
     });
   }
-  return <Menu items={menu} label={intl.formatMessage(messages.moreFor, { name: c.name })} iconSize="xs" align="end" />;
+  return <Menu items={menu} label={intl.formatMessage(messages.moreFor, { name: configName(intl, c) })} iconSize="xs" align="end" />;
 }
 
 /**
@@ -577,7 +582,7 @@ function ConfigCard({
   const to = paths.configuration(c.id ?? '');
   const devices = sync?.total ?? (syncFailed ? '—' : syncLoaded ? 0 : undefined);
   return (
-    <Card as="article" aria-label={c.name} className="v2-configs-card">
+    <Card as="article" aria-label={configName(intl, c)} className="v2-configs-card">
       <div className="v2-configs-card__top">
         <ConfigIdentity c={c} />
         <RowMenu c={c} onOpen={onOpen} onCopy={onCopy} onDelete={onDelete} />

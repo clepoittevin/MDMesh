@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { configName } from '../data/seededConfigs';
 import { defineMessages, FormattedMessage, useIntl, type IntlShape, type MessageDescriptor } from 'react-intl';
 import {
   deleteApplication,
@@ -280,7 +281,9 @@ export function AppsLibrary({
       const links = await getAppConfigLinks(app.id);
       const active = links.filter((l) => l.id != null);
       if (active.length > 0) {
-        const names = active.map((l) => l.configurationName || configurationFallback(intl, l.configurationId));
+        const names = active.map((l) =>
+          l.configurationName ? configName(intl, { id: l.configurationId, name: l.configurationName }) : configurationFallback(intl, l.configurationId),
+        );
         toast.push(
           'err',
           intl.formatMessage(messages.inUseTitle),

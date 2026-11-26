@@ -2666,6 +2666,30 @@
   "configurations.rule.exitPin": {
     "defaultMessage": "The exit PIN must be {min} to {max} digits, or empty for no exit on the device."
   },
+  "configurations.seeded.background": {
+    "defaultMessage": "Background (Agent) Mode"
+  },
+  "configurations.seeded.background.description": {
+    "defaultMessage": "The MDMesh agent runs in the background to install apps and report device status. The user can use the device freely (permissive mode)."
+  },
+  "configurations.seeded.default": {
+    "defaultMessage": "Default"
+  },
+  "configurations.seeded.default.description": {
+    "defaultMessage": "Basic configuration for all devices"
+  },
+  "configurations.seeded.managedLauncher": {
+    "defaultMessage": "Managed Launcher"
+  },
+  "configurations.seeded.managedLauncher.description": {
+    "defaultMessage": "Displays a set of application icons predefined by the administrator. To show or hide applications, use the Applications tab."
+  },
+  "configurations.seeded.miui": {
+    "defaultMessage": "MIUI (Xiaomi Redmi)"
+  },
+  "configurations.seeded.miui.description": {
+    "defaultMessage": "Optimized for MIUI-running devices"
+  },
   "configurations.sync.agentsTooOld": {
     "defaultMessage": "{count, plural, one {# agent too old} other {# agents too old}}"
   },
