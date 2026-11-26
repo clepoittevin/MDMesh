@@ -545,7 +545,8 @@ qs_arch aarch64 MDMESH_VERSION=0.5.0
   || { fail "quickstart.sh does not go on to verify a release on Arm64"; show; }
 ok
 # A release before 0.5.0 on Arm64: not sent to that release's own quickstart.sh (its images are x86_64 only too).
-qs_arch aarch64 MDMESH_VERSION=0.4.0
+# (Fork: MDMesh's own repository is named here, this fork's quick start installs from the fork by default.)
+qs_arch aarch64 MDMESH_VERSION=0.4.0 MDMESH_REPO=MDMesh-app/MDMesh
 { grep -qF 'Release v0.4.0 of MDMesh-app/MDMesh has no images for this host (linux/arm64), only for linux/amd64.' "$WORK/out/e" \
   && grep -qF "MDMesh's releases have Arm64 images from 0.6.0" "$WORK/out/e" \
   && ! grep -qF 'refs/tags/v0.4.0/quickstart.sh' "$WORK/out/e" && ! grep -q 'curl' "$WORK/children4.log"; } \
@@ -682,7 +683,7 @@ for ports in free busy; do
   want="$want
 Without Docker? See Native in DEPLOY.md: https://github.com/MDMesh-app/MDMesh/blob/main/DEPLOY.md#option-c--native-no-docker"
   { [ "$menu" = "$want" ] && grep -qF 'Please enter 1, 2 or 3.' "$WORK/out/o" \
-    && grep -qF 'Could not resolve the latest release of MDMesh-app/MDMesh' "$WORK/out/e"; } \
+    && grep -qF 'Could not resolve the latest release of clepoittevin/MDMesh' "$WORK/out/e"; } \
     || { fail "quickstart.sh's menu (ports $ports) is not as designed: $(diff <(echo "$want") <(echo "$menu") | tr '\n' ' ')"; show; }
   ok
 done
