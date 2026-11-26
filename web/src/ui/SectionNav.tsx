@@ -1,4 +1,13 @@
-import { useEffect, useRef, useState, type CSSProperties, type MouseEvent, type ReactNode } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type MouseEvent,
+  type ReactNode,
+  type RefObject,
+} from 'react';
 import { useLocation } from 'react-router';
 import { cx } from './cx';
 import { useOverflowFade } from './useOverflowFade';
@@ -165,6 +174,40 @@ export function SectionNav({ items, activeId, spyOffset, className, ...aria }: S
  * Two-column layout for SectionNav pages: nav (180-240px) beside the content; stacks under 900px.
  * `contentMax` caps the content column (px); a page may instead cap it from its CSS (Settings: --prose-max).
  */
+/** The side nav's narrowest width beside the content (.v2-seclayout__nav flex-basis). */
+const NAV_MIN = 180;
+
+/**
+ * Whether the nav and the content can't sit side by side: a narrow screen, or a content column narrower than the
+ * nav plus `contentBasis` (a wide screen with a narrow main column, e.g. the app sidebar open at 1024px). Stacked,
+ * the nav is a scrollable row above the content; side by side, a sticky column. Measured rather than left to
+ * flex-wrap, which would put the sticky column above the content and let it float over the cards on scroll.
+ */
+function useStacked(ref: RefObject<HTMLDivElement | null>, contentBasis: number): boolean {
+  const [stacked, setStacked] = useState(false);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const media = typeof window.matchMedia === 'function' ? window.matchMedia('(max-width: 900px)') : null;
+    const update = () => {
+      const width = el.clientWidth;
+      const gap = parseFloat(getComputedStyle(el).columnGap) || 0;
+      // Not laid out yet (or in a test DOM): only the screen width decides.
+      const tooNarrow = width > 0 && width < NAV_MIN + gap + contentBasis;
+      setStacked(!!media?.matches || tooNarrow);
+    };
+    update();
+    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update);
+    ro?.observe(el);
+    media?.addEventListener('change', update);
+    return () => {
+      ro?.disconnect();
+      media?.removeEventListener('change', update);
+    };
+  }, [ref, contentBasis]);
+  return stacked;
+}
+
 export function SectionLayout({
   nav,
   children,
@@ -178,9 +221,11 @@ export function SectionLayout({
   contentBasis?: number;
   className?: string;
 }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const stacked = useStacked(ref, contentBasis);
   const style = { '--v2-sec-max': contentMax ? `${contentMax}px` : 'none', '--v2-sec-basis': `${contentBasis}px` } as CSSProperties;
   return (
-    <div className={cx('v2-seclayout', className)} style={style}>
+    <div ref={ref} className={cx('v2-seclayout', className)} style={style} data-stacked={stacked || undefined}>
       <div className="v2-seclayout__nav">{nav}</div>
       <div className="v2-seclayout__content">{children}</div>
     </div>
