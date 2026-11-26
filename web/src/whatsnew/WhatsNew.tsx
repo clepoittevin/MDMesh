@@ -1,6 +1,8 @@
 // The What's new dialog: a release's CHANGELOG.md section, once per version per browser after sign-in (seen.ts), and
 // again from Settings (useWhatsNew). Mounted by AppShell, so never over the sign-in or set-password page.
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { defineMessages, useIntl } from 'react-intl';
+import { untyped } from '../data/configIntl';
 import { useAuth } from '../auth/AuthContext';
 import { applyRunning, useSupervisor } from '../data/useSupervisor';
 import { Button, ButtonAnchor } from '../ui/Button';
@@ -17,6 +19,20 @@ export interface WhatsNewApi {
   target: WhatsNewTarget | null;
   open: () => void;
 }
+
+const messages = untyped(defineMessages({
+  titleUnreleased: { id: 'updates.whatsNew.titleUnreleased', defaultMessage: 'What’s new (unreleased)' },
+  title: { id: 'updates.whatsNew.title', defaultMessage: 'What’s new in {version}' },
+  unreleasedDescription: {
+    id: 'updates.whatsNew.unreleasedDescription',
+    defaultMessage: 'Not released yet: this dev build shows the Unreleased notes.',
+  },
+  released: { id: 'updates.whatsNew.released', defaultMessage: 'Released {date}.' },
+  changelogLink: { id: 'updates.whatsNew.changelogLink', defaultMessage: 'CHANGELOG.md on GitHub ↗' },
+  fullNotesLink: { id: 'updates.whatsNew.fullNotesLink', defaultMessage: 'Full release notes on GitHub ↗' },
+  done: { id: 'updates.whatsNew.done', defaultMessage: 'Done' },
+  loadFailed: { id: 'updates.whatsNew.loadFailed', defaultMessage: 'Couldn’t load the release notes. Read them on GitHub.' },
+}));
 
 const Ctx = createContext<WhatsNewApi | null>(null);
 
@@ -100,17 +116,22 @@ export function WhatsNewProvider({ children }: { children: ReactNode }) {
 function WhatsNewDialog({ shown: current, onClose }: { shown: Shown | null; onClose: () => void }) {
   // The last notes shown stay rendered while the dialog animates closed.
   const shown = useStickyValue(current);
+  const intl = useIntl();
   // Focus starts at the top of the notes, so a long release opens at its title, not scrolled down to the buttons.
   const startRef = useRef<HTMLDivElement>(null);
   const notes = useMemo(() => (shown?.section ? parseNotes(shown.section.body) : null), [shown]);
   const t = shown?.target;
-  const title = !t ? '' : t.version === null ? 'What’s new (unreleased)' : `What’s new in ${t.version}`;
+  const title = !t
+    ? ''
+    : t.version === null
+      ? intl.formatMessage(messages.titleUnreleased)
+      : intl.formatMessage(messages.title, { version: t.version });
   const description = !t
     ? undefined
     : t.version === null
-      ? 'Not released yet: this dev build shows the Unreleased notes.'
+      ? intl.formatMessage(messages.unreleasedDescription)
       : shown?.section?.date
-        ? `Released ${shown.section.date}.`
+        ? intl.formatMessage(messages.released, { date: shown.section.date })
         : undefined;
   return (
     <Modal
@@ -125,10 +146,10 @@ function WhatsNewDialog({ shown: current, onClose }: { shown: Shown | null; onCl
         t ? (
           <>
             <ButtonAnchor href={releaseNotesUrl(t)} target="_blank" rel="noopener noreferrer">
-              {t.version === null ? 'CHANGELOG.md on GitHub ↗' : 'Full release notes on GitHub ↗'}
+              {intl.formatMessage(t.version === null ? messages.changelogLink : messages.fullNotesLink)}
             </ButtonAnchor>
             <Button variant="primary" onClick={onClose}>
-              Done
+              {intl.formatMessage(messages.done)}
             </Button>
           </>
         ) : null
@@ -138,7 +159,7 @@ function WhatsNewDialog({ shown: current, onClose }: { shown: Shown | null; onCl
         {notes ? (
           <NotesView notes={notes} onNavigate={onClose} />
         ) : (
-          <p className="v2-whatsnew__p">Couldn’t load the release notes. Read them on GitHub.</p>
+          <p className="v2-whatsnew__p">{intl.formatMessage(messages.loadFailed)}</p>
         )}
       </div>
     </Modal>
