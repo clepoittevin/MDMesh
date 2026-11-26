@@ -5,6 +5,7 @@ import { defineMessage, defineMessages, useIntl, type IntlShape, type MessageDes
 import { getAppConfigLinks, listApplications, type Application } from '../api/applications';
 import { getServerBaseUrl } from '../api/configurations';
 import { isDeployableLibraryApp, isHostedHere } from '../data/apps';
+import { apiErrorText } from '../api/apiErrorText';
 
 /** Order of the Custom APK source choices. */
 export const FILE_EXTS = ['.apk', '.apks', '.xapk', '.apkm', '.zip'] as const;
@@ -248,6 +249,7 @@ export function configurationFallback(intl: IntlShape, id: number | string): str
   return intl.formatMessage(configurationFallbackMessage, { id });
 }
 
-export function errorText(e: unknown): string {
-  return e instanceof Error ? e.message : '';
+/** What a failed request says: the console's own ApiError texts translated, the server's as sent (apiErrorText). */
+export function errorText(e: unknown, intl: Pick<IntlShape, 'formatMessage'>): string {
+  return apiErrorText(intl, e);
 }

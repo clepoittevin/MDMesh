@@ -688,7 +688,7 @@ export function RemoteActions({
                 },
               ]
             : []),
-          { key: 'kiosk-enter', label: intl.formatMessage(messages.customKiosk), icon: <IconEnterKiosk />, tip: TEMPLATE['kiosk-enter'].description, run: onEnterKiosk },
+          { key: 'kiosk-enter', label: intl.formatMessage(messages.customKiosk), icon: <IconEnterKiosk />, tip: formatActionTemplate(intl, TEMPLATE['kiosk-enter']).description, run: onEnterKiosk },
           tile('kiosk-exit', intl.formatMessage(messages.exitKiosk), <IconExitKiosk />),
           { ...tile('kiosk-clear-lockout', intl.formatMessage(messages.clearPinLockout), <IconKey />), disabled: lockoutTooOld },
           {

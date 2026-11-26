@@ -5,6 +5,7 @@ import { defineMessages, useIntl } from 'react-intl';
 import { fetchAuthOptions } from '../../api/auth';
 import { getActiveRollout, type ActiveRollout } from '../../api/rollout';
 import { rolloutActive } from '../../data/rollout';
+import { apiErrorText } from '../../api/apiErrorText';
 
 export { rolloutActive };
 
@@ -34,6 +35,8 @@ export function useActiveRollout(): RolloutState {
   // A ref, so a change of language doesn't refetch.
   const loadFailed = useRef('');
   loadFailed.current = intl.formatMessage(messages.loadFailed);
+  const intlNow = useRef(intl);
+  intlNow.current = intl;
   const [rollout, setRollout] = useState<ActiveRollout | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -61,7 +64,7 @@ export function useActiveRollout(): RolloutState {
       setLoadError(null);
     } catch (e) {
       if (!on.current || id !== seq.current) return;
-      setLoadError((e as Error).message || loadFailed.current);
+      setLoadError(apiErrorText(intlNow.current, e) || loadFailed.current);
     }
     setLoaded(true);
     arm();

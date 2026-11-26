@@ -270,7 +270,7 @@ export function AppsLibrary({
       }
       setShaFor({ app, version });
     } catch (e) {
-      toast.push('err', intl.formatMessage(messages.versionsFailed), errorText(e));
+      toast.push('err', intl.formatMessage(messages.versionsFailed), errorText(e, intl));
     }
   }
 
@@ -290,7 +290,7 @@ export function AppsLibrary({
       }
       setConfirmRemove(app);
     } catch (e) {
-      toast.push('err', intl.formatMessage(messages.removeFailed), errorText(e));
+      toast.push('err', intl.formatMessage(messages.removeFailed), errorText(e, intl));
     }
   }
 
@@ -302,7 +302,7 @@ export function AppsLibrary({
       setApps((cur) => cur.filter((a) => a.id !== app.id));
       toast.push('ok', intl.formatMessage(messages.removedTitle), intl.formatMessage(messages.removedBody, { name: app.name }));
     } catch (e) {
-      const msg = errorText(e);
+      const msg = errorText(e, intl);
       toast.push('err', intl.formatMessage(messages.removeFailed), /config\.reference\.exists/.test(msg) ? intl.formatMessage(messages.stillUsed) : msg);
     } finally {
       setRemoving(null);
@@ -670,7 +670,7 @@ function Sha256Dialog({
       toast.push('ok', intl.formatMessage(messages.shaSavedTitle), intl.formatMessage(messages.shaSavedBody, { name: app.name }));
       onSaved();
     } catch (e) {
-      toast.push('err', intl.formatMessage(messages.shaSaveFailed), errorText(e));
+      toast.push('err', intl.formatMessage(messages.shaSaveFailed), errorText(e, intl));
     } finally {
       setBusy(false);
     }

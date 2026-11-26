@@ -4,7 +4,9 @@ import { listApplications, appCategory, type Application } from '../api/applicat
 import { getConfiguration } from '../api/configurations';
 import { Link } from 'react-router';
 import { FormattedMessage, defineMessages, useIntl, type MessageDescriptor } from 'react-intl';
-import { queueCommand, type CommandHistoryItem } from '../api/commands';
+import { formatCommandError, queueCommand, type CommandHistoryItem } from '../api/commands';
+import { apiErrorText } from '../api/apiErrorText';
+import { deviceAppsErrorText } from '../data/deviceApps';
 import {
   LOCK_VOLUME_AGENT,
   buildKioskPayload,
@@ -262,7 +264,7 @@ export function DeviceKioskDialog({
   useEffect(() => {
     listApplications()
       .then(setLib)
-      .catch((e) => setLibErr(e instanceof Error ? e.message : intl.formatMessage(messages.libraryFailed)));
+      .catch((e) => setLibErr(apiErrorText(intl, e) || intl.formatMessage(messages.libraryFailed)));
   }, []);
 
   function primeFrom(list: AppInfo[]) {
@@ -300,7 +302,7 @@ export function DeviceKioskDialog({
       if (!list.length) setScanErr(intl.formatMessage(messages.noAppsReported));
     } catch (e) {
       if (abortRef.current?.signal.aborted) return;
-      setScanErr(e instanceof Error ? e.message : intl.formatMessage(messages.scanFailed));
+      setScanErr(deviceAppsErrorText(intl, e) || intl.formatMessage(messages.scanFailed));
     } finally {
       setScanning(false);
     }
@@ -355,7 +357,7 @@ export function DeviceKioskDialog({
       );
     } catch (e) {
       if (abortRef.current?.signal.aborted) return;
-      toast.push('err', intl.formatMessage(messages.iconFetchFailed), e instanceof Error ? e.message : '');
+      toast.push('err', intl.formatMessage(messages.iconFetchFailed), deviceAppsErrorText(intl, e));
     } finally {
       setLoadingIcons(false);
     }
@@ -391,7 +393,7 @@ export function DeviceKioskDialog({
       onQueued();
       onClose();
     } catch (e) {
-      toast.push('err', intl.formatMessage(messages.failedTitle), e instanceof Error ? e.message : '');
+      toast.push('err', intl.formatMessage(messages.failedTitle), formatCommandError(intl, e));
     } finally {
       setBusy(false);
     }
@@ -688,7 +690,7 @@ export function ConfiguredKioskDialog({
       onQueued(res?.id);
       onClose();
     } catch (e) {
-      setError(e instanceof Error && e.message ? e.message : intl.formatMessage(messages.notAccepted));
+      setError(formatCommandError(intl, e) || intl.formatMessage(messages.notAccepted));
     } finally {
       setBusy(false);
     }

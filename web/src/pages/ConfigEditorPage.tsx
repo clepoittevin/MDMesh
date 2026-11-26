@@ -385,6 +385,7 @@ import { AppPickerModal, CopyConfigModal, DeleteConfigModal, KioskConfirmModal, 
 import { devicesBlockingDelete, syncMessages, usedByState, wipedOnly } from './configurations/sync';
 import { WATCH_MS, type ConfigWatch } from './configurations/watch';
 import './ConfigEditorPage.css';
+import { apiErrorText } from '../api/apiErrorText';
 
 /** Configuration editor; `:id` is a configuration id or "new" (optionally `?from=<id>`). */
 export function ConfigEditorPage() {
@@ -976,7 +977,7 @@ function Editor({
         setBusy(false);
         return;
       }
-      const msg = e instanceof Error ? e.message : '';
+      const msg = apiErrorText(intl, e);
       const dup = /duplicate/i.test(msg);
       const exists = intl.formatMessage(configModalMessages.nameExists);
       if (dup) setNameError(exists);
@@ -1106,7 +1107,7 @@ function Editor({
       try {
         file = (await normalizeKioskImage(picked, undefined, intl)).file;
       } catch (e) {
-        toast.push('err', intl.formatMessage(messages.imageNotUsed), e instanceof Error ? e.message : intl.formatMessage(messages.imageUnreadable));
+        toast.push('err', intl.formatMessage(messages.imageNotUsed), apiErrorText(intl, e) || intl.formatMessage(messages.imageUnreadable));
         return;
       }
       const problem = kioskImageProblem(file, intl);

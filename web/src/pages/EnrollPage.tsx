@@ -52,6 +52,7 @@ import { paths } from '../routes';
 // Not from the barrel: QrPanel pulls in `qrcode`, which stays in this page's chunk.
 import { QrPanel } from '../ui/QrPanel';
 import './EnrollPage.css';
+import { apiErrorText } from '../api/apiErrorText';
 
 /** This browser's default enrollment configuration (written by Settings; same key as the v0.3 console). */
 const DEFAULT_CONFIG_KEY = 'mdmesh-default-config';
@@ -339,7 +340,7 @@ function revokeError(intl: IntlShape, err: unknown): string {
   if (err instanceof ApiError) {
     if (err.httpStatus === 404 || err.httpStatus === 405) return intl.formatMessage(E.revokeUnsupported);
     if (err.message === 'error.permission.denied') return intl.formatMessage(E.revokeDenied);
-    return err.message || intl.formatMessage(E.revokeFailed);
+    return apiErrorText(intl, err) || intl.formatMessage(E.revokeFailed);
   }
   return intl.formatMessage(E.revokeFailed);
 }
@@ -360,7 +361,7 @@ function tokenError(intl: IntlShape, err: unknown): string {
     if (err.message === 'error.permission.denied') return intl.formatMessage(E.tokenDenied);
     if (err.message === 'error.agent.token.maxUses') return intl.formatMessage(E.tokenMaxUses);
     if (err.message === 'error.agent.token.validHours') return intl.formatMessage(E.tokenValidHours);
-    return err.message || intl.formatMessage(E.tokenFailed);
+    return apiErrorText(intl, err) || intl.formatMessage(E.tokenFailed);
   }
   return intl.formatMessage(E.tokenFailed);
 }
@@ -503,7 +504,7 @@ const setupOthers = defineMessage<{ count: number }>({
 });
 const setupProtectedLeftOut = defineMessage<{ summary: string; count: number }>({
   id: 'enroll.setup.protectedLeftOut',
-  defaultMessage: '{summary} ({count} protected left out)',
+  defaultMessage: '{summary} ({count, plural, one {#} other {#}} protected left out)',
 });
 const setupUnreadable = defineMessage<{ summary: string; error: string }>({
   id: 'enroll.setup.unreadable',

@@ -1,4 +1,13 @@
 {
+  "api.error.httpStatus": {
+    "defaultMessage": "La requête a échoué (HTTP {status})"
+  },
+  "api.error.notJson": {
+    "defaultMessage": "Réponse inattendue du serveur (ce n’est pas du JSON)"
+  },
+  "api.error.server": {
+    "defaultMessage": "Le serveur a renvoyé une erreur"
+  },
   "app.notFound.empty": {
     "defaultMessage": "Rien à cette adresse"
   },
@@ -141,7 +150,7 @@
     "defaultMessage": "Ajouter à la bibliothèque"
   },
   "apps.custom.addedBody": {
-    "defaultMessage": "{name} est dans votre bibliothèque. Vous pouvez maintenant l’affecter à une configuration."
+    "defaultMessage": "{name} est dans votre bibliothèque. Vous pouvez maintenant l’attribuer à une configuration."
   },
   "apps.custom.addedTitle": {
     "defaultMessage": "Ajoutée à la bibliothèque"
@@ -150,7 +159,7 @@
     "defaultMessage": "Ajout…"
   },
   "apps.custom.alreadyBody": {
-    "defaultMessage": "Cette application est déjà dans votre bibliothèque. Vous pouvez l’affecter à une configuration."
+    "defaultMessage": "Cette application est déjà dans votre bibliothèque. Vous pouvez l’attribuer à une configuration."
   },
   "apps.custom.alreadyInLibraryBody": {
     "defaultMessage": "Déjà dans votre bibliothèque. Vérifiez puis déployez."
@@ -399,7 +408,7 @@
     "defaultMessage": "Ajouter à la bibliothèque"
   },
   "apps.fdroid.addedBody": {
-    "defaultMessage": "{name} est dans votre bibliothèque. Vous pouvez maintenant l’affecter à une configuration."
+    "defaultMessage": "{name} est dans votre bibliothèque. Vous pouvez maintenant l’attribuer à une configuration."
   },
   "apps.fdroid.addedTitle": {
     "defaultMessage": "Ajoutée à la bibliothèque"
@@ -528,13 +537,13 @@
     "defaultMessage": "Manquante"
   },
   "apps.library.missingMany": {
-    "defaultMessage": "<strong>{name} et {count, plural, one {# autre application n’ont} other {# autres applications n’ont}} pas de somme de contrôle SHA-256.</strong> Les appareils n’installent un fichier lié que s’ils peuvent le vérifier avec sa somme de contrôle.{canSet, select, true { Ajoutez les sommes de contrôle avant de les déployer.} other {}}"
+    "defaultMessage": "<strong>{name} et {count, plural, one {# autre application n’ont} other {# autres applications n’ont}} pas de somme de contrôle SHA-256.</strong> Les appareils n’installent un fichier lié que s’ils peuvent le vérifier avec sa somme de contrôle.{canSet, select, true { Ajoutez les sommes de contrôle avant de déployer ces applications.} other {}}"
   },
   "apps.library.missingNotice": {
     "defaultMessage": "Somme de contrôle manquante"
   },
   "apps.library.missingOne": {
-    "defaultMessage": "<strong>{name} n’a pas de somme de contrôle SHA-256.</strong> Les appareils n’installent un fichier lié que s’ils peuvent le vérifier avec elle.{canSet, select, true { Ajoutez la somme de contrôle avant de la déployer.} other {}}"
+    "defaultMessage": "<strong>{name} n’a pas de somme de contrôle SHA-256.</strong> Les appareils n’installent un fichier lié que s’ils peuvent le vérifier avec sa somme de contrôle.{canSet, select, true { Ajoutez la somme de contrôle avant de déployer l’application.} other {}}"
   },
   "apps.library.missingTip": {
     "defaultMessage": "Non hébergée par MDMesh et sans SHA-256 : les appareils refusent de l’installer."
@@ -699,7 +708,7 @@
     "defaultMessage": "Vous êtes connecté avec un autre compte : cette action revient à son titulaire. Connectez-vous avec votre propre compte pour l’effectuer."
   },
   "auth.error.tooMany": {
-    "defaultMessage": "Trop de connexions ont échoué. Patientez quelques minutes, puis réessayez."
+    "defaultMessage": "Trop de tentatives de connexion ont échoué. Patientez quelques minutes, puis réessayez."
   },
   "auth.error.unreachable": {
     "defaultMessage": "Impossible de joindre le serveur. Vérifiez qu’il est démarré."
@@ -894,7 +903,7 @@
     "defaultMessage": "L’appareil n’a pas de configuration : il n’y a donc aucun kiosque configuré à rétablir."
   },
   "commands.error.serverOwned": {
-    "defaultMessage": "Le serveur envoie lui-même la configuration. Utilisez « Réessayer l’application » sur la page de l’appareil."
+    "defaultMessage": "Le serveur envoie lui-même la configuration. Utilisez « Réappliquer la configuration » sur la page de l’appareil."
   },
   "commands.error.wiped": {
     "defaultMessage": "L’appareil a été effacé : il n’accepte plus de commandes."
@@ -1086,7 +1095,7 @@
     "defaultMessage": "Le serveur supprime la position, l’appareil photo et d’autres informations avant que les appareils ne reçoivent l’image."
   },
   "configEditor.background.howPlate": {
-    "defaultMessage": "Le texte reçoit un fond de la couleur d’arrière-plan là où l’image est chargée, pour rester lisible."
+    "defaultMessage": "Le texte reçoit un fond de la couleur d’arrière-plan là où l’image derrière lui est trop chargée visuellement, pour rester lisible."
   },
   "configEditor.background.howRemove": {
     "defaultMessage": "Retirer l’image efface aussi l’ancienne URL d’image d’arrière-plan."
@@ -1200,7 +1209,7 @@
     "defaultMessage": "{keys} : utilisez plutôt le réglage ci-dessus. Une fois défini, il l’emporte sur cette entrée."
   },
   "configEditor.enrollment.qrInvalid": {
-    "defaultMessage": "JSON pas encore valide. Il est enregistré tel quel ; la page Enrôlement l’ignore jusqu’à ce qu’il soit corrigé."
+    "defaultMessage": "JSON pas encore valide. Il est enregistré tel quel ; la page d’enrôlement l’ignore jusqu’à ce qu’il soit corrigé."
   },
   "configEditor.enrollment.qrLong": {
     "defaultMessage": "Ces entrées sont longues ({bytes} octets) : le QR code d’enrôlement devient dense, et risque de ne pas tenir du tout."
@@ -1209,16 +1218,16 @@
     "defaultMessage": "« {value} » n’est pas une valeur acceptée par Android ici : elle est retirée du code. Choisissez-en une dans la liste."
   },
   "configEditor.enrollment.qrUnusedInvalid": {
-    "defaultMessage": "{keys} : ignoré. La valeur n’est pas du type attendu par cette entrée."
+    "defaultMessage": "{keys} : sans effet. La valeur n’est pas du type attendu par cette entrée."
   },
   "configEditor.enrollment.qrUnusedProtected": {
-    "defaultMessage": "{keys} : ignoré. MDMesh les définit lui-même."
+    "defaultMessage": "{keys} : sans effet. MDMesh les définit lui-même."
   },
   "configEditor.enrollment.qrUnusedUnsupported": {
-    "defaultMessage": "{keys} : ignoré. MDMesh ne transmet que ces entrées de configuration initiale : {known}."
+    "defaultMessage": "{keys} : sans effet. MDMesh ne transmet que ces entrées de configuration initiale : {known}."
   },
   "configEditor.enrollment.qrUnusedWifi": {
-    "defaultMessage": "{keys} : ignoré. Le Wi-Fi vient du Wi-Fi de configuration ci-dessus et de la page Enrôlement."
+    "defaultMessage": "{keys} : sans effet. Le Wi-Fi provient du Wi-Fi de configuration ci-dessus et de la page d’enrôlement."
   },
   "configEditor.enrollment.setupScreens": {
     "defaultMessage": "Écrans de configuration initiale"
@@ -1308,13 +1317,13 @@
     "defaultMessage": "Le bouton ou le geste d’accueil d’Android."
   },
   "configEditor.help.kioskMode": {
-    "defaultMessage": "Désactivé, les paramètres ci-dessous sont ignorés et l’appareil utilise son propre lanceur."
+    "defaultMessage": "Quand il est désactivé, les paramètres ci-dessous sont ignorés et l’appareil utilise son propre lanceur."
   },
   "configEditor.help.kioskNotifications": {
-    "defaultMessage": "Le volet des notifications. Nécessite le bouton d’accueil (Android l’exige)."
+    "defaultMessage": "Le volet des notifications. Nécessite que le bouton Accueil soit activé (Android l’exige)."
   },
   "configEditor.help.kioskRecents": {
-    "defaultMessage": "Le sélecteur d’applications. Nécessite le bouton d’accueil (Android l’exige)."
+    "defaultMessage": "Le sélecteur d’applications. Nécessite que le bouton Accueil soit activé (Android l’exige)."
   },
   "configEditor.layout.buttonsAndScreens": {
     "defaultMessage": "Boutons et écrans système"
@@ -1467,7 +1476,7 @@
     "defaultMessage": "{x} horizontalement, {y} verticalement"
   },
   "configEditor.preview.describe": {
-    "defaultMessage": "{view}{scrolled, select, true {, défilé jusqu’à la fin de la liste} other {}} : {how}{hasReadout, select, true {, {dim}, {text}} other {}}"
+    "defaultMessage": "{view}{scrolled, select, true {, avec défilement jusqu’à la fin de la liste} other {}} : {how}{hasReadout, select, true {, {dim}, {text}} other {}}"
   },
   "configEditor.preview.describePinned": {
     "defaultMessage": "{view} : {app} épinglée, ouverte sur {how}"
@@ -1797,7 +1806,7 @@
     "defaultMessage": "Connectivité"
   },
   "configFields.connectivityMode.more": {
-    "defaultMessage": "Les agents plus anciens l’ignorent. « Économie de batterie » ne maintient la connexion active que lorsque l’écran est allumé ou que l’appareil est en charge : une commande envoyée à un téléphone verrouillé sur batterie attend donc le prochain signal de vie (environ 10 minutes, plus en veille profonde Doze) ou l’allumage de l’écran. « Connexion permanente » maintient la connexion 24 h/24 : des commandes comme Verrouiller, Faire sonner ou Effacer atteignent un téléphone verrouillé sans attendre le signal de vie, au prix de la batterie. Le mode défini ici est appliqué de nouveau quand la configuration change, que l’appareil redémarre ou que l’agent est mis à jour : un mode défini sur la page d’un appareil ne dure donc que jusque-là. Pour garder un appareil perdu en « Connexion permanente », réglez sa configuration sur « Connexion permanente » (ou déplacez l’appareil vers une configuration qui l’est). Pour remettre des appareils en arrière, choisissez « Économie de batterie » ; — (non géré) laisse chaque appareil tel qu’il est."
+    "defaultMessage": "Les agents plus anciens l’ignorent. « Économie de batterie » ne maintient la connexion active que lorsque l’écran est allumé ou que l’appareil est en charge : une commande envoyée à un téléphone verrouillé sur batterie attend donc le prochain signal de vie (environ 10 minutes, plus en veille profonde Doze) ou l’allumage de l’écran. « Connexion permanente » maintient la connexion 24 h/24, 7 j/7 : des commandes comme Verrouiller, Faire sonner ou Effacer atteignent un téléphone verrouillé sans attendre le signal de vie, au prix d’une consommation de batterie plus élevée. Le mode défini ici est appliqué de nouveau quand la configuration change, que l’appareil redémarre ou que l’agent est mis à jour : un mode défini sur la page d’un appareil ne dure donc que jusque-là. Pour garder un appareil perdu en « Connexion permanente », réglez sa configuration sur « Connexion permanente » (ou déplacez l’appareil vers une configuration qui l’utilise). Pour repasser des appareils en économie de batterie, choisissez « Économie de batterie » ; — (non géré) laisse chaque appareil tel qu’il est."
   },
   "configFields.connectivityMode.option.adaptive": {
     "defaultMessage": "Économie de batterie"
@@ -1902,7 +1911,7 @@
     "defaultMessage": "Wi-Fi uniquement"
   },
   "configFields.encryptDevice.help": {
-    "defaultMessage": "Le lanceur Headwind demandait le chiffrement. Android 10 et ultérieur chiffrent toujours."
+    "defaultMessage": "Le lanceur Headwind demandait le chiffrement. Android 10 et les versions ultérieures chiffrent toujours les données."
   },
   "configFields.encryptDevice.label": {
     "defaultMessage": "Exiger le chiffrement"
@@ -1956,7 +1965,7 @@
     "defaultMessage": "Non envoyés aux appareils : la page d’enrôlement les place dans le QR code d’enrôlement."
   },
   "configFields.groupNote.kiosk": {
-    "defaultMessage": "Tout ce qui suit le mode kiosque ne s’applique que lorsque le mode kiosque est activé."
+    "defaultMessage": "Les réglages placés sous « Mode kiosque » ne s’appliquent que lorsque le mode kiosque est activé."
   },
   "configFields.groupNote.kioskAppearance": {
     "defaultMessage": "L’apparence du lanceur du mode kiosque MDMesh, lorsque le mode kiosque est activé."
@@ -2013,7 +2022,7 @@
     "defaultMessage": "Verrouiller les boutons physiques"
   },
   "configFields.kioskLockVolume.help": {
-    "defaultMessage": "Bloque les changements de volume en mode kiosque. Android met l’appareil en sourdine tant qu’il est verrouillé."
+    "defaultMessage": "Bloque les changements de volume en mode kiosque. Android met l’appareil en sourdine tant que le volume est verrouillé."
   },
   "configFields.kioskLockVolume.label": {
     "defaultMessage": "Verrouiller les boutons de volume (mode kiosque)"
@@ -2028,13 +2037,13 @@
     "defaultMessage": "Mode kiosque"
   },
   "configFields.kioskNotifications.help": {
-    "defaultMessage": "Autoriser le volet des notifications en mode kiosque. Nécessite le bouton Accueil."
+    "defaultMessage": "Autoriser le volet des notifications en mode kiosque. Nécessite que le bouton Accueil soit activé."
   },
   "configFields.kioskNotifications.label": {
     "defaultMessage": "Notifications"
   },
   "configFields.kioskRecents.help": {
-    "defaultMessage": "Autoriser le bouton des applications récentes en mode kiosque. Nécessite le bouton Accueil."
+    "defaultMessage": "Autoriser le bouton Applications récentes en mode kiosque. Nécessite que le bouton Accueil soit activé."
   },
   "configFields.kioskRecents.label": {
     "defaultMessage": "Bouton Applications récentes"
@@ -2112,7 +2121,7 @@
     "defaultMessage": "Nom"
   },
   "configFields.newServerUrl.help": {
-    "defaultMessage": "Le lanceur Headwind s’est déplacé lui-même vers ce serveur."
+    "defaultMessage": "Le lanceur Headwind migrait de lui-même vers ce serveur."
   },
   "configFields.newServerUrl.label": {
     "defaultMessage": "Migrer vers l’URL du serveur"
@@ -2139,7 +2148,7 @@
     "defaultMessage": "PIN de sortie du mode kiosque"
   },
   "configFields.password.more": {
-    "defaultMessage": "Laissez-le vide et l’appareil n’a aucune sortie (terminez le mode kiosque depuis la console ; les agents antérieurs à 0.3.6 laissent n’importe qui quitter). Avec l’agent 0.5.0, 5 PIN erronés verrouillent la sortie pendant 1 minute, puis chaque série de 3 suivants pour plus longtemps, jusqu’à 1 heure, puis chaque PIN erroné pour une heure de plus ; « Lever le verrouillage du PIN » sur la page de l’appareil met fin à un verrouillage, tout comme un nouveau PIN. Les administrateurs reçoivent un e-mail si le serveur peut en envoyer (SMTP)."
+    "defaultMessage": "Laissez-le vide et l’appareil n’a aucune sortie (terminez le mode kiosque depuis la console ; les agents antérieurs à 0.3.6 laissent n’importe qui quitter). Avec l’agent 0.5.0, 5 PIN erronés bloquent la sortie pendant 1 minute, puis chaque nouvelle série de 3 erreurs la bloque plus longtemps, jusqu’à 1 heure, puis chaque PIN erroné la bloque une heure de plus ; « Lever le blocage du code PIN », sur la page de l’appareil, met fin au blocage, tout comme un nouveau PIN. Les administrateurs reçoivent un e-mail si le serveur peut en envoyer (SMTP)."
   },
   "configFields.passwordMode.help": {
     "defaultMessage": "Règle de code d’accès du lanceur Headwind : présent, simple, modéré ou fort."
@@ -2160,7 +2169,7 @@
     "defaultMessage": "Langue"
   },
   "configFields.qrParameters.help": {
-    "defaultMessage": "Autres entrées de configuration Android, sous forme de membres JSON."
+    "defaultMessage": "Autres entrées de configuration initiale Android, sous forme de membres JSON."
   },
   "configFields.qrParameters.label": {
     "defaultMessage": "Paramètres supplémentaires du QR code"
@@ -2169,7 +2178,7 @@
     "defaultMessage": "MDMesh ne transmet que quelques entrées connues (données mobiles, refus de l’autorisation des capteurs, heure locale, nom de l’organisation, URL d’assistance), chacune avec une valeur de son type ; l’éditeur indique celles qui sont écartées. Par exemple \"android.app.extra.PROVISIONING_SENSORS_PERMISSION_GRANT_OPT_OUT\": true. Des membres JSON, comme Headwind les prenait, ou un seul objet JSON. La page d’enrôlement les ajoute au code qu’elle affiche pour cette configuration. Les entrées qui désignent l’agent, son téléchargement, sa somme de contrôle ou ses extras d’enrôlement, ainsi que les valeurs par défaut de MDMesh (les applications système restent activées, pas d’étape de chiffrement), ne sont jamais remplacées. Les entrées Wi-Fi ne sont pas utilisées ici : le Wi-Fi provient du Wi-Fi de configuration ci-dessus et de la page d’enrôlement."
   },
   "configFields.qrSkipEducation.help": {
-    "defaultMessage": "Masque les écrans de présentation d’Android pendant la configuration. Les conditions de Google s’affichent toujours."
+    "defaultMessage": "Masque les écrans de présentation d’Android pendant la configuration initiale. Les conditions de Google s’affichent toujours."
   },
   "configFields.qrSkipEducation.label": {
     "defaultMessage": "Ignorer les écrans d’introduction"
@@ -2214,7 +2223,7 @@
     "defaultMessage": "Restrictions Android"
   },
   "configFields.runDefaultLauncher.help": {
-    "defaultMessage": "Le lanceur Headwind ne se définissait pas comme écran d’accueil. MDMesh ne prend l’accueil qu’en mode kiosque."
+    "defaultMessage": "Le lanceur Headwind ne se définissait pas comme écran d’accueil. MDMesh ne devient l’écran d’accueil qu’en mode kiosque."
   },
   "configFields.runDefaultLauncher.label": {
     "defaultMessage": "Autoriser le lanceur d’origine"
@@ -2292,7 +2301,7 @@
     "defaultMessage": "Fuseau horaire"
   },
   "configFields.timeout.help": {
-    "defaultMessage": "Secondes avant l’extinction de l’écran (quand il est géré)."
+    "defaultMessage": "Nombre de secondes avant l’extinction de l’écran (quand le délai est géré)."
   },
   "configFields.timeout.label": {
     "defaultMessage": "Délai de mise en veille de l’écran (s)"
@@ -2418,7 +2427,7 @@
     "defaultMessage": "{count, plural, one {# appareil utilise encore cette configuration : le serveur refusera donc de la supprimer. Déplacez-le d’abord vers une autre configuration.} other {# appareils utilisent encore cette configuration : le serveur refusera donc de la supprimer. Déplacez-les d’abord vers une autre configuration.}}"
   },
   "configurations.modal.deleteBlockedWiped": {
-    "defaultMessage": "Cela inclut {count, plural, one {# appareil effacé} other {# appareils effacés}}, listés sous le filtre « Effacés » de la page Appareils."
+    "defaultMessage": "Cela inclut {count, plural, one {# appareil effacé, listé} other {# appareils effacés, listés}} sous le filtre « Effacés » de la page Appareils."
   },
   "configurations.modal.deleteConfirm": {
     "defaultMessage": "Supprimer la configuration"
@@ -2661,10 +2670,10 @@
     "defaultMessage": "Synchronisé"
   },
   "configurations.sync.notReported": {
-    "defaultMessage": "{count} pas encore connecté(s)"
+    "defaultMessage": "{count, plural, one {# sans remontée pour l’instant} other {# sans remontée pour l’instant}}"
   },
   "configurations.sync.someInSync": {
-    "defaultMessage": "{inSync} sur {total} synchronisés"
+    "defaultMessage": "{inSync} sur {total} {inSync, plural, one {synchronisé} other {synchronisés}}"
   },
   "configurations.sync.unavailable": {
     "defaultMessage": "État de synchronisation indisponible"
@@ -2673,7 +2682,7 @@
     "defaultMessage": "Aucun appareil ne l’utilise encore"
   },
   "configurations.sync.usedBy": {
-    "defaultMessage": "Utilisée par <link>{count, plural, one {# appareil} other {# appareils}}</link>{state, select, one {, synchronisé.} both {, tous deux synchronisés.} all {, tous synchronisés.} none {, aucun synchronisé pour l’instant.} other {, {inSync} synchronisés.}}"
+    "defaultMessage": "Utilisée par <link>{count, plural, one {# appareil} other {# appareils}}</link>{state, select, one {, synchronisé.} both {, tous deux synchronisés.} all {, tous synchronisés.} none {, aucun synchronisé pour l’instant.} other {, {inSync, plural, one {# synchronisé} other {# synchronisés}}.}}"
   },
   "configurations.sync.usedByWipedLink": {
     "defaultMessage": "Utilisée uniquement par <link>{count, plural, one {# appareil effacé} other {# appareils effacés}}</link>."
@@ -2721,7 +2730,7 @@
     "defaultMessage": "Sélectionner les {count} appareils affichés"
   },
   "deploy.devices.selected": {
-    "defaultMessage": "{count} sélectionné(s)"
+    "defaultMessage": "{count, plural, one {# sélectionné} other {# sélectionnés}}"
   },
   "deploy.modal.cancel": {
     "defaultMessage": "Annuler"
@@ -2772,13 +2781,13 @@
     "defaultMessage": "Envoyer aux appareils"
   },
   "deploy.toast.addedBody": {
-    "defaultMessage": "Affectée à {name}."
+    "defaultMessage": "Attribuée à {name}."
   },
   "deploy.toast.addedTitle": {
     "defaultMessage": "{label} ajoutée"
   },
   "deploy.toast.assignFailed": {
-    "defaultMessage": "Échec de l’affectation"
+    "defaultMessage": "Échec de l’attribution"
   },
   "deploy.toast.configurationFallback": {
     "defaultMessage": "la configuration"
@@ -2814,7 +2823,7 @@
     "defaultMessage": "Entrer en mode kiosque"
   },
   "deviceActivity.command.kioskExit": {
-    "defaultMessage": "Quitter le mode kiosque"
+    "defaultMessage": "Quitter le kiosque"
   },
   "deviceActivity.command.locationMode": {
     "defaultMessage": "Mode de localisation"
@@ -2829,7 +2838,7 @@
     "defaultMessage": "Réinitialiser le code de verrouillage"
   },
   "deviceActivity.command.policyApply": {
-    "defaultMessage": "Appliquer la politique"
+    "defaultMessage": "Appliquer les règles"
   },
   "deviceActivity.command.powerMode": {
     "defaultMessage": "Mode de connexion"
@@ -2926,6 +2935,18 @@
   },
   "deviceActivity.eventVerb.wipeNotStarted": {
     "defaultMessage": "n’a pas démarré sa réinitialisation d’usine"
+  },
+  "deviceApps.error.badResult": {
+    "defaultMessage": "L’appareil a envoyé un résultat illisible."
+  },
+  "deviceApps.error.cancelled": {
+    "defaultMessage": "Annulé."
+  },
+  "deviceApps.error.iconsTooSlow": {
+    "defaultMessage": "La récupération des icônes a pris trop de temps. Réessayez."
+  },
+  "deviceApps.error.notQueued": {
+    "defaultMessage": "La commande n’a pas été mise en file d’attente."
   },
   "deviceDetail.actions.clearPinLockout": {
     "defaultMessage": "Lever le blocage du code PIN"
@@ -3114,7 +3135,7 @@
     "defaultMessage": "Délai dépassé en attendant l’appareil (est-il en ligne ?)"
   },
   "deviceDetail.apps.scanned": {
-    "defaultMessage": "analysé {when}"
+    "defaultMessage": "analyse effectuée {when}"
   },
   "deviceDetail.apps.scanning": {
     "defaultMessage": "Analyse en cours…"
@@ -3243,7 +3264,7 @@
     "defaultMessage": "La configuration n’a pas été entièrement appliquée"
   },
   "deviceDetail.config.retryApply": {
-    "defaultMessage": "Réessayer l’application"
+    "defaultMessage": "Réappliquer la configuration"
   },
   "deviceDetail.config.revision": {
     "defaultMessage": "Révision"
@@ -3279,7 +3300,7 @@
     "defaultMessage": "Configuration obsolète sur l’appareil"
   },
   "deviceDetail.config.staleWipeNotStarted": {
-    "defaultMessage": "Une réinitialisation d’usine n’a pas démarré, l’appareil est donc revenu à ses réglages."
+    "defaultMessage": "Une réinitialisation d’usine n’a pas démarré : l’appareil est donc revenu à ses réglages."
   },
   "deviceDetail.config.staleWithCause": {
     "defaultMessage": "{cause} L’appareil a redemandé {name} ; le serveur la renvoie."
@@ -3405,7 +3426,7 @@
     "defaultMessage": "Chargement du kiosque que définit {name}…"
   },
   "deviceDetail.kiosk.noApps": {
-    "defaultMessage": "Le mode kiosque est activé dans {name}, mais aucune application n’est définie comme à installer et affichée dans le kiosque : son kiosque n’a rien à afficher. Ajoutez-en une dans la configuration."
+    "defaultMessage": "Le mode kiosque est activé dans {name}, mais aucune application n’est réglée sur « Installer » et affichée en mode kiosque : son kiosque n’a rien à afficher. Ajoutez-en une dans la configuration."
   },
   "deviceDetail.kiosk.noConfigHint": {
     "defaultMessage": "Cet appareil n’a pas de configuration : il n’y a pas de kiosque configuré auquel revenir."
@@ -3453,7 +3474,7 @@
     "defaultMessage": "Les positions ci-dessous ont été signalées avant la désactivation du suivi."
   },
   "deviceDetail.location.latest": {
-    "defaultMessage": "dernière {when}"
+    "defaultMessage": "dernière position {when}"
   },
   "deviceDetail.location.loading": {
     "defaultMessage": "Chargement de l’historique des positions"
@@ -3821,6 +3842,24 @@
   "deviceDetail.tele.health": {
     "defaultMessage": "Santé"
   },
+  "deviceDetail.tele.health.cold": {
+    "defaultMessage": "Trop froide"
+  },
+  "deviceDetail.tele.health.dead": {
+    "defaultMessage": "Hors d’usage"
+  },
+  "deviceDetail.tele.health.good": {
+    "defaultMessage": "Bon"
+  },
+  "deviceDetail.tele.health.overVoltage": {
+    "defaultMessage": "Surtension"
+  },
+  "deviceDetail.tele.health.overheat": {
+    "defaultMessage": "Surchauffe"
+  },
+  "deviceDetail.tele.health.unknown": {
+    "defaultMessage": "Inconnu"
+  },
   "deviceDetail.tele.iccid": {
     "defaultMessage": "ICCID"
   },
@@ -3984,7 +4023,7 @@
     "defaultMessage": "Oui"
   },
   "deviceKiosk.appsFrom": {
-    "defaultMessage": "Applications issues de"
+    "defaultMessage": "Source des applications"
   },
   "deviceKiosk.appsGroup": {
     "defaultMessage": "Applications"
@@ -4110,7 +4149,7 @@
     "defaultMessage": "Absentes de l’appareil lors de sa dernière analyse des applications{hasDate, select, true { ({date})} other {}} : {apps}. Le kiosque ne peut pas ouvrir une application qui n’est pas installée. Utilisez d’abord « Installer les applications de la configuration »."
   },
   "deviceKiosk.return.mainAppLeftOut": {
-    "defaultMessage": "L’application principale définie dans {name} n’est pas réglée sur « Installer et afficher dans le kiosque » : ce kiosque l’omet. Le kiosque propre à la configuration fait de même."
+    "defaultMessage": "L’application principale définie dans {name} n’est pas réglée sur « Installer » et affichée en mode kiosque : ce kiosque l’omet. Le kiosque propre à la configuration fait de même."
   },
   "deviceKiosk.return.notAccepted": {
     "defaultMessage": "Le serveur n’a pas accepté la commande."
@@ -4191,7 +4230,7 @@
     "defaultMessage": "Déployer une mise à jour de l’agent"
   },
   "devices.attention.title": {
-    "defaultMessage": "{count} nécessitent une intervention"
+    "defaultMessage": "{count, plural, one {# nécessite une intervention} other {# nécessitent une intervention}}"
   },
   "devices.bulk.catalog.customKiosk": {
     "defaultMessage": "Kiosque personnalisé"
@@ -4281,7 +4320,7 @@
     "defaultMessage": "{count, plural, one {Appareil supprimé} other {Appareils supprimés}}"
   },
   "devices.bulk.delete.deletedBody": {
-    "defaultMessage": "{subject} : supprimé."
+    "defaultMessage": "Suppression effectuée : {subject}."
   },
   "devices.bulk.delete.deleting": {
     "defaultMessage": "Suppression…"
@@ -4452,7 +4491,7 @@
     "defaultMessage": "Installation mise en file d’attente"
   },
   "devices.bulk.toast.installQueuedBody": {
-    "defaultMessage": "{name} → {count, plural, one {# appareil} other {# appareils}}{skipped, plural, =0 {} other { (# ignoré(s))}}."
+    "defaultMessage": "{name} → {count, plural, one {# appareil} other {# appareils}}{skipped, plural, =0 {} one { (# ignoré)} other { (# ignorés)}}."
   },
   "devices.bulk.toast.noHostedApk": {
     "defaultMessage": "{name} n’a pas d’APK hébergé."
@@ -4461,7 +4500,7 @@
     "defaultMessage": "Installation impossible"
   },
   "devices.bulk.toast.queuedFor": {
-    "defaultMessage": "Mis en file d’attente pour {count, plural, one {# appareil} other {# appareils}}{skipped, plural, =0 {} other { (# ignoré(s))}}."
+    "defaultMessage": "Mis en file d’attente pour {count, plural, one {# appareil} other {# appareils}}{skipped, plural, =0 {} one { (# ignoré)} other { (# ignorés)}}."
   },
   "devices.cells.charging": {
     "defaultMessage": "(en charge)"
@@ -4503,7 +4542,7 @@
     "defaultMessage": "Configuration n° {id}"
   },
   "devices.config.unassigned": {
-    "defaultMessage": "Non affecté"
+    "defaultMessage": "Non attribué"
   },
   "devices.empty.checking": {
     "defaultMessage": "Recherche des appareils nécessitant une intervention en cours…"
@@ -4545,7 +4584,7 @@
     "defaultMessage": "Filtrer"
   },
   "devices.filters.buttonOn": {
-    "defaultMessage": "Filtrer, {count} actif(s)"
+    "defaultMessage": "Filtrer, {count, plural, one {# actif} other {# actifs}}"
   },
   "devices.filters.clear": {
     "defaultMessage": "Effacer les filtres"
@@ -4599,7 +4638,7 @@
     "defaultMessage": "Votre session a expiré. Connectez-vous à nouveau."
   },
   "devices.notConnected.commandBody": {
-    "defaultMessage": "Il recevra la commande à son prochain signal de vie."
+    "defaultMessage": "Il recevra la commande à son prochain contact."
   },
   "devices.page.capped": {
     "defaultMessage": "Affichage des {shown} premiers appareils sur {total}. Utilisez la recherche pour trouver les autres."
@@ -4611,7 +4650,7 @@
     "defaultMessage": "les appareils"
   },
   "devices.page.subtitle": {
-    "defaultMessage": "{capped, select, true {<num>{total}</num> appareils ; } other {}}<num>{online}</num> sur {capped, select, true {les premiers } other {}}<num>{active}</num> en ligne actuellement{showAttention, select, true {, <num>{attention}</num> nécessitent une intervention} other {}}{showOffline, select, true {, <num>{offline}</num> hors ligne} other {}}."
+    "defaultMessage": "{capped, select, true {<num>{total}</num> appareils ; } other {}}<num>{online}</num> en ligne actuellement sur {capped, select, true {les <num>{active}</num> premiers} other {<num>{active}</num>}}{showAttention, select, true {, <num>{attention}</num> nécessitant une intervention} other {}}{showOffline, select, true {, <num>{offline}</num> hors ligne} other {}}."
   },
   "devices.page.title": {
     "defaultMessage": "Appareils"
@@ -4878,7 +4917,7 @@
     "defaultMessage": "Jeton"
   },
   "enroll.device.noAgentCallout": {
-    "defaultMessage": "Ce serveur n’a aucune application agent à donner aux nouveaux appareils : un appareil qui scanne un code ne pourra donc pas l’installer. Le programme de mise à jour n’a pas vérifié d’agent pour ce serveur : GitHub n’a pas répondu (il réessaie toutes les quelques minutes), la version exécutée par ce serveur a un manifeste signé qui ne passe pas la vérification, ou aucune version contenant un agent n’a été trouvée (<mono>GITHUB_REPO</mono> est-il défini ?). Consultez Paramètres → Mises à jour et le journal du programme de mise à jour. Les appareils qui exécutent déjà l’agent peuvent toujours utiliser un jeton."
+    "defaultMessage": "Ce serveur n’a aucune application agent à donner aux nouveaux appareils : un appareil qui scanne un code ne pourra donc pas l’installer. Le programme de mise à jour n’a pas vérifié d’agent pour ce serveur : GitHub n’a pas répondu (il réessaie à quelques minutes d’intervalle), la version exécutée par ce serveur a un manifeste signé qui ne passe pas la vérification, ou aucune version contenant un agent n’a été trouvée (<mono>GITHUB_REPO</mono> est-il défini ?). Consultez Paramètres → Mises à jour et le journal du programme de mise à jour. Les appareils qui exécutent déjà l’agent peuvent toujours utiliser un jeton."
   },
   "enroll.device.retry": {
     "defaultMessage": "Réessayer"
@@ -4893,7 +4932,7 @@
     "defaultMessage": "Toute personne qui possède ce code peut enrôler jusqu’à {count} appareils, jusqu’à son expiration ou jusqu’à ce que vous arrêtiez tous les codes. Ne le partagez qu’avec la personne qui les prépare."
   },
   "enroll.devices.helpOne": {
-    "defaultMessage": "Un seul appareil, puis le code cesse de fonctionner : celui à envoyer à un client."
+    "defaultMessage": "Un seul appareil, puis le code cesse de fonctionner : c’est le code à envoyer à un client."
   },
   "enroll.facts.configuration": {
     "defaultMessage": "Configuration"
@@ -4950,7 +4989,7 @@
     "defaultMessage": "Ce code contient {bytes} octets : il est dense, et la caméra de configuration de certains appareils peut avoir du mal à le lire. Une adresse de serveur ou un Wi-Fi plus courts, ou moins de paramètres QR supplémentaires, l’allègent."
   },
   "enroll.qrSize.tooLarge": {
-    "defaultMessage": "Ce code contiendrait {bytes} octets, plus qu’un QR code ne peut en porter ({max}). L’adresse du serveur (présente deux fois dans le code) ou le Wi-Fi est trop longue : raccourcissez-les."
+    "defaultMessage": "Ce code contiendrait {bytes} octets, plus qu’un QR code ne peut en porter ({max}). L’adresse du serveur (présente deux fois dans le code) ou les informations Wi-Fi sont trop longues : raccourcissez-les."
   },
   "enroll.qrSize.tooLargeFrame": {
     "defaultMessage": "Pas de QR code : il serait trop grand pour être lu."
@@ -4986,7 +5025,7 @@
     "defaultMessage": "{count, plural, one {# autre entrée} other {# autres entrées}}"
   },
   "enroll.setup.protectedLeftOut": {
-    "defaultMessage": "{summary} ({count} protégées retirées)"
+    "defaultMessage": "{summary} ({count, plural, one {# entrée protégée retirée} other {# entrées protégées retirées}})"
   },
   "enroll.setup.serverDefault": {
     "defaultMessage": "Non ajouté : choisissez une configuration pour ajouter ses entrées (la page ne peut pas savoir laquelle est celle par défaut du serveur)"
@@ -5001,7 +5040,7 @@
     "defaultMessage": "{count, plural, one {# entrée retirée} other {# entrées retirées}} : entrée que MDMesh ne transmet pas, ou valeur du mauvais type"
   },
   "enroll.setup.wifiLeftOut": {
-    "defaultMessage": "{count, plural, one {# entrée Wi-Fi retirée} other {# entrées Wi-Fi retirées}} : le Wi-Fi vient de cette page (et du Wi-Fi de configuration de la configuration)"
+    "defaultMessage": "{count, plural, one {# entrée Wi-Fi retirée} other {# entrées Wi-Fi retirées}} : le Wi-Fi vient de cette page (et du Wi-Fi de configuration initiale défini dans la configuration)"
   },
   "enroll.steps.reset": {
     "defaultMessage": "Réinitialisez l’appareil aux paramètres d’usine, ou partez d’un appareil neuf sorti de sa boîte."
@@ -5067,7 +5106,7 @@
     "defaultMessage": "Génération d’un jeton…"
   },
   "enroll.token.maxUses": {
-    "defaultMessage": "Un code peut enrôler de 1 à 1000 appareils."
+    "defaultMessage": "Un code peut enrôler de 1 à 1 000 appareils."
   },
   "enroll.token.new": {
     "defaultMessage": "Nouveau jeton"
@@ -5268,13 +5307,13 @@
     "defaultMessage": "{label} : en file d’attente"
   },
   "ext.lists.notConnectedBody": {
-    "defaultMessage": "Il recevra la commande à son prochain contact."
+    "defaultMessage": "Il recevra la commande à sa prochaine connexion."
   },
   "ext.lists.notConnectedTitle": {
     "defaultMessage": "{number} n’est pas connecté pour le moment"
   },
   "ext.lists.queuedFor": {
-    "defaultMessage": "Mis en file d’attente pour {count, plural, one {# appareil} other {# appareils}}{skipped, plural, =0 {} other { (# ignoré(s))}}."
+    "defaultMessage": "Mis en file d’attente pour {count, plural, one {# appareil} other {# appareils}}{skipped, plural, =0 {} one { (# ignoré)} other { (# ignorés)}}."
   },
   "ext.noAccess.body": {
     "defaultMessage": "Votre rôle ne l’inclut pas. Demandez à un administrateur si vous en avez besoin."
@@ -5412,10 +5451,10 @@
     "defaultMessage": "Tous en ligne"
   },
   "overview.attention.listLabel": {
-    "defaultMessage": "Appareils à surveiller"
+    "defaultMessage": "Appareils nécessitant une intervention"
   },
   "overview.attention.loading": {
-    "defaultMessage": "Chargement des appareils à surveiller…"
+    "defaultMessage": "Chargement des appareils nécessitant une intervention…"
   },
   "overview.attention.noActive": {
     "defaultMessage": "Aucun appareil actif"
@@ -5427,7 +5466,7 @@
     "defaultMessage": "Les appareils hors ligne ou dont la configuration ne s’est pas appliquée s’affichent ici."
   },
   "overview.attention.notConnectedBody": {
-    "defaultMessage": "Il se synchronisera à son prochain signal de vie."
+    "defaultMessage": "Il se synchronisera à son prochain contact."
   },
   "overview.attention.notConnectedTitle": {
     "defaultMessage": "{number} n’est pas connecté pour le moment"
@@ -5436,7 +5475,7 @@
     "defaultMessage": "Inconnu"
   },
   "overview.attention.notKnownBody": {
-    "defaultMessage": "Les appareils n’ont pas pu être chargés ; on ne sait donc pas lesquels sont à surveiller."
+    "defaultMessage": "Les appareils n’ont pas pu être chargés ; on ne sait donc pas lesquels nécessitent une intervention."
   },
   "overview.attention.offline": {
     "defaultMessage": "Hors ligne"
@@ -5460,7 +5499,7 @@
     "defaultMessage": "Synchronisation…"
   },
   "overview.attention.title": {
-    "defaultMessage": "À surveiller"
+    "defaultMessage": "Nécessite une intervention"
   },
   "overview.attention.updateAgent": {
     "defaultMessage": "Mettre à jour l’agent"
@@ -5469,7 +5508,7 @@
     "defaultMessage": "Mettre à jour l’agent : {name}"
   },
   "overview.byConfig.agentTooOld": {
-    "defaultMessage": "Agent trop ancien : {count}"
+    "defaultMessage": "{count, plural, one {Agent trop ancien : #} other {Agents trop anciens : #}}"
   },
   "overview.byConfig.allInSync": {
     "defaultMessage": "Tous synchronisés"
@@ -5499,7 +5538,7 @@
     "defaultMessage": "Non signalés : {count}"
   },
   "overview.byConfig.nothingAssigned": {
-    "defaultMessage": "{count, plural, one {# appareil n’a} other {# appareils n’ont}} rien d’affecté"
+    "defaultMessage": "{count, plural, one {# appareil n’a} other {# appareils n’ont}} aucune configuration attribuée"
   },
   "overview.byConfig.outOfSync": {
     "defaultMessage": "Désynchronisés : {count}"
@@ -5535,7 +5574,7 @@
     "defaultMessage": "{count, plural, one {appareil enrôlé} other {appareils enrôlés}}"
   },
   "overview.fleet.needsAttention": {
-    "defaultMessage": "À surveiller"
+    "defaultMessage": "Nécessite une intervention"
   },
   "overview.fleet.offline": {
     "defaultMessage": "Hors ligne"
@@ -5682,7 +5721,7 @@
     "defaultMessage": "Tous les appareils sont en ligne et synchronisés."
   },
   "overview.sync.agentTooOld": {
-    "defaultMessage": "Agent trop ancien : {count}"
+    "defaultMessage": "{count, plural, one {Agent trop ancien : #} other {Agents trop anciens : #}}"
   },
   "overview.sync.all": {
     "defaultMessage": "Tous synchronisés"
@@ -5844,7 +5883,7 @@
     "defaultMessage": "{shown} appareils affichés sur {total}. Recherchez pour trouver les autres."
   },
   "rollout.picker.start": {
-    "defaultMessage": "Lancer les pilotes ({count})"
+    "defaultMessage": "Lancer la phase pilote ({count})"
   },
   "rollout.picker.starting": {
     "defaultMessage": "Lancement…"
@@ -5874,7 +5913,7 @@
     "defaultMessage": "Pas encore"
   },
   "rollout.promote.promoting": {
-    "defaultMessage": "Extension…"
+    "defaultMessage": "Extension du déploiement…"
   },
   "rollout.promote.text": {
     "defaultMessage": "L’agent {version} est envoyé à tous les autres appareils qui peuvent l’installer. Les appareils hors ligne le recevront à leur prochaine connexion."
@@ -6309,7 +6348,7 @@
     "defaultMessage": "Tout sélectionner ({total})"
   },
   "shell.bulk.selected": {
-    "defaultMessage": "{count} sélectionné(s)"
+    "defaultMessage": "{count, plural, one {# sélectionné} other {# sélectionnés}}"
   },
   "shell.bulk.selectedNoun": {
     "defaultMessage": "{count} {noun} sélectionné(s)"
@@ -6435,7 +6474,7 @@
     "defaultMessage": "Plus tard"
   },
   "shell.reload.message": {
-    "defaultMessage": "La console <mono>v{version}</mono> est disponible. Rechargez pour la charger."
+    "defaultMessage": "La console <mono>v{version}</mono> est disponible. Rechargez la page pour l’utiliser."
   },
   "shell.reload.reload": {
     "defaultMessage": "Recharger"
@@ -6534,10 +6573,10 @@
     "defaultMessage": "({count} fois)"
   },
   "status.command.done": {
-    "defaultMessage": "Terminé"
+    "defaultMessage": "Terminée"
   },
   "status.command.expired": {
-    "defaultMessage": "Expiré"
+    "defaultMessage": "Expirée"
   },
   "status.command.pending": {
     "defaultMessage": "En attente"
@@ -6570,7 +6609,7 @@
     "defaultMessage": "Échec"
   },
   "status.sync.inSync": {
-    "defaultMessage": "Synchronisé"
+    "defaultMessage": "Synchronisée"
   },
   "status.sync.noConfiguration": {
     "defaultMessage": "Aucune configuration"
@@ -6663,7 +6702,7 @@
     "defaultMessage": "du reste du parc"
   },
   "ui.steps.ofUpdated": {
-    "defaultMessage": "sur {total} mis à jour"
+    "defaultMessage": "sur {total} à jour"
   },
   "ui.steps.progress": {
     "defaultMessage": "Progression"
@@ -6688,6 +6727,9 @@
   },
   "updates.apply.notStarted": {
     "defaultMessage": "La mise à jour n’a pas démarré."
+  },
+  "updates.apply.notStartedDetail": {
+    "defaultMessage": "La mise à jour n’a pas démarré : {error}"
   },
   "updates.apply.progressLabel": {
     "defaultMessage": "Progression de la mise à jour"
@@ -6723,7 +6765,7 @@
     "defaultMessage": "Les mises à jour automatiques n’installeront plus {version}, car sa dernière mise à jour a échoué ou a été annulée."
   },
   "updates.auto.skippedManage": {
-    "defaultMessage": "« Mettre à jour » l’installe manuellement ; une version plus récente s’installera d’elle-même."
+    "defaultMessage": "Le bouton « Mettre à jour le serveur et la console » permet de l’installer manuellement ; une version plus récente s’installera d’elle-même."
   },
   "updates.auto.skippedOther": {
     "defaultMessage": "Une version plus récente s’installera d’elle-même."
@@ -7140,7 +7182,7 @@
     "defaultMessage": "Nouveau rôle"
   },
   "users.roleEditor.permissions": {
-    "defaultMessage": "Permissions ({count} sélectionnée(s))"
+    "defaultMessage": "Permissions ({count, plural, one {# sélectionnée} other {# sélectionnées}})"
   },
   "users.roleEditor.save": {
     "defaultMessage": "Enregistrer le rôle"

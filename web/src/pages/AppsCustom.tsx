@@ -33,7 +33,9 @@ import {
 import { EXT_SOURCES, SHA256_HEX, isBundleName, isHostedHere, type DeploySubject } from '../data/apps';
 import { CORE_ACTION_ACCESS } from '../ext/core/access';
 import { usePermission } from '../ext/permissions';
-import { FILE_ACCEPT, FILE_EXTS, errorText, formatBytes } from './appsModel';
+import { FILE_ACCEPT, FILE_EXTS, errorText } from './appsModel';
+import { fmtBytes } from './deviceDetailFormat';
+import { apiErrorText } from '../api/apiErrorText';
 
 type Mode = 'upload' | 'link';
 
@@ -402,7 +404,7 @@ export function AppsCustom({
         toast.push('ok', intl.formatMessage(messages.detailsExtracted), intl.formatMessage(messages.couldNotHost));
       }
     } catch (e) {
-      toast.push('err', intl.formatMessage(messages.uploadFailed), errorText(e));
+      toast.push('err', intl.formatMessage(messages.uploadFailed), errorText(e, intl));
       setFile(null);
     } finally {
       setUploading(false);
@@ -546,7 +548,7 @@ export function AppsCustom({
         toast.push('ok', intl.formatMessage(messages.alreadyTitle), intl.formatMessage(messages.alreadyBody));
         return existing.id;
       }
-      toast.push('err', intl.formatMessage(messages.addFailedTitle), e instanceof Error ? e.message : intl.formatMessage(messages.addFailedBody));
+      toast.push('err', intl.formatMessage(messages.addFailedTitle), apiErrorText(intl, e) || intl.formatMessage(messages.addFailedBody));
       return undefined;
     } finally {
       setSavingToLibrary(false);
@@ -571,7 +573,7 @@ export function AppsCustom({
     ? [
         intl.formatMessage(messages.readSuccessfully),
         bundle ? intl.formatMessage(messages.bundleWithParts, { count: bundle.parts.length }) : intl.formatMessage(messages.apk),
-        formatBytes(file.size),
+        fmtBytes(file.size, intl),
       ]
         .filter(Boolean)
         .join(' · ')

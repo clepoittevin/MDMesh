@@ -76,6 +76,7 @@ import { notConnected } from '../data/presence';
 import { useFleetSync } from '../data/useFleetSync';
 import { ISSUE_CHIP, syncKind } from './devicesStatus';
 import './DevicesPage.css';
+import { apiErrorText } from '../api/apiErrorText';
 
 type View = 'table' | 'cards';
 type StatusFilter = 'all' | Presence;
@@ -152,14 +153,14 @@ const messages: Record<string, MessageDescriptor> = defineMessages({
   },
   attentionLabel: { id: 'devices.attention.label', defaultMessage: 'Needs attention' },
   rollOutAgent: { id: 'devices.attention.rollOutAgent', defaultMessage: 'Roll out an agent update' },
-  attentionTitle: { id: 'devices.attention.title', defaultMessage: '{count} need attention' },
+  attentionTitle: { id: 'devices.attention.title', defaultMessage: '{count, plural, one {#} other {#}} need attention' },
   searchLabel: { id: 'devices.toolbar.searchLabel', defaultMessage: 'Search devices' },
   searchPlaceholder: { id: 'devices.toolbar.searchPlaceholder', defaultMessage: 'Search name, number, configuration' },
   statusLabel: { id: 'devices.toolbar.statusLabel', defaultMessage: 'Status' },
   statusAll: { id: 'devices.toolbar.statusAll', defaultMessage: 'All' },
   filters: { id: 'devices.filters.label', defaultMessage: 'Filters' },
   filter: { id: 'devices.filters.button', defaultMessage: 'Filter' },
-  filterOn: { id: 'devices.filters.buttonOn', defaultMessage: 'Filter, {count} on' },
+  filterOn: { id: 'devices.filters.buttonOn', defaultMessage: 'Filter, {count, plural, one {#} other {#}} on' },
   typeField: { id: 'devices.filters.type', defaultMessage: 'Type' },
   allTypes: { id: 'devices.filters.allTypes', defaultMessage: 'All types' },
   configurationField: { id: 'devices.filters.configuration', defaultMessage: 'Configuration' },
@@ -284,7 +285,6 @@ function writeStorage(key: string, value: string) {
 
 const deviceName = (d: DeviceView) => d.description?.trim() || d.number;
 const compareText = (a: string, b: string) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
-const errText = (e: unknown) => (e instanceof Error ? e.message : '');
 
 /** Interactive descendants handle their own clicks; a click elsewhere on a row or card opens (or selects) it. */
 
@@ -384,7 +384,7 @@ export function DevicesPage() {
     listConfigurations()
       .then((l) => setAllConfigs([...l].sort((a, b) => compareText(a.name, b.name))))
       .catch((e) => {
-        const detail = errText(e);
+        const detail = apiErrorText(intl, e);
         setAllConfigsError(
           detail
             ? intl.formatMessage(messages.configsLoadFailedDetail, { detail })

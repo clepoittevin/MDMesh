@@ -1,7 +1,8 @@
 import { useId, useMemo, useState, type ReactNode } from 'react';
 import { FormattedMessage, defineMessages, useIntl, type IntlShape } from 'react-intl';
 import { untyped } from '../../data/configIntl';
-import { applyUpdate, checkForUpdates, setAutoUpdate, type UpdateStatus } from '../../api/updates';
+import { applyUpdate, checkForUpdates, setAutoUpdate, type UpdateActionResult, type UpdateStatus } from '../../api/updates';
+import { apiErrorCodeText } from '../../api/apiErrorText';
 import { useMayManageDeployment } from '../../auth/useMayManageDeployment';
 import {
   Badge,
@@ -68,6 +69,7 @@ const messages = untyped(defineMessages({
   notesShowAll: { id: 'updates.notes.showAll', defaultMessage: 'Show all notes ({count})' },
   checkFailed: { id: 'updates.check.failed', defaultMessage: 'Couldn’t check for updates. Try again in a minute.' },
   applyNotStarted: { id: 'updates.apply.notStarted', defaultMessage: 'The update did not start.' },
+  applyNotStartedDetail: { id: 'updates.apply.notStartedDetail', defaultMessage: 'The update did not start: {error}' },
   autoSaveFailedDetail: { id: 'updates.auto.saveFailedDetail', defaultMessage: 'Could not save: {error}' },
   autoSaveFailed: { id: 'updates.auto.saveFailed', defaultMessage: 'Could not save.' },
   title: { id: 'updates.card.title', defaultMessage: 'Updates' },
@@ -321,6 +323,13 @@ function ReleaseNotes({ status }: { status: UpdateStatus }) {
 }
 
 /** Settings → Updates: check, the ready release, apply with live progress, automatic updates. */
+/** Why an apply or auto toggle failed: the supervisor's own text as sent, else the status in the console's words. */
+function failureText(intl: IntlShape, r: UpdateActionResult): string {
+  if (r.error) return r.error;
+  if (r.httpStatus === undefined) return '';
+  return apiErrorCodeText(intl, r.httpStatus === 0 ? 'network' : 'http', r.httpStatus);
+}
+
 export function UpdatesSection({
   id,
   sup,
@@ -365,7 +374,11 @@ export function UpdatesSection({
     const r = await applyUpdate();
     setStarting(false);
     setConfirming(false);
-    if (!r.ok) setApplyErr(r.error || intl.formatMessage(m.applyNotStarted));
+    if (!r.ok) {
+      // The supervisor's own reason is shown as it is (as before); a bare status gets the sentence around it.
+      const why = failureText(intl, r);
+      setApplyErr(r.error || (why ? intl.formatMessage(m.applyNotStartedDetail, { error: why }) : intl.formatMessage(m.applyNotStarted)));
+    }
     void sup.refresh(); // shows the progress at once and polls every 3 s while it runs
   };
 
@@ -375,7 +388,8 @@ export function UpdatesSection({
     const r = await setAutoUpdate(next);
     setAutoSaving(false);
     if (!r.ok) {
-      setAutoErr(r.error ? intl.formatMessage(m.autoSaveFailedDetail, { error: r.error }) : intl.formatMessage(m.autoSaveFailed));
+      const why = failureText(intl, r);
+      setAutoErr(why ? intl.formatMessage(m.autoSaveFailedDetail, { error: why }) : intl.formatMessage(m.autoSaveFailed));
       return;
     }
     sup.patch({ auto: next });

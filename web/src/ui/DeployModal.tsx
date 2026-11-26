@@ -15,6 +15,7 @@ import { SkeletonRows } from './Skeleton';
 import { StatusDot, type StatusTone } from './Status';
 import { TabPanel, Tabs } from './Tabs';
 import './DeployModal.css';
+import { apiErrorText } from '../api/apiErrorText';
 
 type Mode = 'device' | 'config';
 
@@ -71,7 +72,7 @@ const messages: Record<string, MessageDescriptor> = defineMessages({
   noMatch: { id: 'deploy.devices.noMatch', defaultMessage: 'No devices match.' },
   presenceHidden: { id: 'deploy.devices.presenceHidden', defaultMessage: '{status},' },
   launchAfter: { id: 'deploy.devices.launchAfter', defaultMessage: 'Launch the app after install' },
-  selected: { id: 'deploy.devices.selected', defaultMessage: '{count} selected' },
+  selected: { id: 'deploy.devices.selected', defaultMessage: '{count, plural, one {#} other {#}} selected' },
   configuration: { id: 'deploy.config.label', defaultMessage: 'Configuration' },
   configurationHelp: {
     id: 'deploy.config.help',
@@ -224,7 +225,7 @@ export function DeployModal({
       onAssigned?.(subject.applicationId);
       onClose();
     } catch (e) {
-      toast.push('err', intl.formatMessage(messages.assignFailed), e instanceof Error ? e.message : '');
+      toast.push('err', intl.formatMessage(messages.assignFailed), apiErrorText(intl, e));
     } finally {
       setBusy(false);
     }

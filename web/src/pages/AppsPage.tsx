@@ -84,7 +84,7 @@ export function AppsPage() {
         if (seq === deploySeq.current) setDeploy(subject);
       })
       .catch((e) => {
-        if (seq === deploySeq.current) toast.push('err', intl.formatMessage(messages.cannotDeploy), errorText(e));
+        if (seq === deploySeq.current) toast.push('err', intl.formatMessage(messages.cannotDeploy), errorText(e, intl));
       })
       .finally(() => {
         if (seq === deploySeq.current) setDeployingId(null);

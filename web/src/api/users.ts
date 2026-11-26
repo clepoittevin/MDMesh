@@ -2,6 +2,7 @@ import { defineMessages, type IntlShape, type MessageDescriptor } from 'react-in
 import { hashPassword, isTooManyAttempts } from './auth';
 import { authMessages } from './authMessages';
 import { apiClient, deleteWithBody } from './client';
+import { apiErrorText } from './apiErrorText';
 
 export interface Permission {
   id: number;
@@ -137,5 +138,5 @@ export function managementError(intl: IntlShape, error: unknown): string {
   const message = error instanceof Error ? error.message : '';
   if (!message) return intl.formatMessage(errors.generic);
   const known = Object.prototype.hasOwnProperty.call(messages, message) ? messages[message] : undefined;
-  return known ? intl.formatMessage(known) : message;
+  return known ? intl.formatMessage(known) : apiErrorText(intl, error);
 }

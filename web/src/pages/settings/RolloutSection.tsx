@@ -33,6 +33,7 @@ import {
 import { CORE_ACTION_ACCESS } from '../../ext/core/access';
 import { usePermission } from '../../ext/permissions';
 import { rolloutActive, type RolloutState } from './hooks';
+import { apiErrorText } from '../../api/apiErrorText';
 
 const AGENT_PACKAGE = (import.meta.env.VITE_AGENT_PACKAGE as string) || 'com.mdmesh.agent';
 /** Devices fetched per search in the canary picker (classic: one page of 200). */
@@ -198,7 +199,7 @@ const ROLLOUT_ERRORS: Record<string, MessageDescriptor> = {
   'error.permission.denied': messages.errorPermission,
 };
 const rolloutError = (e: unknown, intl: IntlShape) => {
-  const m = (e as Error)?.message;
+  const m = apiErrorText(intl, e);
   if (!m) return intl.formatMessage(messages.errorUnknown);
   return Object.prototype.hasOwnProperty.call(ROLLOUT_ERRORS, m) ? intl.formatMessage(ROLLOUT_ERRORS[m]) : m;
 };
@@ -336,7 +337,7 @@ function CanaryPicker({
             setTotal(r.devices?.totalItemsCount ?? 0);
           })
           .catch((e) => {
-            if (id === seq.current) setLoadErr((e as Error).message || '');
+            if (id === seq.current) setLoadErr(apiErrorText(intl, e));
           })
           .finally(() => {
             if (id === seq.current) setLoading(false);

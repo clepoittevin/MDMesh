@@ -48,6 +48,7 @@ import { Segmented } from './Segmented';
 import { SkeletonRows } from './Skeleton';
 import { Tooltip } from './Tooltip';
 import './BulkModals.css';
+import { apiErrorText } from '../api/apiErrorText';
 
 const messages: Record<string, MessageDescriptor> = defineMessages({
   devices: { id: 'devices.bulk.devices.count', defaultMessage: '{count, plural, one {# device} other {# devices}}' },
@@ -227,7 +228,6 @@ const messages: Record<string, MessageDescriptor> = defineMessages({
 });
 
 const strong = (chunks: ReactNode) => <strong>{chunks}</strong>;
-const errText = (e: unknown) => (e instanceof Error ? e.message : '');
 
 // ---------------------------------------------------------------------------------------------------------------
 // Run action
@@ -344,7 +344,7 @@ function useLibrary(enabled: boolean) {
         if (!cancelled) setApps(r);
       })
       .catch((e) => {
-        if (!cancelled) setErr(errText(e) || intl.formatMessage(messages.loadAppsFailed));
+        if (!cancelled) setErr(apiErrorText(intl, e) || intl.formatMessage(messages.loadAppsFailed));
       });
     return () => {
       cancelled = true;
@@ -402,7 +402,7 @@ export function RunActionModal({
         if (!cancelled) setGroups(g);
       })
       .catch((e) => {
-        if (!cancelled) setGroupsErr(errText(e) || intl.formatMessage(messages.requestFailed));
+        if (!cancelled) setGroupsErr(apiErrorText(intl, e) || intl.formatMessage(messages.requestFailed));
       });
     return () => {
       cancelled = true;
@@ -502,7 +502,7 @@ export function RunActionModal({
     } catch (e) {
       setSendErr(
         intl.formatMessage(messages.couldntQueue, {
-          reason: errText(e) || intl.formatMessage(messages.notAccepted),
+          reason: apiErrorText(intl, e) || intl.formatMessage(messages.notAccepted),
           queued,
         }),
       );
@@ -898,7 +898,7 @@ export function ChangeConfigurationModal({
       onClose();
       await onDone();
     } catch (e) {
-      toast.push('err', intl.formatMessage(messages.changeFailed), errText(e));
+      toast.push('err', intl.formatMessage(messages.changeFailed), apiErrorText(intl, e));
     } finally {
       setBusy(false);
     }
@@ -983,7 +983,7 @@ export function DeleteDevicesModal({
       onClose();
       await onDone();
     } catch (e) {
-      toast.push('err', intl.formatMessage(messages.deleteFailed), errText(e));
+      toast.push('err', intl.formatMessage(messages.deleteFailed), apiErrorText(intl, e));
     } finally {
       setBusy(false);
     }

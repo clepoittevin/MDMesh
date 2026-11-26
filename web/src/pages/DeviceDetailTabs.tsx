@@ -190,6 +190,16 @@ function duration(ms: number, f: Fmt): string {
   return f(messages.durationMinutes, { m });
 }
 
+const batteryHealthMessages = defineMessages({
+  good: { id: 'deviceDetail.tele.health.good', defaultMessage: 'Good' },
+  overheat: { id: 'deviceDetail.tele.health.overheat', defaultMessage: 'Overheating' },
+  dead: { id: 'deviceDetail.tele.health.dead', defaultMessage: 'Dead' },
+  overVoltage: { id: 'deviceDetail.tele.health.overVoltage', defaultMessage: 'Over voltage' },
+  cold: { id: 'deviceDetail.tele.health.cold', defaultMessage: 'Cold' },
+  unknown: { id: 'deviceDetail.tele.health.unknown', defaultMessage: 'Unknown' },
+});
+const BATTERY_HEALTH: Record<string, MessageDescriptor> = batteryHealthMessages;
+
 const CHARGING: Record<string, MessageDescriptor> = {
   none: messages.notCharging,
   ac: messages.chargingAc,
@@ -251,7 +261,12 @@ const GROUPS: Array<{ title: MessageDescriptor; rows: RowSpec[] }> = [
       {
         label: messages.health,
         keys: [['dynamic', 'batteryHealth']],
-        render: (s) => (str(s.dynamic.batteryHealth) ? capitalise(String(s.dynamic.batteryHealth).replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase()) : undefined),
+        render: (s, f) => {
+          const v = str(s.dynamic.batteryHealth);
+          if (!v) return undefined;
+          const known = BATTERY_HEALTH[String(v)];
+          return known ? f(known) : capitalise(String(v).replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase());
+        },
       },
       { label: messages.temperature, keys: [['dynamic', 'batteryTempC']], render: (s, f, intl) => (teleNum(s.dynamic.batteryTempC) != null ? f(messages.celsius, { value: fixed(intl, s.dynamic.batteryTempC as number, 1) }) : undefined) },
       { label: messages.voltage, keys: [['dynamic', 'batteryVoltageMv']], render: (s, f, intl) => (teleNum(s.dynamic.batteryVoltageMv) ? f(messages.volts, { value: fixed(intl, (s.dynamic.batteryVoltageMv as number) / 1000, 2) }) : undefined) },

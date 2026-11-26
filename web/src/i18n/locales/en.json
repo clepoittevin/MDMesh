@@ -1,4 +1,13 @@
 {
+  "api.error.httpStatus": {
+    "defaultMessage": "Request failed with HTTP {status}"
+  },
+  "api.error.notJson": {
+    "defaultMessage": "Unexpected non-JSON response from server"
+  },
+  "api.error.server": {
+    "defaultMessage": "The server returned an error"
+  },
   "app.notFound.empty": {
     "defaultMessage": "No page here"
   },
@@ -2670,10 +2679,10 @@
     "defaultMessage": "In sync"
   },
   "configurations.sync.notReported": {
-    "defaultMessage": "{count} not reported yet"
+    "defaultMessage": "{count, plural, one {#} other {#}} not reported yet"
   },
   "configurations.sync.someInSync": {
-    "defaultMessage": "{inSync} of {total} in sync"
+    "defaultMessage": "{inSync, plural, one {#} other {#}} of {total} in sync"
   },
   "configurations.sync.unavailable": {
     "defaultMessage": "Sync status unavailable"
@@ -2682,7 +2691,7 @@
     "defaultMessage": "Not used by any device yet"
   },
   "configurations.sync.usedBy": {
-    "defaultMessage": "Used by <link>{count, plural, one {# device} other {# devices}}</link>{state, select, one {, in sync.} both {, both in sync.} all {, all in sync.} none {, none in sync yet.} other {, {inSync} in sync.}}"
+    "defaultMessage": "Used by <link>{count, plural, one {# device} other {# devices}}</link>{state, select, one {, in sync.} both {, both in sync.} all {, all in sync.} none {, none in sync yet.} other {, {inSync, plural, one {#} other {#}} in sync.}}"
   },
   "configurations.sync.usedByWipedLink": {
     "defaultMessage": "Used only by <link>{count, plural, one {# wiped device} other {# wiped devices}}</link>."
@@ -2730,7 +2739,7 @@
     "defaultMessage": "Select all {count} shown"
   },
   "deploy.devices.selected": {
-    "defaultMessage": "{count} selected"
+    "defaultMessage": "{count, plural, one {#} other {#}} selected"
   },
   "deploy.modal.cancel": {
     "defaultMessage": "Cancel"
@@ -2935,6 +2944,18 @@
   },
   "deviceActivity.eventVerb.wipeNotStarted": {
     "defaultMessage": "didn’t start its factory reset"
+  },
+  "deviceApps.error.badResult": {
+    "defaultMessage": "The device sent a result that could not be read."
+  },
+  "deviceApps.error.cancelled": {
+    "defaultMessage": "Cancelled."
+  },
+  "deviceApps.error.iconsTooSlow": {
+    "defaultMessage": "Fetching the icons took too long. Try again."
+  },
+  "deviceApps.error.notQueued": {
+    "defaultMessage": "The command was not queued."
   },
   "deviceDetail.actions.clearPinLockout": {
     "defaultMessage": "Clear PIN lockout"
@@ -3830,6 +3851,24 @@
   "deviceDetail.tele.health": {
     "defaultMessage": "Health"
   },
+  "deviceDetail.tele.health.cold": {
+    "defaultMessage": "Cold"
+  },
+  "deviceDetail.tele.health.dead": {
+    "defaultMessage": "Dead"
+  },
+  "deviceDetail.tele.health.good": {
+    "defaultMessage": "Good"
+  },
+  "deviceDetail.tele.health.overVoltage": {
+    "defaultMessage": "Over voltage"
+  },
+  "deviceDetail.tele.health.overheat": {
+    "defaultMessage": "Overheating"
+  },
+  "deviceDetail.tele.health.unknown": {
+    "defaultMessage": "Unknown"
+  },
   "deviceDetail.tele.iccid": {
     "defaultMessage": "ICCID"
   },
@@ -4200,7 +4239,7 @@
     "defaultMessage": "Roll out an agent update"
   },
   "devices.attention.title": {
-    "defaultMessage": "{count} need attention"
+    "defaultMessage": "{count, plural, one {#} other {#}} need attention"
   },
   "devices.bulk.catalog.customKiosk": {
     "defaultMessage": "Custom kiosk"
@@ -4558,7 +4597,7 @@
     "defaultMessage": "Filter"
   },
   "devices.filters.buttonOn": {
-    "defaultMessage": "Filter, {count} on"
+    "defaultMessage": "Filter, {count, plural, one {#} other {#}} on"
   },
   "devices.filters.clear": {
     "defaultMessage": "Clear filters"
@@ -5000,7 +5039,7 @@
     "defaultMessage": "{count, plural, one {# other entry} other {# other entries}}"
   },
   "enroll.setup.protectedLeftOut": {
-    "defaultMessage": "{summary} ({count} protected left out)"
+    "defaultMessage": "{summary} ({count, plural, one {#} other {#}} protected left out)"
   },
   "enroll.setup.serverDefault": {
     "defaultMessage": "Not added: choose a configuration to add its setup entries (the page can't tell which one is the server default)"
@@ -5486,7 +5525,7 @@
     "defaultMessage": "Update agent: {name}"
   },
   "overview.byConfig.agentTooOld": {
-    "defaultMessage": "{count} agent too old"
+    "defaultMessage": "{count, plural, one {#} other {#}} agent too old"
   },
   "overview.byConfig.allInSync": {
     "defaultMessage": "All in sync"
@@ -5699,7 +5738,7 @@
     "defaultMessage": "Every device is online and in sync."
   },
   "overview.sync.agentTooOld": {
-    "defaultMessage": "{count} agent too old"
+    "defaultMessage": "{count, plural, one {#} other {#}} agent too old"
   },
   "overview.sync.all": {
     "defaultMessage": "All in sync"
@@ -6329,7 +6368,7 @@
     "defaultMessage": "Select all {total}"
   },
   "shell.bulk.selected": {
-    "defaultMessage": "{count} selected"
+    "defaultMessage": "{count, plural, one {#} other {#}} selected"
   },
   "shell.bulk.selectedNoun": {
     "defaultMessage": "{count} {noun} selected"
@@ -6710,6 +6749,9 @@
   },
   "updates.apply.notStarted": {
     "defaultMessage": "The update did not start."
+  },
+  "updates.apply.notStartedDetail": {
+    "defaultMessage": "The update did not start: {error}"
   },
   "updates.apply.progressLabel": {
     "defaultMessage": "Update progress"
@@ -7162,7 +7204,7 @@
     "defaultMessage": "New role"
   },
   "users.roleEditor.permissions": {
-    "defaultMessage": "Permissions ({count} selected)"
+    "defaultMessage": "Permissions ({count, plural, one {#} other {#}} selected)"
   },
   "users.roleEditor.save": {
     "defaultMessage": "Save role"

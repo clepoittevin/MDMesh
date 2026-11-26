@@ -21,17 +21,17 @@ export const syncMessages = untyped(defineMessages({
   unused: { id: 'configurations.sync.unused', defaultMessage: 'Not used by any device yet' },
   inSyncOne: { id: 'configurations.sync.inSyncOne', defaultMessage: 'In sync' },
   inSyncAll: { id: 'configurations.sync.inSyncAll', defaultMessage: 'All {total} in sync' },
-  someInSync: { id: 'configurations.sync.someInSync', defaultMessage: '{inSync} of {total} in sync' },
+  someInSync: { id: 'configurations.sync.someInSync', defaultMessage: '{inSync, plural, one {#} other {#}} of {total} in sync' },
   applying: { id: 'configurations.sync.applying', defaultMessage: '{count} applying' },
   agentsTooOld: {
     id: 'configurations.sync.agentsTooOld',
     defaultMessage: '{count, plural, one {# agent too old} other {# agents too old}}',
   },
-  notReported: { id: 'configurations.sync.notReported', defaultMessage: '{count} not reported yet' },
+  notReported: { id: 'configurations.sync.notReported', defaultMessage: '{count, plural, one {#} other {#}} not reported yet' },
   usedBy: {
     id: 'configurations.sync.usedBy',
     defaultMessage:
-      'Used by <link>{count, plural, one {# device} other {# devices}}</link>{state, select, one {, in sync.} both {, both in sync.} all {, all in sync.} none {, none in sync yet.} other {, {inSync} in sync.}}',
+      'Used by <link>{count, plural, one {# device} other {# devices}}</link>{state, select, one {, in sync.} both {, both in sync.} all {, all in sync.} none {, none in sync yet.} other {, {inSync, plural, one {#} other {#}} in sync.}}',
   },
   usedByWipedLink: {
     id: 'configurations.sync.usedByWipedLink',

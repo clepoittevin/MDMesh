@@ -24,8 +24,8 @@ import {
   useToast,
 } from '../../ui';
 import './modals.css';
+import { apiErrorText } from '../../api/apiErrorText';
 
-const errMessage = (e: unknown) => (e instanceof Error ? e.message : '');
 
 export const configModalMessages = untyped(defineMessages({
   nameExists: { id: 'configurations.modal.nameExists', defaultMessage: 'A configuration with that name exists.' },
@@ -164,7 +164,7 @@ function CopyForm({
     try {
       await copyConfiguration(source.id, n, source.description as string | undefined);
     } catch (err) {
-      const msg = errMessage(err);
+      const msg = apiErrorText(intl, err);
       const dup = /duplicate/i.test(msg);
       const exists = intl.formatMessage(configModalMessages.nameExists);
       if (dup) setError(exists);
@@ -232,7 +232,7 @@ export function DeleteConfigModal({
       toast.push('ok', intl.formatMessage(configModalMessages.deleted), target.name);
       onDeleted(target);
     } catch (e) {
-      const msg = errMessage(e);
+      const msg = apiErrorText(intl, e);
       toast.push('err', intl.formatMessage(configModalMessages.deleteFailed), /device/i.test(msg) ? intl.formatMessage(configModalMessages.devicesStillUse) : msg);
       onClose();
     } finally {

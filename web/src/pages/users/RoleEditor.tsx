@@ -18,7 +18,7 @@ const messages = defineMessages<'newTitle' | 'editTitle' | 'description' | 'canc
   descriptionField: { id: 'users.roleEditor.descriptionField', defaultMessage: 'Description' },
   permissions: {
     id: 'users.roleEditor.permissions',
-    defaultMessage: 'Permissions ({count} selected)',
+    defaultMessage: 'Permissions ({count, plural, one {#} other {#}} selected)',
   },
   filter: { id: 'users.roleEditor.filter', defaultMessage: 'Filter permissions' },
 }) as Record<'newTitle' | 'editTitle' | 'description' | 'cancel' | 'save' | 'name' | 'descriptionField' | 'permissions' | 'filter', MessageDescriptor>;

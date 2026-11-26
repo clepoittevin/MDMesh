@@ -52,6 +52,7 @@ import { wipedOnlyLine } from './configurations/sync';
 import { bucketOf, reasonFor, type ConfigIssue } from './overview/attention';
 import { useOverviewData, type ActivityItem, type OverviewData } from './overview/useOverviewData';
 import './OverviewPage.css';
+import { apiErrorText } from '../api/apiErrorText';
 
 /** Rows in "Needs attention" and "Recent activity". */
 const ATTENTION_ROWS = 6;
@@ -132,7 +133,7 @@ const messageDefs = defineMessages({
   syncFailed: { id: 'overview.sync.failed', defaultMessage: 'Could not be checked' },
   syncChecking: { id: 'overview.sync.checking', defaultMessage: 'Checking…' },
   syncOutOfSync: { id: 'overview.sync.outOfSync', defaultMessage: '{count} out of sync' },
-  syncAgentTooOld: { id: 'overview.sync.agentTooOld', defaultMessage: '{count} agent too old' },
+  syncAgentTooOld: { id: 'overview.sync.agentTooOld', defaultMessage: '{count, plural, one {#} other {#}} agent too old' },
   syncNotReported: { id: 'overview.sync.notReported', defaultMessage: '{count} not reported' },
   syncNoConfig: { id: 'overview.sync.noConfig', defaultMessage: 'No device has a configuration' },
   syncAll: { id: 'overview.sync.all', defaultMessage: 'All in sync' },
@@ -182,7 +183,7 @@ const messageDefs = defineMessages({
   noteAllInSync: { id: 'overview.byConfig.allInSync', defaultMessage: 'All in sync' },
   noteInSync: { id: 'overview.byConfig.inSync', defaultMessage: '{count} in sync' },
   noteOutOfSync: { id: 'overview.byConfig.outOfSync', defaultMessage: '{count} out of sync' },
-  noteAgentTooOld: { id: 'overview.byConfig.agentTooOld', defaultMessage: '{count} agent too old' },
+  noteAgentTooOld: { id: 'overview.byConfig.agentTooOld', defaultMessage: '{count, plural, one {#} other {#}} agent too old' },
   noteNotReported: { id: 'overview.byConfig.notReported', defaultMessage: '{count} not reported' },
   noteDeferred: { id: 'overview.byConfig.deferred', defaultMessage: '{count} deferred settings' },
   noConfiguration: { id: 'overview.byConfig.none', defaultMessage: 'No configuration' },
@@ -633,7 +634,7 @@ function NeedsAttention({
         toast.push('ok', intl.formatMessage(messages.syncRequested), intl.formatMessage(messages.syncRequestedBody, { number: d.number }));
       }
     } catch (e) {
-      toast.push('err', intl.formatMessage(messages.syncFailedToast), e instanceof Error ? e.message : '');
+      toast.push('err', intl.formatMessage(messages.syncFailedToast), apiErrorText(intl, e));
     } finally {
       setBusy((b) => ({ ...b, [d.number]: false }));
     }

@@ -12,6 +12,7 @@ import { Button, Card, IconInfo, KeyValueList } from '../../ui';
 import { fmtDateTime } from '../../ui/format';
 import { fmtBytes } from '../deviceDetailFormat';
 import './KioskBackground.css';
+import { apiErrorText } from '../../api/apiErrorText';
 
 const messages = untyped(defineMessages({
   couldNotRead: { id: 'configEditor.background.couldNotRead', defaultMessage: 'The image could not be read.' },
@@ -113,7 +114,8 @@ export function useKioskBackgroundInfo(fileId: number | null | undefined): {
       .then((info) => !cancelled && setState({ fileId, info, error: null }))
       .catch((e: unknown) => {
         if (cancelled) return;
-        const msg = e instanceof Error && e.message && !/^error\./.test(e.message) ? e.message : intl.formatMessage(messages.couldNotRead);
+        const sent = apiErrorText(intl, e);
+        const msg = sent && !/^error\./.test(sent) ? sent : intl.formatMessage(messages.couldNotRead);
         setState({ fileId, info: null, error: msg });
       });
     return () => {
@@ -249,7 +251,7 @@ export function KioskBackgroundSummary({ info }: { info: KioskBackgroundImageInf
           variant="rail"
           items={[
             { key: 'name', label: intl.formatMessage(messages.factFile), value: <span className="v2-kbg__name">{info.name}</span> },
-            { key: 'size', label: intl.formatMessage(messages.factSize), value: intl.formatMessage(messages.sizeValue, { dims, bytes: fmtBytes(info.size), format: info.format }) },
+            { key: 'size', label: intl.formatMessage(messages.factSize), value: intl.formatMessage(messages.sizeValue, { dims, bytes: fmtBytes(info.size, intl), format: info.format }) },
             { key: 'uploaded', label: intl.formatMessage(messages.factUploaded), value: fmtDateTime(info.uploadTime ?? undefined) },
             {
               key: 'sha',

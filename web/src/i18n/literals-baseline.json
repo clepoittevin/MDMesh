@@ -1,7 +1,6 @@
 {
   "src/api/commands.ts": 42,
   "src/api/configSync.ts": 9,
-  "src/api/updates.ts": 2,
   "src/api/users.ts": 1,
   "src/data/apps.ts": 2,
   "src/data/configFields.ts": 20,
@@ -29,7 +28,6 @@
   "src/pages/settings/UpdatesSection.tsx": 1,
   "src/ui/BulkModals.tsx": 3,
   "src/ui/DeployModal.tsx": 2,
-  "src/ui/DeviceCells.tsx": 1,
   "src/ui/Password.tsx": 2,
   "src/ui/QrCode.tsx": 1,
   "src/ui/Segmented.tsx": 3,

@@ -186,7 +186,7 @@ export function AppsFdroid({
         toast.push('ok', intl.formatMessage(messages.alreadyTitle), intl.formatMessage(messages.alreadyBody, { name: a.name }));
         onLibraryChanged();
       } else {
-        toast.push('err', intl.formatMessage(messages.addFailedTitle), errorText(e) || intl.formatMessage(messages.addFailedBody));
+        toast.push('err', intl.formatMessage(messages.addFailedTitle), errorText(e, intl) || intl.formatMessage(messages.addFailedBody));
       }
     } finally {
       setAdding((s) => {

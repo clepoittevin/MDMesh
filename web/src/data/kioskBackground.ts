@@ -3,6 +3,7 @@
 // (KioskBackgroundImageAssets): PNG, JPEG or WebP, at most 10 MB and 16 megapixels, the agent's own limits.
 import { defineMessages, type IntlShape } from 'react-intl';
 import { EN_INTL, untyped } from './configIntl';
+import { apiErrorText } from '../api/apiErrorText';
 
 const messages = untyped(defineMessages({
   wrongType: { id: 'kiosk.background.problem.wrongType', defaultMessage: 'Choose a PNG, JPEG or WebP image.' },
@@ -80,7 +81,7 @@ export function kioskImageErrorText(e: unknown, intl: IntlShape = EN_INTL): stri
   if (msg === 'error.duplicate.file') return intl.formatMessage(messages.duplicateFile);
   if (msg === 'error.permission.denied') return intl.formatMessage(messages.noPermission);
   if (!msg || /^error\./.test(msg)) return intl.formatMessage(messages.notSaved);
-  return msg;
+  return apiErrorText(intl, e);
 }
 
 /* ---------------------------------------------------------------------------------------------------------------

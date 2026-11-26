@@ -1,5 +1,6 @@
 import { createIntl, defineMessages, type IntlShape, type MessageDescriptor } from 'react-intl';
 import { apiClient } from './client';
+import { apiErrorText } from './apiErrorText';
 
 // Applications library — see com.hmdm.rest.resource.ApplicationResource (@Path /private/applications).
 // All responses use the {status,data} envelope (apiClient unwraps to data).
@@ -191,7 +192,7 @@ const englishIntl = createIntl({ locale: 'en' });
 export function bundleErrorText(e: unknown, intl: Pick<IntlShape, 'formatMessage'> = englishIntl): string {
   const message = e instanceof Error ? e.message : '';
   const known = Object.prototype.hasOwnProperty.call(bundleErrorMessages, message) ? bundleErrorMessages[message] : undefined;
-  return known ? intl.formatMessage(known) : message;
+  return known ? intl.formatMessage(known) : apiErrorText(intl, e);
 }
 
 /** Upload a split-APK bundle; the server unpacks it and returns the hosted parts. */

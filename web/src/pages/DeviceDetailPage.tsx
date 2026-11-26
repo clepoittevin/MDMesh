@@ -103,6 +103,7 @@ import {
   validTime,
 } from './deviceDetailFormat';
 import './DeviceDetailPage.css';
+import { apiErrorText } from '../api/apiErrorText';
 
 const messagesRaw = defineMessages({
   breadcrumbDevices: { id: 'deviceDetail.breadcrumb.devices', defaultMessage: 'Devices' },
@@ -321,7 +322,7 @@ function DeviceName({
       setEditing(false);
       toast.push('ok', intl.formatMessage(messages.nameSaved), next || intl.formatMessage(messages.nameCleared));
     } catch (e) {
-      toast.push('err', intl.formatMessage(messages.renameFailed), e instanceof Error ? e.message : '');
+      toast.push('err', intl.formatMessage(messages.renameFailed), apiErrorText(intl, e));
     } finally {
       setSaving(false);
     }
@@ -652,7 +653,7 @@ export function DeviceDetailPage() {
       // A range runs up to now, so a non-empty answer starts with the device's newest fix.
       if (list[0]) setLatestFix(list[0]);
     } catch (e) {
-      if (current()) setFixesError(e instanceof Error ? e.message : intl.formatMessage(messages.locationsFailed));
+      if (current()) setFixesError(apiErrorText(intl, e) || intl.formatMessage(messages.locationsFailed));
     } finally {
       if (current()) setFixesLoading(false);
     }
@@ -687,7 +688,7 @@ export function DeviceDetailPage() {
         })
         .catch((e: unknown) => {
           if (!active) return;
-          setConfigurationError(e instanceof Error && e.message ? e.message : intl.formatMessage(messages.requestFailed));
+          setConfigurationError(apiErrorText(intl, e) || intl.formatMessage(messages.requestFailed));
           t = setTimeout(fetchConfiguration, 15_000);
         });
     void fetchConfiguration();
@@ -709,7 +710,7 @@ export function DeviceDetailPage() {
         if (active) setCfgApps(Array.isArray(apps) ? apps : []);
       })
       .catch((e: unknown) => {
-        if (active) setCfgAppsError(e instanceof Error && e.message ? e.message : intl.formatMessage(messages.requestFailed));
+        if (active) setCfgAppsError(apiErrorText(intl, e) || intl.formatMessage(messages.requestFailed));
       });
     return () => {
       active = false;
@@ -771,7 +772,7 @@ export function DeviceDetailPage() {
       if (connected === false) toast.push('warn', ...notConnected(number, 'sync', intl));
       else toast.push('ok', intl.formatMessage(messages.syncRequested), '');
     } catch (e) {
-      toast.push('err', intl.formatMessage(messages.syncFailed), e instanceof Error ? e.message : '');
+      toast.push('err', intl.formatMessage(messages.syncFailed), apiErrorText(intl, e));
     } finally {
       setBusy(false);
     }

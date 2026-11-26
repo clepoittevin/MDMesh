@@ -185,7 +185,7 @@ export function BatteryBar({ percent, charging, layout = 'table', className }: B
   const low = known && pct < 15;
   const text = (
     <span className={cx('v2-battery__pct', low && 'is-low')}>
-      {known ? `${pct}%` : '—'}
+      {known ? intl.formatNumber(pct / 100, { style: 'percent' }) : '—'}
       {charging ? <span className="v2-visually-hidden"> {intl.formatMessage(cellMessages.charging)}</span> : null}
     </span>
   );

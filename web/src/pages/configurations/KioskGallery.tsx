@@ -13,6 +13,7 @@ import { fmtDateTime } from '../../ui/format';
 import { fmtBytes } from '../deviceDetailFormat';
 import { hostedPath, shortSha } from './KioskBackground';
 import './KioskGallery.css';
+import { apiErrorText } from '../../api/apiErrorText';
 
 const PAGE = 20;
 /** Fetched per request; the list keeps the first n of them. */
@@ -65,8 +66,10 @@ const messages = untyped(defineMessages({
   loadingImages: { id: 'configEditor.gallery.loadingImages', defaultMessage: 'Loading images…' },
 }));
 
-const errorText = (e: unknown, intl: IntlShape) =>
-  e instanceof Error && e.message && !/^error\./.test(e.message) ? e.message : intl.formatMessage(messages.serverFailed);
+const errorText = (e: unknown, intl: IntlShape) => {
+  const sent = apiErrorText(intl, e);
+  return sent && !/^error\./.test(sent) ? sent : intl.formatMessage(messages.serverFailed);
+};
 
 export function KioskGallery({
   open,
@@ -192,7 +195,7 @@ export function KioskGallery({
                 <div className="v2-kgal__facts">
                   <span className="v2-kgal__name">{item.name}</span>
                   <span className="v2-kgal__meta">
-                    {intl.formatMessage(messages.meta, { width: item.width, height: item.height, size: fmtBytes(item.size), date: fmtDateTime(item.uploadTime ?? undefined) })}
+                    {intl.formatMessage(messages.meta, { width: item.width, height: item.height, size: fmtBytes(item.size, intl), date: fmtDateTime(item.uploadTime ?? undefined) })}
                   </span>
                   <span className="v2-kgal__meta">
                     <span className="v2-mono" title={item.sha256}>

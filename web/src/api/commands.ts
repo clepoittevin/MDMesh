@@ -1,5 +1,6 @@
 import { defineMessages, type IntlShape, type MessageDescriptor } from 'react-intl';
 import { apiClient } from './client';
+import { apiErrorText } from './apiErrorText';
 
 // Queue a command for a device (agent v1 contract):
 //   POST /rest/private/agent/v1/devices/{deviceId}/commands
@@ -65,7 +66,7 @@ export function commandErrorText(e: unknown): string {
 /** commandErrorText in the console's language: a known server key is translated, anything else is shown as sent. */
 export function formatCommandError(intl: IntlShape, e: unknown): string {
   const message = e instanceof Error ? e.message : '';
-  return hasOwn(commandErrorMessages, message) ? intl.formatMessage(commandErrorMessages[message]) : message;
+  return hasOwn(commandErrorMessages, message) ? intl.formatMessage(commandErrorMessages[message]) : apiErrorText(intl, e);
 }
 
 export async function queueCommand(

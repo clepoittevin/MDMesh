@@ -8,6 +8,7 @@ import {
 } from '../../api/auth';
 import { authMessages } from '../../api/authMessages';
 import { Button, Callout, Field, IconAlert, Modal, PasswordInput, RuleList, useToast, type Rule } from '../../ui';
+import { apiErrorText } from '../../api/apiErrorText';
 
 const messages = defineMessages<'ruleDifferent' | 'ruleMatch' | 'sessionMissing' | 'changedTitle' | 'changedBody' | 'newEmpty' | 'refused' | 'notChanged' | 'title' | 'description' | 'cancel' | 'current' | 'wrongCurrent' | 'showCurrent'>({
   ruleDifferent: { id: 'settings.password.ruleDifferent', defaultMessage: 'Different from your current password' },
@@ -96,7 +97,7 @@ export function ChangePasswordModal({ open, user, onClose }: { open: boolean; us
       else if (m === 'error.password.empty') setErr(intl.formatMessage(messages.newEmpty));
       else if (m === IMPERSONATED) setErr(intl.formatMessage(authMessages.impersonated));
       else if (m === 'error.permission.denied') setErr(intl.formatMessage(messages.refused));
-      else setErr(m || intl.formatMessage(messages.notChanged));
+      else setErr(apiErrorText(intl, ex) || intl.formatMessage(messages.notChanged));
     } finally {
       setBusy(false);
     }
