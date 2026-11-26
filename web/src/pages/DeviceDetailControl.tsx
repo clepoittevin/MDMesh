@@ -321,7 +321,7 @@ export function ConfigPanel({
   const appliedWhen =
     status.appliedAt && isoTime(status.appliedAt) ? (
       <time dateTime={isoTime(status.appliedAt)} title={fmtDateTime(status.appliedAt)}>
-        {fmtWhen(status.appliedAt, now)}
+        {fmtWhen(status.appliedAt, now, intl)}
       </time>
     ) : null;
   const rev = (r: string | null | undefined) => (
@@ -991,7 +991,7 @@ export function CommandsCard({
         const when = commandTime(c);
         return when && isoTime(when) ? (
           <time dateTime={isoTime(when)} title={fmtDateTime(when)}>
-            {fmtWhen(when, now)}
+            {fmtWhen(when, now, intl)}
           </time>
         ) : (
           '—'

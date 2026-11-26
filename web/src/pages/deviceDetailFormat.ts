@@ -5,7 +5,7 @@ import { createIntl, defineMessages, type IntlShape, type MessageDescriptor } fr
 import { DEVICE_RESET_REVISION, type ConfigStatus } from '../api/configSync';
 import type { Outcome } from '../data/configOutcomes';
 import { LOCATION_HISTORY_LIMIT, type LocationFix } from '../api/deviceLocations';
-import { formatRelative } from '../ui/RelativeTime';
+import { formatRelative, formatRelativeIntl } from '../ui/RelativeTime';
 import type { StatusKind, StatusTone } from '../ui/Status';
 
 export const DASH = '—';
@@ -227,13 +227,16 @@ export function fixesCount(count: number, hours: number, intl?: IntlShape): stri
 }
 
 /** "6m", "2h", "just now": an age without the trailing "ago" (rail "Fix age"). */
-export function fmtAge(ms: number, now: number): string {
+export function fmtAge(ms: number, now: number, intl?: IntlShape): string {
+  // In another language the age keeps its own wording ("il y a 6 min"): stripping an English " ago" can't apply.
+  if (intl && intl.locale !== 'en') return formatRelativeIntl(intl, ms, now, 'short');
   return formatRelative(ms, now, 'short').replace(/ ago$/, '');
 }
 
 /** A command's time: "3m ago", "2h ago" within a day, then "Yesterday", "3 days ago", the date. */
-export function fmtWhen(ms: number, now: number): string {
-  return now - ms < 24 * 3600 * 1000 ? formatRelative(ms, now, 'short') : formatRelative(ms, now, 'long');
+export function fmtWhen(ms: number, now: number, intl?: IntlShape): string {
+  const style = now - ms < 24 * 3600 * 1000 ? 'short' : 'long';
+  return intl ? formatRelativeIntl(intl, ms, now, style) : formatRelative(ms, now, style);
 }
 
 export function capitalise(s: string): string {

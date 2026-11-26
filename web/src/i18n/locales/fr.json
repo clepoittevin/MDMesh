@@ -3101,6 +3101,9 @@
   "deviceDetail.apps.noScanTitle": {
     "defaultMessage": "Aucune analyse récente"
   },
+  "deviceDetail.apps.scanDeviceReturned": {
+    "defaultMessage": "L’appareil a répondu {status}"
+  },
   "deviceDetail.apps.scanLabel": {
     "defaultMessage": "Analyse des applications"
   },
@@ -3266,8 +3269,17 @@
   "deviceDetail.config.staleNoCause": {
     "defaultMessage": "L’appareil a redemandé {name} ; le serveur la renvoie. Si l’appareil a réactivé le Wi-Fi pour rester joignable après que la radio Wi-Fi l’a désactivé, le Wi-Fi reste activé jusqu’à la modification de {name}."
   },
+  "deviceDetail.config.staleReapplyFailed": {
+    "defaultMessage": "L’appareil n’a pas pu appliquer de nouveau toute sa configuration après un redémarrage."
+  },
+  "deviceDetail.config.staleStorageRecovered": {
+    "defaultMessage": "L’appareil a restauré des réglages que son stockage avait endommagés."
+  },
   "deviceDetail.config.staleTitle": {
     "defaultMessage": "Configuration obsolète sur l’appareil"
+  },
+  "deviceDetail.config.staleWipeNotStarted": {
+    "defaultMessage": "Une réinitialisation d’usine n’a pas démarré, l’appareil est donc revenu à ses réglages."
   },
   "deviceDetail.config.staleWithCause": {
     "defaultMessage": "{cause} L’appareil a redemandé {name} ; le serveur la renvoie."
@@ -3421,6 +3433,9 @@
   },
   "deviceDetail.location.colWhen": {
     "defaultMessage": "Quand"
+  },
+  "deviceDetail.location.doNotTrackHint": {
+    "defaultMessage": "La configuration de cet appareil règle la remontée de la position sur « Ne pas suivre » : aucune position n’est lue ni enregistrée. Modifiez-la dans la configuration pour suivre cet appareil."
   },
   "deviceDetail.location.emptyInRange": {
     "defaultMessage": "Aucune position sur {kind, select, hour {la dernière heure} days {les {count} derniers jours} other {les {count} dernières heures}}"
@@ -4577,6 +4592,15 @@
   "devices.list.sectionLabel": {
     "defaultMessage": "Liste des appareils"
   },
+  "devices.load.failed": {
+    "defaultMessage": "Impossible de charger les appareils."
+  },
+  "devices.load.sessionExpired": {
+    "defaultMessage": "Votre session a expiré. Connectez-vous à nouveau."
+  },
+  "devices.notConnected.commandBody": {
+    "defaultMessage": "Il recevra la commande à son prochain signal de vie."
+  },
   "devices.page.capped": {
     "defaultMessage": "Affichage des {shown} premiers appareils sur {total}. Utilisez la recherche pour trouver les autres."
   },
@@ -4709,8 +4733,38 @@
   "enroll.arrivals.lookAgain": {
     "defaultMessage": "Relancer la recherche"
   },
+  "enroll.arrivals.newsEnrolled": {
+    "defaultMessage": "{count, plural, one {# appareil enrôlé.} other {# appareils enrôlés.}}"
+  },
+  "enroll.arrivals.newsOffline": {
+    "defaultMessage": "{count, plural, one {# appareil n’a pas donné signe de vie depuis {minutes} minutes.} other {# appareils n’ont pas donné signe de vie depuis {minutes} minutes.}}"
+  },
+  "enroll.arrivals.newsOne": {
+    "defaultMessage": "{name} : {state}."
+  },
+  "enroll.arrivals.newsOnline": {
+    "defaultMessage": "{count, plural, one {# appareil est en ligne.} other {# appareils sont en ligne.}}"
+  },
+  "enroll.arrivals.newsSettingUp": {
+    "defaultMessage": "{count, plural, one {# appareil récupère sa configuration.} other {# appareils récupèrent leur configuration.}}"
+  },
+  "enroll.arrivals.newsSilent": {
+    "defaultMessage": "{count, plural, one {# appareil ne s’est pas encore manifesté.} other {# appareils ne se sont pas encore manifestés.}}"
+  },
   "enroll.arrivals.noDeviceYet": {
     "defaultMessage": "Aucun appareil pour l’instant. Un appareil s’affiche ici quelques secondes après son enrôlement."
+  },
+  "enroll.arrivals.stateOffline": {
+    "defaultMessage": "Enrôlé, mais sans signe de vie depuis {minutes} minutes"
+  },
+  "enroll.arrivals.stateOnline": {
+    "defaultMessage": "En ligne"
+  },
+  "enroll.arrivals.stateSettingUp": {
+    "defaultMessage": "Enrôlé, récupère sa configuration…"
+  },
+  "enroll.arrivals.stateSilent": {
+    "defaultMessage": "Enrôlé, ne s’est pas encore manifesté"
   },
   "enroll.arrivals.stoppedLooking": {
     "defaultMessage": "La recherche de nouveaux appareils s’est arrêtée au bout de 30 minutes."
@@ -5101,6 +5155,189 @@
   },
   "enroll.wifi.wpa": {
     "defaultMessage": "WPA / WPA2"
+  },
+  "ext.bulkAction.delete": {
+    "defaultMessage": "Supprimer"
+  },
+  "ext.bulkAction.move": {
+    "defaultMessage": "Changer de configuration"
+  },
+  "ext.bulkAction.run": {
+    "defaultMessage": "Exécuter une action"
+  },
+  "ext.configSection.apps": {
+    "defaultMessage": "Applications"
+  },
+  "ext.configSection.enrollment": {
+    "defaultMessage": "Enrôlement"
+  },
+  "ext.configSection.headwind": {
+    "defaultMessage": "Paramètres de l’ancien lanceur"
+  },
+  "ext.configSection.identity": {
+    "defaultMessage": "Identité"
+  },
+  "ext.configSection.kiosk": {
+    "defaultMessage": "Mode kiosque"
+  },
+  "ext.configSection.network": {
+    "defaultMessage": "Réseau"
+  },
+  "ext.configSection.security": {
+    "defaultMessage": "Sécurité"
+  },
+  "ext.configSections.changed": {
+    "defaultMessage": "{count, plural, one {# modifié} other {# modifiés}}"
+  },
+  "ext.configSections.crashNote": {
+    "defaultMessage": "Les modifications faites ici ne sont pas enregistrées."
+  },
+  "ext.configSections.droppedBody": {
+    "defaultMessage": "« {title} » ne vous est plus accessible : ses modifications ne seront pas enregistrées."
+  },
+  "ext.configSections.droppedTitle": {
+    "defaultMessage": "Modifications abandonnées"
+  },
+  "ext.configSections.problems": {
+    "defaultMessage": "{count, plural, one {# problème} other {# problèmes}}"
+  },
+  "ext.configSections.unreadableSaved": {
+    "defaultMessage": "Les paramètres « {title} » enregistrés ne peuvent pas être lus ici : l’enregistrement les conserve tels quels."
+  },
+  "ext.configSections.unreadableTemplate": {
+    "defaultMessage": "Les paramètres « {title} » du modèle ne peuvent pas être lus ici, et le serveur ne créera pas de configuration avec eux. {canCopy, select, true {Dupliquez plutôt le modèle.} other {Une personne dont le rôle permet de dupliquer des configurations peut dupliquer le modèle à la place.}}"
+  },
+  "ext.crash.coreLoad": {
+    "defaultMessage": "Cette partie de la page n’a pas pu se charger."
+  },
+  "ext.crash.coreProblem": {
+    "defaultMessage": "Cette partie de la page a rencontré un problème."
+  },
+  "ext.crash.error": {
+    "defaultMessage": "Erreur"
+  },
+  "ext.crash.extensionLoad": {
+    "defaultMessage": "L’extension « {title} » n’a pas pu se charger."
+  },
+  "ext.crash.extensionProblem": {
+    "defaultMessage": "L’extension « {title} » a rencontré un problème."
+  },
+  "ext.crash.reload": {
+    "defaultMessage": "Recharger"
+  },
+  "ext.crash.retry": {
+    "defaultMessage": "Réessayer"
+  },
+  "ext.deviceRail.hardware": {
+    "defaultMessage": "Matériel"
+  },
+  "ext.deviceRail.location": {
+    "defaultMessage": "Localisation"
+  },
+  "ext.deviceRail.management": {
+    "defaultMessage": "Gestion"
+  },
+  "ext.deviceRail.network": {
+    "defaultMessage": "Réseau"
+  },
+  "ext.deviceRail.status": {
+    "defaultMessage": "État"
+  },
+  "ext.deviceTab.activity": {
+    "defaultMessage": "Activité"
+  },
+  "ext.deviceTab.apps": {
+    "defaultMessage": "Applications"
+  },
+  "ext.deviceTab.control": {
+    "defaultMessage": "Contrôle"
+  },
+  "ext.deviceTab.location": {
+    "defaultMessage": "Localisation"
+  },
+  "ext.deviceTab.telemetry": {
+    "defaultMessage": "Télémétrie"
+  },
+  "ext.deviceTabs.label": {
+    "defaultMessage": "Sections de l’appareil"
+  },
+  "ext.lists.commandFailed": {
+    "defaultMessage": "{label} : échec"
+  },
+  "ext.lists.commandQueued": {
+    "defaultMessage": "{label} : en file d’attente"
+  },
+  "ext.lists.notConnectedBody": {
+    "defaultMessage": "Il recevra la commande à son prochain contact."
+  },
+  "ext.lists.notConnectedTitle": {
+    "defaultMessage": "{number} n’est pas connecté pour le moment"
+  },
+  "ext.lists.queuedFor": {
+    "defaultMessage": "Mis en file d’attente pour {count, plural, one {# appareil} other {# appareils}}{skipped, plural, =0 {} other { (# ignoré(s))}}."
+  },
+  "ext.noAccess.body": {
+    "defaultMessage": "Votre rôle ne l’inclut pas. Demandez à un administrateur si vous en avez besoin."
+  },
+  "ext.noAccess.title": {
+    "defaultMessage": "Vous n’avez pas accès à cette page"
+  },
+  "ext.settingsSection.account": {
+    "defaultMessage": "Compte"
+  },
+  "ext.settingsSection.agentRollout": {
+    "defaultMessage": "Déploiement de l’agent"
+  },
+  "ext.settingsSection.appearance": {
+    "defaultMessage": "Apparence"
+  },
+  "ext.settingsSection.enrollment": {
+    "defaultMessage": "Enrôlement"
+  },
+  "ext.settingsSection.server": {
+    "defaultMessage": "Serveur"
+  },
+  "ext.settingsSection.updates": {
+    "defaultMessage": "Mises à jour"
+  },
+  "ext.settingsSection.users": {
+    "defaultMessage": "Utilisateurs et rôles"
+  },
+  "format.relative.days": {
+    "defaultMessage": "{count, plural, one {il y a # jour} other {il y a # jours}}"
+  },
+  "format.relative.daysShort": {
+    "defaultMessage": "il y a {count} j"
+  },
+  "format.relative.hours": {
+    "defaultMessage": "{count, plural, one {il y a # heure} other {il y a # heures}}"
+  },
+  "format.relative.hoursShort": {
+    "defaultMessage": "il y a {count} h"
+  },
+  "format.relative.justNow": {
+    "defaultMessage": "à l’instant"
+  },
+  "format.relative.minutes": {
+    "defaultMessage": "{count, plural, one {il y a # minute} other {il y a # minutes}}"
+  },
+  "format.relative.minutesShort": {
+    "defaultMessage": "il y a {count} min"
+  },
+  "format.relative.monthsShort": {
+    "defaultMessage": "il y a {count} mois"
+  },
+  "format.relative.seconds": {
+    "defaultMessage": "{count, plural, one {il y a # seconde} other {il y a # secondes}}"
+  },
+  "format.relative.secondsShort": {
+    "defaultMessage": "il y a {count} s"
+  },
+  "format.relative.yearsShort": {
+    "defaultMessage": "{count, plural, one {il y a # an} other {il y a # ans}}"
+  },
+  "format.relative.yesterday": {
+    "defaultMessage": "Hier"
   },
   "kiosk.background.error.duplicateFile": {
     "defaultMessage": "Un fichier différent portant ce nom existe déjà dans Fichiers. Renommez l’image et réessayez."
@@ -5497,6 +5734,231 @@
   },
   "roles.seeded.user.description": {
     "defaultMessage": "Gère les appareils d’une organisation"
+  },
+  "rollout.action.cancel": {
+    "defaultMessage": "Annuler le déploiement"
+  },
+  "rollout.action.finish": {
+    "defaultMessage": "Terminer le déploiement"
+  },
+  "rollout.action.promoteToEveryone": {
+    "defaultMessage": "Étendre à tous les autres"
+  },
+  "rollout.card.loading": {
+    "defaultMessage": "Recherche d’un déploiement en cours"
+  },
+  "rollout.card.subtitleCanary": {
+    "defaultMessage": "Mise à jour de l’agent vers {version} sur {count, plural, one {# appareil pilote} other {# appareils pilotes}} d’abord, puis sur le reste du parc. Commencée {ago}."
+  },
+  "rollout.card.subtitleFleet": {
+    "defaultMessage": "Mise à jour de l’agent vers {version} sur tous les appareils. Commencée {ago}."
+  },
+  "rollout.card.title": {
+    "defaultMessage": "Déploiement de l’agent"
+  },
+  "rollout.cohort.installing": {
+    "defaultMessage": "{count} en cours d’installation"
+  },
+  "rollout.cohort.tooOld": {
+    "defaultMessage": "{count, plural, one {# trop ancien pour se mettre à jour seul} other {# trop anciens pour se mettre à jour seuls}}"
+  },
+  "rollout.cohort.updated": {
+    "defaultMessage": "{count} à jour"
+  },
+  "rollout.cohort.waiting": {
+    "defaultMessage": "{count} en attente de connexion"
+  },
+  "rollout.error.active": {
+    "defaultMessage": "Un autre déploiement est déjà en cours. Actualisez pour le voir."
+  },
+  "rollout.error.canaryEmpty": {
+    "defaultMessage": "Aucun des appareils choisis ne peut participer. Choisissez des appareils que vous gérez."
+  },
+  "rollout.error.invalid": {
+    "defaultMessage": "Cette version de l’agent est incomplète. Recherchez les mises à jour, puis réessayez."
+  },
+  "rollout.error.permissionDenied": {
+    "defaultMessage": "Gérer les déploiements nécessite la permission de modifier les appareils et l’accès à tous les appareils."
+  },
+  "rollout.error.sha256": {
+    "defaultMessage": "Cette version de l’agent n’a pas de somme de contrôle SHA-256 complète : elle ne peut pas être déployée."
+  },
+  "rollout.error.stage": {
+    "defaultMessage": "Le déploiement est déjà passé à l’étape suivante. La page affiche maintenant où il en est."
+  },
+  "rollout.error.unknown": {
+    "defaultMessage": "Une erreur s’est produite."
+  },
+  "rollout.hint.fleetDone": {
+    "defaultMessage": "Tous les appareils qui peuvent se mettre à jour ont le nouvel agent. Terminez le déploiement pour le clore."
+  },
+  "rollout.hint.fleetWaiting": {
+    "defaultMessage": "Les appareils hors ligne recevront la mise à jour à leur prochaine connexion. Terminez le déploiement quand vous avez fini."
+  },
+  "rollout.hint.wholeFleetDone": {
+    "defaultMessage": "Tous les appareils sont pilotes : il n’y a personne vers qui étendre. Terminez le déploiement pour le clore."
+  },
+  "rollout.hint.wholeFleetWaiting": {
+    "defaultMessage": "Tous les appareils sont pilotes. Le déploiement se termine une fois qu’ils sont à jour ; si l’un d’eux n’y parvient pas, terminez-le."
+  },
+  "rollout.load.failed": {
+    "defaultMessage": "Impossible de charger le déploiement."
+  },
+  "rollout.load.refreshFailed": {
+    "defaultMessage": "Impossible d’actualiser le déploiement : {error}"
+  },
+  "rollout.picker.cancel": {
+    "defaultMessage": "Annuler"
+  },
+  "rollout.picker.description": {
+    "defaultMessage": "Ils reçoivent l’agent {version} en premier. Une fois qu’ils sont à jour, vous l’étendez à tous les autres."
+  },
+  "rollout.picker.listLabel": {
+    "defaultMessage": "Appareils"
+  },
+  "rollout.picker.loadThing": {
+    "defaultMessage": "les appareils"
+  },
+  "rollout.picker.loading": {
+    "defaultMessage": "Chargement des appareils"
+  },
+  "rollout.picker.noDevices": {
+    "defaultMessage": "Aucun appareil enrôlé pour l’instant."
+  },
+  "rollout.picker.noMatch": {
+    "defaultMessage": "Aucun appareil ne correspond."
+  },
+  "rollout.picker.searchLabel": {
+    "defaultMessage": "Rechercher des appareils"
+  },
+  "rollout.picker.searchPlaceholder": {
+    "defaultMessage": "Rechercher par numéro ou description"
+  },
+  "rollout.picker.seenPrefix": {
+    "defaultMessage": "vu "
+  },
+  "rollout.picker.selected": {
+    "defaultMessage": "{count, plural, one {# appareil sélectionné} other {# appareils sélectionnés}}"
+  },
+  "rollout.picker.showing": {
+    "defaultMessage": "{shown} appareils affichés sur {total}. Recherchez pour trouver les autres."
+  },
+  "rollout.picker.start": {
+    "defaultMessage": "Lancer les pilotes ({count})"
+  },
+  "rollout.picker.starting": {
+    "defaultMessage": "Lancement…"
+  },
+  "rollout.picker.title": {
+    "defaultMessage": "Choisir les appareils pilotes"
+  },
+  "rollout.promote.button": {
+    "defaultMessage": "Étendre"
+  },
+  "rollout.promote.hintDone": {
+    "defaultMessage": "{count, plural, one {L’appareil pilote est à jour.} other {Les # appareils pilotes sont à jour.}}"
+  },
+  "rollout.promote.hintNone": {
+    "defaultMessage": "Aucun des appareils pilotes ne peut installer l’agent seul. Annulez et choisissez-en d’autres."
+  },
+  "rollout.promote.hintWaitAll": {
+    "defaultMessage": "Disponible une fois les {count} appareils pilotes à jour."
+  },
+  "rollout.promote.hintWaitOne": {
+    "defaultMessage": "Disponible une fois l’appareil pilote à jour."
+  },
+  "rollout.promote.hintWaitTwo": {
+    "defaultMessage": "Disponible une fois les deux appareils pilotes à jour."
+  },
+  "rollout.promote.notYet": {
+    "defaultMessage": "Pas encore"
+  },
+  "rollout.promote.promoting": {
+    "defaultMessage": "Extension…"
+  },
+  "rollout.promote.text": {
+    "defaultMessage": "L’agent {version} est envoyé à tous les autres appareils qui peuvent l’installer. Les appareils hors ligne le recevront à leur prochaine connexion."
+  },
+  "rollout.promote.title": {
+    "defaultMessage": "Étendre à tous les autres ?"
+  },
+  "rollout.start.button": {
+    "defaultMessage": "Déployer l’agent"
+  },
+  "rollout.start.current": {
+    "defaultMessage": "L’agent {version} est à jour sur tous les appareils qui peuvent se mettre à jour seuls."
+  },
+  "rollout.start.help": {
+    "defaultMessage": "Choisissez quelques appareils pilotes à mettre à jour d’abord. Une fois qu’ils sont à jour, étendez le déploiement à tous les autres."
+  },
+  "rollout.start.none": {
+    "defaultMessage": "Aucun déploiement en cours. Chaque version vérifiée du serveur apporte un nouvel agent ; une fois téléchargé par le programme de mise à jour, vous pouvez le déployer ici sur les appareils."
+  },
+  "rollout.start.ready": {
+    "defaultMessage": "L’agent {version} est prêt à être déployé"
+  },
+  "rollout.state.blocked": {
+    "defaultMessage": "Bloqué"
+  },
+  "rollout.state.done": {
+    "defaultMessage": "Terminé"
+  },
+  "rollout.state.inProgress": {
+    "defaultMessage": "En cours"
+  },
+  "rollout.state.notNeeded": {
+    "defaultMessage": "Inutile"
+  },
+  "rollout.state.waiting": {
+    "defaultMessage": "En attente"
+  },
+  "rollout.step.allInCanary": {
+    "defaultMessage": "Tous les appareils sont pilotes."
+  },
+  "rollout.step.canary": {
+    "defaultMessage": "Pilotes"
+  },
+  "rollout.step.everyoneElse": {
+    "defaultMessage": "Tous les autres"
+  },
+  "rollout.step.noOthers": {
+    "defaultMessage": "Aucun autre appareil."
+  },
+  "rollout.step.ofOtherDevices": {
+    "defaultMessage": "autres appareils"
+  },
+  "rollout.step.ofRest": {
+    "defaultMessage": "du reste du parc"
+  },
+  "rollout.step.ofUpdated": {
+    "defaultMessage": "sur {total} à jour"
+  },
+  "rollout.step.one": {
+    "defaultMessage": "Étape 1"
+  },
+  "rollout.step.startsOnPromote": {
+    "defaultMessage": "Commence quand vous étendez le déploiement."
+  },
+  "rollout.step.two": {
+    "defaultMessage": "Étape 2"
+  },
+  "rollout.stop.cancelTitle": {
+    "defaultMessage": "Annuler ce déploiement ?"
+  },
+  "rollout.stop.finishTitle": {
+    "defaultMessage": "Terminer ce déploiement ?"
+  },
+  "rollout.stop.keepRunning": {
+    "defaultMessage": "Le poursuivre"
+  },
+  "rollout.stop.remaining": {
+    "defaultMessage": "{count, plural, one {# appareil n’est pas encore à jour et ne se verra} other {# appareils ne sont pas encore à jour et ne se verront}} plus proposer l’agent {version}."
+  },
+  "rollout.stop.stopping": {
+    "defaultMessage": "Arrêt…"
+  },
+  "rollout.stop.text": {
+    "defaultMessage": "Les installations déjà commencées se terminent d’elles-mêmes, et les appareils mis à jour gardent le nouvel agent."
   },
   "settings.account.changePassword": {
     "defaultMessage": "Changer le mot de passe"
@@ -6116,8 +6578,398 @@
   "status.sync.notReported": {
     "defaultMessage": "Non communiqué"
   },
+  "status.sync.notReportedYet": {
+    "defaultMessage": "Pas encore communiqué"
+  },
   "status.sync.notSupported": {
     "defaultMessage": "Non pris en charge"
+  },
+  "ui.auth.checking": {
+    "defaultMessage": "Vérification…"
+  },
+  "ui.auth.connected": {
+    "defaultMessage": "Connecté"
+  },
+  "ui.auth.unreachable": {
+    "defaultMessage": "Impossible de joindre le serveur"
+  },
+  "ui.breadcrumb.label": {
+    "defaultMessage": "Fil d’Ariane"
+  },
+  "ui.colour.default": {
+    "defaultMessage": "Par défaut"
+  },
+  "ui.colour.named": {
+    "defaultMessage": "{label} : {value}"
+  },
+  "ui.colour.reset": {
+    "defaultMessage": "Réinitialiser"
+  },
+  "ui.errorState.couldntLoad": {
+    "defaultMessage": "Impossible de charger {thing}."
+  },
+  "ui.errorState.retry": {
+    "defaultMessage": "Réessayer"
+  },
+  "ui.errorState.retrying": {
+    "defaultMessage": "Nouvel essai…"
+  },
+  "ui.field.changed": {
+    "defaultMessage": "Modifié"
+  },
+  "ui.files.choose": {
+    "defaultMessage": "Choisir un fichier"
+  },
+  "ui.files.dropTitle": {
+    "defaultMessage": "Déposez un fichier ici, ou choisissez-en un"
+  },
+  "ui.files.reading": {
+    "defaultMessage": "Lecture du fichier…"
+  },
+  "ui.fleet.caption": {
+    "defaultMessage": "appareils enrôlés"
+  },
+  "ui.fleet.title": {
+    "defaultMessage": "Parc"
+  },
+  "ui.map.attribution": {
+    "defaultMessage": "© contributeurs d’OpenStreetMap"
+  },
+  "ui.map.zoomIn": {
+    "defaultMessage": "Zoom avant"
+  },
+  "ui.map.zoomOut": {
+    "defaultMessage": "Zoom arrière"
+  },
+  "ui.modal.close": {
+    "defaultMessage": "Fermer"
+  },
+  "ui.policy.allow": {
+    "defaultMessage": "Autoriser"
+  },
+  "ui.policy.block": {
+    "defaultMessage": "Bloquer"
+  },
+  "ui.policy.notManaged": {
+    "defaultMessage": "Non géré"
+  },
+  "ui.qrCode.failed": {
+    "defaultMessage": "Impossible de dessiner le QR code. Rechargez la page et réessayez."
+  },
+  "ui.steps.donePrefix": {
+    "defaultMessage": "Terminé :"
+  },
+  "ui.steps.ofRest": {
+    "defaultMessage": "du reste du parc"
+  },
+  "ui.steps.ofUpdated": {
+    "defaultMessage": "sur {total} mis à jour"
+  },
+  "ui.steps.progress": {
+    "defaultMessage": "Progression"
+  },
+  "ui.table.scrollable": {
+    "defaultMessage": "Tableau défilant"
+  },
+  "ui.table.scrollableNamed": {
+    "defaultMessage": "Zone défilante : {name}"
+  },
+  "ui.table.selectAll": {
+    "defaultMessage": "Tout sélectionner sur cette page"
+  },
+  "ui.toggle.off": {
+    "defaultMessage": "Désactivé"
+  },
+  "ui.toggle.on": {
+    "defaultMessage": "Activé"
+  },
+  "updates.apply.didntStart": {
+    "defaultMessage": "La mise à jour n’a pas démarré : {error}"
+  },
+  "updates.apply.notStarted": {
+    "defaultMessage": "La mise à jour n’a pas démarré."
+  },
+  "updates.apply.progressLabel": {
+    "defaultMessage": "Progression de la mise à jour"
+  },
+  "updates.apply.restartHelp": {
+    "defaultMessage": "La console peut cesser de répondre pendant une minute le temps que le serveur redémarre. Cette page continue de vérifier et se met à jour d’elle-même."
+  },
+  "updates.apply.startedAgo": {
+    "defaultMessage": "Commencée {ago}."
+  },
+  "updates.apply.startedAutomatically": {
+    "defaultMessage": "Lancée automatiquement"
+  },
+  "updates.apply.updatingTo": {
+    "defaultMessage": "Mise à jour vers MDMesh {version}"
+  },
+  "updates.auto.help": {
+    "defaultMessage": "Les versions vérifiées s’installent dans les quelques heures suivant leur publication. Les versions non vérifiées ne s’installent jamais d’elles-mêmes."
+  },
+  "updates.auto.label": {
+    "defaultMessage": "Installer les mises à jour automatiquement"
+  },
+  "updates.auto.locked": {
+    "defaultMessage": "Seul un super-administrateur, ou l’administrateur d’une installation mono-client, peut modifier ce réglage."
+  },
+  "updates.auto.saveFailed": {
+    "defaultMessage": "Enregistrement impossible."
+  },
+  "updates.auto.saveFailedDetail": {
+    "defaultMessage": "Enregistrement impossible : {error}"
+  },
+  "updates.auto.skipped": {
+    "defaultMessage": "Les mises à jour automatiques n’installeront plus {version}, car sa dernière mise à jour a échoué ou a été annulée."
+  },
+  "updates.auto.skippedManage": {
+    "defaultMessage": "« Mettre à jour » l’installe manuellement ; une version plus récente s’installera d’elle-même."
+  },
+  "updates.auto.skippedOther": {
+    "defaultMessage": "Une version plus récente s’installera d’elle-même."
+  },
+  "updates.card.loading": {
+    "defaultMessage": "Recherche de mises à jour"
+  },
+  "updates.card.retry": {
+    "defaultMessage": "Réessayer"
+  },
+  "updates.card.stale": {
+    "defaultMessage": "Le programme de mise à jour est injoignable pour le moment. Affichage du dernier état qu’il a signalé."
+  },
+  "updates.card.title": {
+    "defaultMessage": "Mises à jour"
+  },
+  "updates.card.unreachable": {
+    "defaultMessage": "Le programme de mise à jour est injoignable : cette console ne peut donc ni rechercher ni installer de mises à jour. Il tourne à côté du serveur (le service {service}) et répond sur {path}."
+  },
+  "updates.check.checkedPrefix": {
+    "defaultMessage": "Vérifié "
+  },
+  "updates.check.checking": {
+    "defaultMessage": "Vérification…"
+  },
+  "updates.check.failed": {
+    "defaultMessage": "Impossible de rechercher les mises à jour. Réessayez dans une minute."
+  },
+  "updates.check.lastFailed": {
+    "defaultMessage": "La dernière vérification a échoué : {error}"
+  },
+  "updates.check.notChecked": {
+    "defaultMessage": "Pas encore vérifié"
+  },
+  "updates.check.now": {
+    "defaultMessage": "Vérifier maintenant"
+  },
+  "updates.confirm.cancel": {
+    "defaultMessage": "Annuler"
+  },
+  "updates.confirm.starting": {
+    "defaultMessage": "Démarrage…"
+  },
+  "updates.confirm.text": {
+    "defaultMessage": "Le serveur et la console redémarrent, ce qui prend environ 2 minutes. La base de données est d’abord sauvegardée, et la mise à jour est annulée d’elle-même en cas d’échec. Les appareils continuent de fonctionner et se reconnectent quand le serveur est de retour."
+  },
+  "updates.confirm.title": {
+    "defaultMessage": "Mettre à jour vers MDMesh {version} ?"
+  },
+  "updates.confirm.updateNow": {
+    "defaultMessage": "Mettre à jour maintenant"
+  },
+  "updates.done.reload": {
+    "defaultMessage": "Recharger"
+  },
+  "updates.done.text": {
+    "defaultMessage": "Mis à jour vers MDMesh {version} {ago}. Rechargez pour utiliser la nouvelle console."
+  },
+  "updates.failed.finishedAgo": {
+    "defaultMessage": "Terminée {ago}."
+  },
+  "updates.failed.help": {
+    "defaultMessage": "Elle s’est arrêtée et n’a pas pu revenir en arrière d’elle-même. La récupération permet de revenir à la sauvegarde ou de réessayer."
+  },
+  "updates.failed.openRecovery": {
+    "defaultMessage": "Ouvrir la récupération"
+  },
+  "updates.failed.rolledBackHelp": {
+    "defaultMessage": "Elle n’a pas passé ses vérifications : le serveur est revenu à {version} et à la sauvegarde de sa base de données."
+  },
+  "updates.failed.rolledBackTitle": {
+    "defaultMessage": "La mise à jour vers {version} a été annulée"
+  },
+  "updates.failed.title": {
+    "defaultMessage": "La mise à jour vers {version} a échoué"
+  },
+  "updates.manual.commandLabel": {
+    "defaultMessage": "Commande de mise à jour : {label}"
+  },
+  "updates.manual.docker": {
+    "defaultMessage": "Docker, installé depuis les sources"
+  },
+  "updates.manual.help": {
+    "defaultMessage": "Ce serveur ne peut pas se mettre à jour lui-même : il a été installé depuis les sources ou avec l’installateur natif. Mettez-le à jour depuis le shell du serveur, dans le dossier MDMesh :"
+  },
+  "updates.manual.native": {
+    "defaultMessage": "Installation native"
+  },
+  "updates.nav.failed": {
+    "defaultMessage": "Échec"
+  },
+  "updates.nav.ready": {
+    "defaultMessage": "1 prête"
+  },
+  "updates.nav.securityFixes": {
+    "defaultMessage": "Correctifs de sécurité"
+  },
+  "updates.nav.updating": {
+    "defaultMessage": "En cours"
+  },
+  "updates.notes.securityFixes": {
+    "defaultMessage": "Correctifs de sécurité"
+  },
+  "updates.notes.showAll": {
+    "defaultMessage": "Afficher toutes les notes ({count})"
+  },
+  "updates.notes.showLess": {
+    "defaultMessage": "Réduire"
+  },
+  "updates.notes.title": {
+    "defaultMessage": "Notes de version"
+  },
+  "updates.notes.version": {
+    "defaultMessage": "Version {version}"
+  },
+  "updates.phase.authorizing": {
+    "defaultMessage": "Autorisation…"
+  },
+  "updates.phase.backup": {
+    "defaultMessage": "Sauvegarde de la base de données…"
+  },
+  "updates.phase.healthcheck": {
+    "defaultMessage": "Vérification de l’état…"
+  },
+  "updates.phase.pull": {
+    "defaultMessage": "Téléchargement des nouvelles images…"
+  },
+  "updates.phase.recreate": {
+    "defaultMessage": "Redémarrage des services…"
+  },
+  "updates.phase.rollback": {
+    "defaultMessage": "Retour en arrière…"
+  },
+  "updates.ready.apkCarried": {
+    "defaultMessage": "La version contient l’agent {version}. <link>Déployez-le sur les appareils</link> après la mise à jour du serveur."
+  },
+  "updates.ready.channel": {
+    "defaultMessage": "{channel, select, stable {Canal stable} beta {Canal bêta} other {Canal {name}}}"
+  },
+  "updates.ready.fullNotes": {
+    "defaultMessage": "Notes de version complètes ↗"
+  },
+  "updates.ready.onlyAdmin": {
+    "defaultMessage": "Seul un super-administrateur, ou l’administrateur d’une installation mono-client, peut mettre à jour."
+  },
+  "updates.ready.releasedOn": {
+    "defaultMessage": "publiée le {date}"
+  },
+  "updates.ready.signatureNotVerified": {
+    "defaultMessage": "Signature non vérifiée"
+  },
+  "updates.ready.signatureVerified": {
+    "defaultMessage": "Signature vérifiée"
+  },
+  "updates.ready.takesAbout": {
+    "defaultMessage": "Environ 2 minutes. La base de données est d’abord sauvegardée, et les appareils continuent de fonctionner pendant le redémarrage de la console."
+  },
+  "updates.ready.title": {
+    "defaultMessage": "MDMesh {version} est prêt"
+  },
+  "updates.ready.unverifiedCantInstall": {
+    "defaultMessage": "La signature de la version n’a pas pu être vérifiée : elle ne peut donc pas être installée."
+  },
+  "updates.ready.updateButton": {
+    "defaultMessage": "Mettre à jour le serveur et la console"
+  },
+  "updates.security.missedShort": {
+    "defaultMessage": "Inclut des correctifs de sécurité de {versions} qui manquent à ce serveur."
+  },
+  "updates.security.missedText": {
+    "defaultMessage": "Des problèmes de sécurité corrigés dans {versions} manquent encore à ce serveur. Il exécute {current}, et la mise à jour vers {latest} inclut ces correctifs."
+  },
+  "updates.security.noticeTitle": {
+    "defaultMessage": "Correctifs de sécurité manquants"
+  },
+  "updates.security.releaseNotes": {
+    "defaultMessage": "Notes de version"
+  },
+  "updates.security.versionsJoin": {
+    "defaultMessage": "{head} et {last}"
+  },
+  "updates.security.whatFixed": {
+    "defaultMessage": "Ce que corrige {version}"
+  },
+  "updates.step.authorize": {
+    "defaultMessage": "Autoriser"
+  },
+  "updates.step.backup": {
+    "defaultMessage": "Sauvegarder"
+  },
+  "updates.step.download": {
+    "defaultMessage": "Télécharger"
+  },
+  "updates.step.healthcheck": {
+    "defaultMessage": "Vérifier l’état"
+  },
+  "updates.step.restart": {
+    "defaultMessage": "Redémarrer"
+  },
+  "updates.time.daysAgo": {
+    "defaultMessage": "{count, plural, one {il y a # jour} other {il y a # jours}}"
+  },
+  "updates.time.hoursAgo": {
+    "defaultMessage": "{count, plural, one {il y a # heure} other {il y a # heures}}"
+  },
+  "updates.time.justNow": {
+    "defaultMessage": "à l’instant"
+  },
+  "updates.time.minutesAgo": {
+    "defaultMessage": "{count, plural, one {il y a # minute} other {il y a # minutes}}"
+  },
+  "updates.time.yesterday": {
+    "defaultMessage": "hier"
+  },
+  "updates.upToDate.latest": {
+    "defaultMessage": "MDMesh {version} est la dernière version{hasChannel, select, true { du canal {channel}} other {}}."
+  },
+  "updates.upToDate.unverifiedFound": {
+    "defaultMessage": "MDMesh {version} a été trouvé, mais sa signature n’a pas pu être vérifiée : il ne sera ni proposé ni installé."
+  },
+  "updates.whatsNew.changelogLink": {
+    "defaultMessage": "CHANGELOG.md sur GitHub ↗"
+  },
+  "updates.whatsNew.done": {
+    "defaultMessage": "Terminé"
+  },
+  "updates.whatsNew.fullNotesLink": {
+    "defaultMessage": "Notes de version complètes sur GitHub ↗"
+  },
+  "updates.whatsNew.loadFailed": {
+    "defaultMessage": "Impossible de charger les notes de version. Consultez-les sur GitHub."
+  },
+  "updates.whatsNew.released": {
+    "defaultMessage": "Publiée le {date}."
+  },
+  "updates.whatsNew.title": {
+    "defaultMessage": "Nouveautés de la version {version}"
+  },
+  "updates.whatsNew.titleUnreleased": {
+    "defaultMessage": "Nouveautés (non publiées)"
+  },
+  "updates.whatsNew.underTheHood": {
+    "defaultMessage": "Sous le capot ({count})"
+  },
+  "updates.whatsNew.unreleasedDescription": {
+    "defaultMessage": "Pas encore publiée : cette version de développement affiche les notes « Unreleased »."
   },
   "users.editor.allConfigurations": {
     "defaultMessage": "Toutes les configurations"

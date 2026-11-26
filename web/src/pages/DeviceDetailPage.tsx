@@ -54,6 +54,7 @@ import {
   IconButton,
   Input,
   LinkButton,
+  formatRelativeIntl,
   Menu,
   StatusText,
   deriveDeviceKind,
@@ -1154,7 +1155,7 @@ export function DeviceDetailPage() {
           value:
             loc.capturedAt && fixIso ? (
               <time dateTime={fixIso} title={fmtDateTime(loc.capturedAt)}>
-                {fmtAge(loc.capturedAt, now)}
+                {fmtAge(loc.capturedAt, now, intl)}
               </time>
             ) : (
               DASH
@@ -1356,7 +1357,7 @@ export function DeviceDetailPage() {
                     values={{
                       when: (
                         <time dateTime={lastIso} title={fmtDateTime(lastSeen)}>
-                          {lastAge === 'just now' ? lastAge : `${lastAge} ago`}
+                          {formatRelativeIntl(intl, lastSeen, now, 'short')}
                         </time>
                       ),
                     }}

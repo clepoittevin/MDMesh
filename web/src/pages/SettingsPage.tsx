@@ -256,7 +256,7 @@ export function SettingsPage() {
   };
 
   const s = sup.status;
-  const updMeta: SectionMeta = updatesNavMeta(s);
+  const updMeta: SectionMeta = updatesNavMeta(s, intl);
   // Core's sections and extensions' come from the registry (ext/core/settings.tsx); the page builds core's bodies.
   const { nav, sections } = useSettingsSections(
     {

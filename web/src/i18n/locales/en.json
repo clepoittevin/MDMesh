@@ -3110,6 +3110,9 @@
   "deviceDetail.apps.noScanTitle": {
     "defaultMessage": "No recent scan"
   },
+  "deviceDetail.apps.scanDeviceReturned": {
+    "defaultMessage": "Device returned {status}"
+  },
   "deviceDetail.apps.scanLabel": {
     "defaultMessage": "App scan"
   },
@@ -3275,8 +3278,17 @@
   "deviceDetail.config.staleNoCause": {
     "defaultMessage": "The device asked for {name} again; the server re-sends it. If the device turned Wi-Fi back on to stay reachable after Wi-Fi radio turned it off, Wi-Fi stays on until {name} changes."
   },
+  "deviceDetail.config.staleReapplyFailed": {
+    "defaultMessage": "The device couldn’t fully apply its configuration again after a restart."
+  },
+  "deviceDetail.config.staleStorageRecovered": {
+    "defaultMessage": "The device restored settings its storage had damaged."
+  },
   "deviceDetail.config.staleTitle": {
     "defaultMessage": "Configuration out of date on the device"
+  },
+  "deviceDetail.config.staleWipeNotStarted": {
+    "defaultMessage": "A factory reset didn’t start, so the device went back to its settings."
   },
   "deviceDetail.config.staleWithCause": {
     "defaultMessage": "{cause} The device asked for {name} again; the server re-sends it."
@@ -3430,6 +3442,9 @@
   },
   "deviceDetail.location.colWhen": {
     "defaultMessage": "When"
+  },
+  "deviceDetail.location.doNotTrackHint": {
+    "defaultMessage": "This device's configuration is set to Location reporting: Do not track, so no location is read or stored. Change it in the configuration to track this device."
   },
   "deviceDetail.location.emptyInRange": {
     "defaultMessage": "No location in {kind, select, hour {the last hour} days {the last {count} days} other {the last {count} hours}}"
@@ -4590,6 +4605,15 @@
   "devices.list.sectionLabel": {
     "defaultMessage": "Device list"
   },
+  "devices.load.failed": {
+    "defaultMessage": "Failed to load devices."
+  },
+  "devices.load.sessionExpired": {
+    "defaultMessage": "Your session has expired. Sign in again."
+  },
+  "devices.notConnected.commandBody": {
+    "defaultMessage": "It gets the command at its next check-in."
+  },
   "devices.page.capped": {
     "defaultMessage": "Showing the first {shown} of {total} devices. Search to find the others."
   },
@@ -4723,8 +4747,38 @@
   "enroll.arrivals.lookAgain": {
     "defaultMessage": "Look again"
   },
+  "enroll.arrivals.newsEnrolled": {
+    "defaultMessage": "{count, plural, one {# device enrolled.} other {# devices enrolled.}}"
+  },
+  "enroll.arrivals.newsOffline": {
+    "defaultMessage": "{count, plural, one {# device hasn’t been heard from in the last {minutes} minutes.} other {# devices haven’t been heard from in the last {minutes} minutes.}}"
+  },
+  "enroll.arrivals.newsOne": {
+    "defaultMessage": "{name}: {state}."
+  },
+  "enroll.arrivals.newsOnline": {
+    "defaultMessage": "{count, plural, one {# device is online.} other {# devices are online.}}"
+  },
+  "enroll.arrivals.newsSettingUp": {
+    "defaultMessage": "{count, plural, one {# device is getting its configuration.} other {# devices are getting their configuration.}}"
+  },
+  "enroll.arrivals.newsSilent": {
+    "defaultMessage": "{count, plural, one {# device hasn’t checked in yet.} other {# devices haven’t checked in yet.}}"
+  },
   "enroll.arrivals.noDeviceYet": {
     "defaultMessage": "No device yet. A device shows here within seconds of enrolling."
+  },
+  "enroll.arrivals.stateOffline": {
+    "defaultMessage": "Enrolled, but not heard from in the last {minutes} minutes"
+  },
+  "enroll.arrivals.stateOnline": {
+    "defaultMessage": "Online"
+  },
+  "enroll.arrivals.stateSettingUp": {
+    "defaultMessage": "Enrolled, getting its configuration…"
+  },
+  "enroll.arrivals.stateSilent": {
+    "defaultMessage": "Enrolled, hasn’t checked in yet"
   },
   "enroll.arrivals.stoppedLooking": {
     "defaultMessage": "Stopped looking for new devices after 30 minutes."
@@ -5117,6 +5171,190 @@
   },
   "enroll.wifi.wpa": {
     "defaultMessage": "WPA / WPA2"
+  },
+  "ext.bulkAction.delete": {
+    "defaultMessage": "Delete",
+    "description": "DESTRUCTIVE: deletes the selected devices from the console."
+  },
+  "ext.bulkAction.move": {
+    "defaultMessage": "Change configuration"
+  },
+  "ext.bulkAction.run": {
+    "defaultMessage": "Run action"
+  },
+  "ext.configSection.apps": {
+    "defaultMessage": "Apps"
+  },
+  "ext.configSection.enrollment": {
+    "defaultMessage": "Enrollment"
+  },
+  "ext.configSection.headwind": {
+    "defaultMessage": "Legacy launcher settings"
+  },
+  "ext.configSection.identity": {
+    "defaultMessage": "Identity"
+  },
+  "ext.configSection.kiosk": {
+    "defaultMessage": "Kiosk"
+  },
+  "ext.configSection.network": {
+    "defaultMessage": "Network"
+  },
+  "ext.configSection.security": {
+    "defaultMessage": "Security"
+  },
+  "ext.configSections.changed": {
+    "defaultMessage": "{count, plural, one {# changed} other {# changed}}"
+  },
+  "ext.configSections.crashNote": {
+    "defaultMessage": "Changes made here aren’t saved."
+  },
+  "ext.configSections.droppedBody": {
+    "defaultMessage": "“{title}” is no longer available to you, so its changes won’t be saved."
+  },
+  "ext.configSections.droppedTitle": {
+    "defaultMessage": "Changes dropped"
+  },
+  "ext.configSections.problems": {
+    "defaultMessage": "{count, plural, one {# problem} other {# problems}}"
+  },
+  "ext.configSections.unreadableSaved": {
+    "defaultMessage": "The saved “{title}” settings can’t be read here, so saving keeps them as they are."
+  },
+  "ext.configSections.unreadableTemplate": {
+    "defaultMessage": "The template’s “{title}” settings can’t be read here, and the server won’t create a configuration with them. {canCopy, select, true {Duplicate the template instead.} other {Someone whose role may duplicate configurations can duplicate the template instead.}}"
+  },
+  "ext.crash.coreLoad": {
+    "defaultMessage": "This part of the page couldn’t load."
+  },
+  "ext.crash.coreProblem": {
+    "defaultMessage": "This part of the page ran into a problem."
+  },
+  "ext.crash.error": {
+    "defaultMessage": "Error"
+  },
+  "ext.crash.extensionLoad": {
+    "defaultMessage": "The “{title}” extension couldn’t load."
+  },
+  "ext.crash.extensionProblem": {
+    "defaultMessage": "The “{title}” extension ran into a problem."
+  },
+  "ext.crash.reload": {
+    "defaultMessage": "Reload"
+  },
+  "ext.crash.retry": {
+    "defaultMessage": "Retry"
+  },
+  "ext.deviceRail.hardware": {
+    "defaultMessage": "Hardware"
+  },
+  "ext.deviceRail.location": {
+    "defaultMessage": "Location"
+  },
+  "ext.deviceRail.management": {
+    "defaultMessage": "Management"
+  },
+  "ext.deviceRail.network": {
+    "defaultMessage": "Network"
+  },
+  "ext.deviceRail.status": {
+    "defaultMessage": "Status"
+  },
+  "ext.deviceTab.activity": {
+    "defaultMessage": "Activity"
+  },
+  "ext.deviceTab.apps": {
+    "defaultMessage": "Apps"
+  },
+  "ext.deviceTab.control": {
+    "defaultMessage": "Control"
+  },
+  "ext.deviceTab.location": {
+    "defaultMessage": "Location"
+  },
+  "ext.deviceTab.telemetry": {
+    "defaultMessage": "Telemetry"
+  },
+  "ext.deviceTabs.label": {
+    "defaultMessage": "Device sections"
+  },
+  "ext.lists.commandFailed": {
+    "defaultMessage": "{label} failed"
+  },
+  "ext.lists.commandQueued": {
+    "defaultMessage": "{label} queued"
+  },
+  "ext.lists.notConnectedBody": {
+    "defaultMessage": "It gets the command at its next check-in."
+  },
+  "ext.lists.notConnectedTitle": {
+    "defaultMessage": "{number} isn’t connected right now"
+  },
+  "ext.lists.queuedFor": {
+    "defaultMessage": "Queued for {count, plural, one {# device} other {# devices}}{skipped, plural, =0 {} other { (# skipped)}}."
+  },
+  "ext.noAccess.body": {
+    "defaultMessage": "Your role doesn’t include it. Ask an administrator if you need it."
+  },
+  "ext.noAccess.title": {
+    "defaultMessage": "You don’t have access to this page"
+  },
+  "ext.settingsSection.account": {
+    "defaultMessage": "Account"
+  },
+  "ext.settingsSection.agentRollout": {
+    "defaultMessage": "Agent rollout"
+  },
+  "ext.settingsSection.appearance": {
+    "defaultMessage": "Appearance"
+  },
+  "ext.settingsSection.enrollment": {
+    "defaultMessage": "Enrollment"
+  },
+  "ext.settingsSection.server": {
+    "defaultMessage": "Server"
+  },
+  "ext.settingsSection.updates": {
+    "defaultMessage": "Updates"
+  },
+  "ext.settingsSection.users": {
+    "defaultMessage": "Users & roles"
+  },
+  "format.relative.days": {
+    "defaultMessage": "{count, plural, one {# day ago} other {# days ago}}"
+  },
+  "format.relative.daysShort": {
+    "defaultMessage": "{count}d ago"
+  },
+  "format.relative.hours": {
+    "defaultMessage": "{count, plural, one {# hour ago} other {# hours ago}}"
+  },
+  "format.relative.hoursShort": {
+    "defaultMessage": "{count}h ago"
+  },
+  "format.relative.justNow": {
+    "defaultMessage": "just now"
+  },
+  "format.relative.minutes": {
+    "defaultMessage": "{count, plural, one {# minute ago} other {# minutes ago}}"
+  },
+  "format.relative.minutesShort": {
+    "defaultMessage": "{count}m ago"
+  },
+  "format.relative.monthsShort": {
+    "defaultMessage": "{count}mo ago"
+  },
+  "format.relative.seconds": {
+    "defaultMessage": "{count, plural, one {# second ago} other {# seconds ago}}"
+  },
+  "format.relative.secondsShort": {
+    "defaultMessage": "{count}s ago"
+  },
+  "format.relative.yearsShort": {
+    "defaultMessage": "{count, plural, one {#y ago} other {#y ago}}"
+  },
+  "format.relative.yesterday": {
+    "defaultMessage": "Yesterday"
   },
   "kiosk.background.error.duplicateFile": {
     "defaultMessage": "A different file with this name is already in Files. Rename the image and try again."
@@ -5513,6 +5751,231 @@
   },
   "roles.seeded.user.description": {
     "defaultMessage": "Manages the devices of one organization"
+  },
+  "rollout.action.cancel": {
+    "defaultMessage": "Cancel rollout"
+  },
+  "rollout.action.finish": {
+    "defaultMessage": "Finish rollout"
+  },
+  "rollout.action.promoteToEveryone": {
+    "defaultMessage": "Promote to everyone else"
+  },
+  "rollout.card.loading": {
+    "defaultMessage": "Checking for a rollout"
+  },
+  "rollout.card.subtitleCanary": {
+    "defaultMessage": "Updating the agent to {version} on {count, plural, one {# canary device} other {# canary devices}} first, then the rest of the fleet. Started {ago}."
+  },
+  "rollout.card.subtitleFleet": {
+    "defaultMessage": "Updating the agent to {version} on every device. Started {ago}."
+  },
+  "rollout.card.title": {
+    "defaultMessage": "Agent rollout"
+  },
+  "rollout.cohort.installing": {
+    "defaultMessage": "{count} installing"
+  },
+  "rollout.cohort.tooOld": {
+    "defaultMessage": "{count, plural, one {# too old to update itself} other {# too old to update themselves}}"
+  },
+  "rollout.cohort.updated": {
+    "defaultMessage": "{count} updated"
+  },
+  "rollout.cohort.waiting": {
+    "defaultMessage": "{count} waiting to check in"
+  },
+  "rollout.error.active": {
+    "defaultMessage": "Another rollout is already running. Refresh to see it."
+  },
+  "rollout.error.canaryEmpty": {
+    "defaultMessage": "None of the chosen devices can take part. Pick devices you manage."
+  },
+  "rollout.error.invalid": {
+    "defaultMessage": "This agent release is incomplete. Check for updates, then try again."
+  },
+  "rollout.error.permissionDenied": {
+    "defaultMessage": "Managing rollouts needs permission to edit devices and access to every device."
+  },
+  "rollout.error.sha256": {
+    "defaultMessage": "This agent release has no complete SHA-256 checksum, so it can’t be rolled out."
+  },
+  "rollout.error.stage": {
+    "defaultMessage": "The rollout has already moved on. The page now shows where it is."
+  },
+  "rollout.error.unknown": {
+    "defaultMessage": "Something went wrong."
+  },
+  "rollout.hint.fleetDone": {
+    "defaultMessage": "Every device that can update has the new agent. Finish the rollout to close it."
+  },
+  "rollout.hint.fleetWaiting": {
+    "defaultMessage": "Devices that are offline get the update when they next check in. Finish the rollout once you’re done."
+  },
+  "rollout.hint.wholeFleetDone": {
+    "defaultMessage": "Every device is in the canary, so there is no one to promote to. Finish the rollout to close it."
+  },
+  "rollout.hint.wholeFleetWaiting": {
+    "defaultMessage": "Every device is in the canary. The rollout closes once they’ve updated; if one can’t, finish it."
+  },
+  "rollout.load.failed": {
+    "defaultMessage": "Could not load the rollout."
+  },
+  "rollout.load.refreshFailed": {
+    "defaultMessage": "Couldn’t refresh the rollout: {error}"
+  },
+  "rollout.picker.cancel": {
+    "defaultMessage": "Cancel"
+  },
+  "rollout.picker.description": {
+    "defaultMessage": "They get agent {version} first. Once they’ve updated, you promote it to everyone else."
+  },
+  "rollout.picker.listLabel": {
+    "defaultMessage": "Devices"
+  },
+  "rollout.picker.loadThing": {
+    "defaultMessage": "devices"
+  },
+  "rollout.picker.loading": {
+    "defaultMessage": "Loading devices"
+  },
+  "rollout.picker.noDevices": {
+    "defaultMessage": "No devices enrolled yet."
+  },
+  "rollout.picker.noMatch": {
+    "defaultMessage": "No devices match."
+  },
+  "rollout.picker.searchLabel": {
+    "defaultMessage": "Search devices"
+  },
+  "rollout.picker.searchPlaceholder": {
+    "defaultMessage": "Search by number or description"
+  },
+  "rollout.picker.seenPrefix": {
+    "defaultMessage": "seen"
+  },
+  "rollout.picker.selected": {
+    "defaultMessage": "{count, plural, one {# device selected} other {# devices selected}}"
+  },
+  "rollout.picker.showing": {
+    "defaultMessage": "Showing {shown} of {total} devices. Search to find others."
+  },
+  "rollout.picker.start": {
+    "defaultMessage": "Start canary ({count})"
+  },
+  "rollout.picker.starting": {
+    "defaultMessage": "Starting…"
+  },
+  "rollout.picker.title": {
+    "defaultMessage": "Choose canary devices"
+  },
+  "rollout.promote.button": {
+    "defaultMessage": "Promote"
+  },
+  "rollout.promote.hintDone": {
+    "defaultMessage": "{count, plural, one {The canary device has updated.} other {All # canary devices have updated.}}"
+  },
+  "rollout.promote.hintNone": {
+    "defaultMessage": "None of the canary devices can install the agent on their own. Cancel and pick others."
+  },
+  "rollout.promote.hintWaitAll": {
+    "defaultMessage": "Available once all {count} canary devices have updated."
+  },
+  "rollout.promote.hintWaitOne": {
+    "defaultMessage": "Available once the canary device has updated."
+  },
+  "rollout.promote.hintWaitTwo": {
+    "defaultMessage": "Available once both canary devices have updated."
+  },
+  "rollout.promote.notYet": {
+    "defaultMessage": "Not yet"
+  },
+  "rollout.promote.promoting": {
+    "defaultMessage": "Promoting…"
+  },
+  "rollout.promote.text": {
+    "defaultMessage": "Agent {version} is sent to every other device that can install it. Devices that are offline get it when they next check in."
+  },
+  "rollout.promote.title": {
+    "defaultMessage": "Promote to everyone else?"
+  },
+  "rollout.start.button": {
+    "defaultMessage": "Roll out agent"
+  },
+  "rollout.start.current": {
+    "defaultMessage": "Agent {version} is current on every device that can update itself."
+  },
+  "rollout.start.help": {
+    "defaultMessage": "Pick a few canary devices to update first. Once they’ve updated, promote it to everyone else."
+  },
+  "rollout.start.none": {
+    "defaultMessage": "No rollout is running. Each verified server release brings a new agent; once the updater has downloaded it, you can roll it out to devices here."
+  },
+  "rollout.start.ready": {
+    "defaultMessage": "Agent {version} is ready to roll out"
+  },
+  "rollout.state.blocked": {
+    "defaultMessage": "Blocked"
+  },
+  "rollout.state.done": {
+    "defaultMessage": "Done"
+  },
+  "rollout.state.inProgress": {
+    "defaultMessage": "In progress"
+  },
+  "rollout.state.notNeeded": {
+    "defaultMessage": "Not needed"
+  },
+  "rollout.state.waiting": {
+    "defaultMessage": "Waiting"
+  },
+  "rollout.step.allInCanary": {
+    "defaultMessage": "Every device is in the canary."
+  },
+  "rollout.step.canary": {
+    "defaultMessage": "Canary"
+  },
+  "rollout.step.everyoneElse": {
+    "defaultMessage": "Everyone else"
+  },
+  "rollout.step.noOthers": {
+    "defaultMessage": "No other devices."
+  },
+  "rollout.step.ofOtherDevices": {
+    "defaultMessage": "other devices"
+  },
+  "rollout.step.ofRest": {
+    "defaultMessage": "of the rest of the fleet"
+  },
+  "rollout.step.ofUpdated": {
+    "defaultMessage": "of {total} updated"
+  },
+  "rollout.step.one": {
+    "defaultMessage": "Step 1"
+  },
+  "rollout.step.startsOnPromote": {
+    "defaultMessage": "Starts when you promote the rollout."
+  },
+  "rollout.step.two": {
+    "defaultMessage": "Step 2"
+  },
+  "rollout.stop.cancelTitle": {
+    "defaultMessage": "Cancel this rollout?"
+  },
+  "rollout.stop.finishTitle": {
+    "defaultMessage": "Finish this rollout?"
+  },
+  "rollout.stop.keepRunning": {
+    "defaultMessage": "Keep it running"
+  },
+  "rollout.stop.remaining": {
+    "defaultMessage": "{count, plural, one {# device hasn’t} other {# devices haven’t}} updated yet and stop being offered agent {version}."
+  },
+  "rollout.stop.stopping": {
+    "defaultMessage": "Stopping…"
+  },
+  "rollout.stop.text": {
+    "defaultMessage": "Installs already under way finish on their own, and devices that updated keep the new agent."
   },
   "settings.account.changePassword": {
     "defaultMessage": "Change password"
@@ -6135,8 +6598,400 @@
   "status.sync.notReported": {
     "defaultMessage": "Not reported"
   },
+  "status.sync.notReportedYet": {
+    "defaultMessage": "Not reported yet"
+  },
   "status.sync.notSupported": {
     "defaultMessage": "Not supported"
+  },
+  "ui.auth.checking": {
+    "defaultMessage": "Checking…"
+  },
+  "ui.auth.connected": {
+    "defaultMessage": "Connected"
+  },
+  "ui.auth.unreachable": {
+    "defaultMessage": "Can’t reach the server"
+  },
+  "ui.breadcrumb.label": {
+    "defaultMessage": "Breadcrumb"
+  },
+  "ui.colour.default": {
+    "defaultMessage": "Default"
+  },
+  "ui.colour.named": {
+    "defaultMessage": "{label}: {value}",
+    "description": "Accessible name: the field label, then the colour shown (a hex code or \"Default\")."
+  },
+  "ui.colour.reset": {
+    "defaultMessage": "Reset"
+  },
+  "ui.errorState.couldntLoad": {
+    "defaultMessage": "Couldn’t load {thing}.",
+    "description": "{thing} is a noun phrase with its article, e.g. \"the devices\", \"this configuration\"."
+  },
+  "ui.errorState.retry": {
+    "defaultMessage": "Retry"
+  },
+  "ui.errorState.retrying": {
+    "defaultMessage": "Retrying…"
+  },
+  "ui.field.changed": {
+    "defaultMessage": "Changed"
+  },
+  "ui.files.choose": {
+    "defaultMessage": "Choose a file"
+  },
+  "ui.files.dropTitle": {
+    "defaultMessage": "Drop a file here, or choose one"
+  },
+  "ui.files.reading": {
+    "defaultMessage": "Reading the file…"
+  },
+  "ui.fleet.caption": {
+    "defaultMessage": "devices enrolled"
+  },
+  "ui.fleet.title": {
+    "defaultMessage": "Fleet"
+  },
+  "ui.map.attribution": {
+    "defaultMessage": "© OpenStreetMap contributors"
+  },
+  "ui.map.zoomIn": {
+    "defaultMessage": "Zoom in"
+  },
+  "ui.map.zoomOut": {
+    "defaultMessage": "Zoom out"
+  },
+  "ui.modal.close": {
+    "defaultMessage": "Close"
+  },
+  "ui.policy.allow": {
+    "defaultMessage": "Allow"
+  },
+  "ui.policy.block": {
+    "defaultMessage": "Block"
+  },
+  "ui.policy.notManaged": {
+    "defaultMessage": "Not managed"
+  },
+  "ui.qrCode.failed": {
+    "defaultMessage": "Couldn’t draw the QR code. Reload the page and try again."
+  },
+  "ui.steps.donePrefix": {
+    "defaultMessage": "Done:"
+  },
+  "ui.steps.ofRest": {
+    "defaultMessage": "of the rest of the fleet"
+  },
+  "ui.steps.ofUpdated": {
+    "defaultMessage": "of {total} updated"
+  },
+  "ui.steps.progress": {
+    "defaultMessage": "Progress"
+  },
+  "ui.table.scrollable": {
+    "defaultMessage": "Scrollable table"
+  },
+  "ui.table.scrollableNamed": {
+    "defaultMessage": "Scrollable: {name}"
+  },
+  "ui.table.selectAll": {
+    "defaultMessage": "Select all on this page"
+  },
+  "ui.toggle.off": {
+    "defaultMessage": "Off"
+  },
+  "ui.toggle.on": {
+    "defaultMessage": "On"
+  },
+  "updates.apply.didntStart": {
+    "defaultMessage": "The update didn’t start: {error}"
+  },
+  "updates.apply.notStarted": {
+    "defaultMessage": "The update did not start."
+  },
+  "updates.apply.progressLabel": {
+    "defaultMessage": "Update progress"
+  },
+  "updates.apply.restartHelp": {
+    "defaultMessage": "The console may stop answering for a minute while the server restarts. This page keeps checking and catches up on its own."
+  },
+  "updates.apply.startedAgo": {
+    "defaultMessage": "Started {ago}."
+  },
+  "updates.apply.startedAutomatically": {
+    "defaultMessage": "Started automatically"
+  },
+  "updates.apply.updatingTo": {
+    "defaultMessage": "Updating to MDMesh {version}"
+  },
+  "updates.auto.help": {
+    "defaultMessage": "Verified releases install within a few hours of release. Unverified releases never install on their own."
+  },
+  "updates.auto.label": {
+    "defaultMessage": "Install updates automatically"
+  },
+  "updates.auto.locked": {
+    "defaultMessage": "Only a super-admin, or the admin of a single-customer install, can change this."
+  },
+  "updates.auto.saveFailed": {
+    "defaultMessage": "Could not save."
+  },
+  "updates.auto.saveFailedDetail": {
+    "defaultMessage": "Could not save: {error}"
+  },
+  "updates.auto.skipped": {
+    "defaultMessage": "Automatic updates won’t install {version} again, because its last update failed or was rolled back."
+  },
+  "updates.auto.skippedManage": {
+    "defaultMessage": "Update installs it by hand; a newer release installs on its own."
+  },
+  "updates.auto.skippedOther": {
+    "defaultMessage": "A newer release installs on its own."
+  },
+  "updates.card.loading": {
+    "defaultMessage": "Checking for updates"
+  },
+  "updates.card.retry": {
+    "defaultMessage": "Retry"
+  },
+  "updates.card.stale": {
+    "defaultMessage": "Can’t reach the updater right now. Showing the last state it reported."
+  },
+  "updates.card.title": {
+    "defaultMessage": "Updates"
+  },
+  "updates.card.unreachable": {
+    "defaultMessage": "The updater isn’t reachable, so this console can’t check for or install updates. It runs next to the server (the {service} service) and serves {path}."
+  },
+  "updates.check.checkedPrefix": {
+    "defaultMessage": "Checked"
+  },
+  "updates.check.checking": {
+    "defaultMessage": "Checking…"
+  },
+  "updates.check.failed": {
+    "defaultMessage": "Couldn’t check for updates. Try again in a minute."
+  },
+  "updates.check.lastFailed": {
+    "defaultMessage": "The last check failed: {error}"
+  },
+  "updates.check.notChecked": {
+    "defaultMessage": "Not checked yet"
+  },
+  "updates.check.now": {
+    "defaultMessage": "Check now"
+  },
+  "updates.confirm.cancel": {
+    "defaultMessage": "Cancel"
+  },
+  "updates.confirm.starting": {
+    "defaultMessage": "Starting…"
+  },
+  "updates.confirm.text": {
+    "defaultMessage": "The server and console restart, which takes about 2 minutes. The database is backed up first, and the update rolls back on its own if it fails. Devices keep working and reconnect when the server is back."
+  },
+  "updates.confirm.title": {
+    "defaultMessage": "Update to MDMesh {version}?"
+  },
+  "updates.confirm.updateNow": {
+    "defaultMessage": "Update now"
+  },
+  "updates.done.reload": {
+    "defaultMessage": "Reload"
+  },
+  "updates.done.text": {
+    "defaultMessage": "Updated to MDMesh {version} {ago}. Reload to use the new console."
+  },
+  "updates.failed.finishedAgo": {
+    "defaultMessage": "Finished {ago}."
+  },
+  "updates.failed.help": {
+    "defaultMessage": "It stopped and could not roll back on its own. Recovery can roll back to the backup or retry."
+  },
+  "updates.failed.openRecovery": {
+    "defaultMessage": "Open recovery"
+  },
+  "updates.failed.rolledBackHelp": {
+    "defaultMessage": "It didn’t pass its checks, so the server went back to {version} and its database backup."
+  },
+  "updates.failed.rolledBackTitle": {
+    "defaultMessage": "The update to {version} was rolled back"
+  },
+  "updates.failed.title": {
+    "defaultMessage": "The update to {version} failed"
+  },
+  "updates.manual.commandLabel": {
+    "defaultMessage": "{label} update command"
+  },
+  "updates.manual.docker": {
+    "defaultMessage": "Docker, installed from source"
+  },
+  "updates.manual.help": {
+    "defaultMessage": "This server can’t update itself: it was installed from source or with the native installer. Update it from the server’s shell, in the MDMesh folder:"
+  },
+  "updates.manual.native": {
+    "defaultMessage": "Native install"
+  },
+  "updates.nav.failed": {
+    "defaultMessage": "Failed"
+  },
+  "updates.nav.ready": {
+    "defaultMessage": "1 ready"
+  },
+  "updates.nav.securityFixes": {
+    "defaultMessage": "Security fixes"
+  },
+  "updates.nav.updating": {
+    "defaultMessage": "Updating"
+  },
+  "updates.notes.securityFixes": {
+    "defaultMessage": "Security fixes"
+  },
+  "updates.notes.showAll": {
+    "defaultMessage": "Show all notes ({count})"
+  },
+  "updates.notes.showLess": {
+    "defaultMessage": "Show less"
+  },
+  "updates.notes.title": {
+    "defaultMessage": "Release notes"
+  },
+  "updates.notes.version": {
+    "defaultMessage": "Version {version}"
+  },
+  "updates.phase.authorizing": {
+    "defaultMessage": "Authorizing…"
+  },
+  "updates.phase.backup": {
+    "defaultMessage": "Backing up the database…"
+  },
+  "updates.phase.healthcheck": {
+    "defaultMessage": "Checking health…"
+  },
+  "updates.phase.pull": {
+    "defaultMessage": "Downloading the new images…"
+  },
+  "updates.phase.recreate": {
+    "defaultMessage": "Restarting services…"
+  },
+  "updates.phase.rollback": {
+    "defaultMessage": "Rolling back…"
+  },
+  "updates.ready.apkCarried": {
+    "defaultMessage": "The release carries agent {version}. <link>Roll it out to devices</link> after the server update."
+  },
+  "updates.ready.channel": {
+    "defaultMessage": "{channel, select, stable {Stable channel} beta {Beta channel} other {{name} channel}}"
+  },
+  "updates.ready.fullNotes": {
+    "defaultMessage": "Full release notes ↗"
+  },
+  "updates.ready.onlyAdmin": {
+    "defaultMessage": "Only a super-admin, or the admin of a single-customer install, can update."
+  },
+  "updates.ready.releasedOn": {
+    "defaultMessage": "released {date}"
+  },
+  "updates.ready.signatureNotVerified": {
+    "defaultMessage": "Signature not verified"
+  },
+  "updates.ready.signatureVerified": {
+    "defaultMessage": "Signature verified"
+  },
+  "updates.ready.takesAbout": {
+    "defaultMessage": "Takes about 2 minutes. The database is backed up first, and devices keep working while the console restarts."
+  },
+  "updates.ready.title": {
+    "defaultMessage": "MDMesh {version} is ready"
+  },
+  "updates.ready.unverifiedCantInstall": {
+    "defaultMessage": "The release signature could not be verified, so it can’t be installed."
+  },
+  "updates.ready.updateButton": {
+    "defaultMessage": "Update server and console"
+  },
+  "updates.security.missedShort": {
+    "defaultMessage": "Includes security fixes from {versions} that this server is missing."
+  },
+  "updates.security.missedText": {
+    "defaultMessage": "{versions} fixed security issues this server doesn’t have yet. It runs {current}, and updating to {latest} includes those fixes."
+  },
+  "updates.security.noticeTitle": {
+    "defaultMessage": "Missing security fixes"
+  },
+  "updates.security.releaseNotes": {
+    "defaultMessage": "Release notes"
+  },
+  "updates.security.versionsJoin": {
+    "defaultMessage": "{head} and {last}"
+  },
+  "updates.security.whatFixed": {
+    "defaultMessage": "What {version} fixed"
+  },
+  "updates.step.authorize": {
+    "defaultMessage": "Authorize"
+  },
+  "updates.step.backup": {
+    "defaultMessage": "Back up"
+  },
+  "updates.step.download": {
+    "defaultMessage": "Download"
+  },
+  "updates.step.healthcheck": {
+    "defaultMessage": "Health check"
+  },
+  "updates.step.restart": {
+    "defaultMessage": "Restart"
+  },
+  "updates.time.daysAgo": {
+    "defaultMessage": "{count, plural, one {# day ago} other {# days ago}}"
+  },
+  "updates.time.hoursAgo": {
+    "defaultMessage": "{count, plural, one {# hour ago} other {# hours ago}}"
+  },
+  "updates.time.justNow": {
+    "defaultMessage": "just now"
+  },
+  "updates.time.minutesAgo": {
+    "defaultMessage": "{count, plural, one {# minute ago} other {# minutes ago}}"
+  },
+  "updates.time.yesterday": {
+    "defaultMessage": "yesterday"
+  },
+  "updates.upToDate.latest": {
+    "defaultMessage": "MDMesh {version} is the latest release{hasChannel, select, true { on the {channel} channel} other {}}."
+  },
+  "updates.upToDate.unverifiedFound": {
+    "defaultMessage": "MDMesh {version} was found, but its signature couldn’t be verified, so it won’t be offered or installed."
+  },
+  "updates.whatsNew.changelogLink": {
+    "defaultMessage": "CHANGELOG.md on GitHub ↗"
+  },
+  "updates.whatsNew.done": {
+    "defaultMessage": "Done"
+  },
+  "updates.whatsNew.fullNotesLink": {
+    "defaultMessage": "Full release notes on GitHub ↗"
+  },
+  "updates.whatsNew.loadFailed": {
+    "defaultMessage": "Couldn’t load the release notes. Read them on GitHub."
+  },
+  "updates.whatsNew.released": {
+    "defaultMessage": "Released {date}."
+  },
+  "updates.whatsNew.title": {
+    "defaultMessage": "What’s new in {version}"
+  },
+  "updates.whatsNew.titleUnreleased": {
+    "defaultMessage": "What’s new (unreleased)"
+  },
+  "updates.whatsNew.underTheHood": {
+    "defaultMessage": "Under the hood ({count})"
+  },
+  "updates.whatsNew.unreleasedDescription": {
+    "defaultMessage": "Not released yet: this dev build shows the Unreleased notes."
   },
   "users.editor.allConfigurations": {
     "defaultMessage": "All configurations"
