@@ -1,3 +1,5 @@
+import { defineMessages, type IntlShape, type MessageDescriptor } from 'react-intl';
+import { EN_INTL } from '../data/configIntl';
 import { apiClient } from './client';
 import type { DeviceEvent } from './events';
 
@@ -59,11 +61,20 @@ export const DEVICE_RESET_REVISION = '0'.repeat(64);
 export const DEVICE_RESET_LABEL = 'Out of date on the device';
 
 /** Device events that leave the configuration out of date on the device, and what each means for it. */
-const STALE_CAUSES: Readonly<Record<string, string>> = {
-  storageRecovered: 'The device restored settings its storage had damaged.',
-  wipeNotStarted: 'A factory reset didn’t start, so the device went back to its settings.',
-  configReapplyFailed: 'The device couldn’t fully apply its configuration again after a restart.',
-};
+const STALE_CAUSES: Readonly<Record<string, MessageDescriptor>> = defineMessages({
+  storageRecovered: {
+    id: 'deviceDetail.config.staleStorageRecovered',
+    defaultMessage: 'The device restored settings its storage had damaged.',
+  },
+  wipeNotStarted: {
+    id: 'deviceDetail.config.staleWipeNotStarted',
+    defaultMessage: 'A factory reset didn’t start, so the device went back to its settings.',
+  },
+  configReapplyFailed: {
+    id: 'deviceDetail.config.staleReapplyFailed',
+    defaultMessage: 'The device couldn’t fully apply its configuration again after a restart.',
+  },
+});
 
 /**
  * How long before the device first reported the configuration out of date an event may be and still explain it. The
@@ -85,6 +96,7 @@ export const STALE_CAUSE_WINDOW_MS = 15 * 60_000;
 export function staleCause(
   events: ReadonlyArray<DeviceEvent> | undefined,
   status: Pick<ConfigStatus, 'appliedAt' | 'lastCommand'>,
+  intl: IntlShape = EN_INTL,
 ): string | null {
   if (status.appliedAt == null) return null;
   const since = status.appliedAt - STALE_CAUSE_WINDOW_MS;
@@ -94,7 +106,7 @@ export function staleCause(
     if (!(e.type in STALE_CAUSES) || e.ts < since || (applied != null && e.ts <= applied)) continue;
     if (!latest || e.ts > latest.ts) latest = e;
   }
-  return latest ? STALE_CAUSES[latest.type] : null;
+  return latest ? intl.formatMessage(STALE_CAUSES[latest.type]) : null;
 }
 
 /** In sync, but the agent skipped some settings on purpose (e.g. Wi-Fi radio Off while Wi-Fi is the only network). */
@@ -115,4 +127,30 @@ export function summarizeStatus(s: ConfigStatus | null): { tone: 'ok' | 'warn' |
   if (!s.appliedRevision) return { tone: 'idle', label: 'Not reported yet' };
   if (s.appliedRevision === DEVICE_RESET_REVISION) return { tone: 'warn', label: DEVICE_RESET_LABEL };
   return { tone: 'warn', label: 'Out of sync' };
+}
+
+/**
+ * summarizeStatus's labels as messages (same English): the label stays the verdict's key, compared as is; this is
+ * only for showing it in the console's language.
+ */
+const SYNC_VERDICT_MESSAGES = defineMessages({
+  noConfiguration: { id: 'status.sync.noConfiguration', defaultMessage: 'No configuration' },
+  agentTooOld: { id: 'status.sync.agentTooOld', defaultMessage: 'Agent too old' },
+  inSync: { id: 'status.sync.inSync', defaultMessage: 'In sync' },
+  applying: { id: 'status.sync.applying', defaultMessage: 'Applying…' },
+  applyFailed: { id: 'status.sync.applyFailed', defaultMessage: 'Apply failed' },
+  notReportedYet: { id: 'status.sync.notReportedYet', defaultMessage: 'Not reported yet' },
+  outOfSync: { id: 'devices.sync.outOfSync', defaultMessage: 'Out of sync' },
+  deferred: { id: 'devices.sync.deferred', defaultMessage: 'In sync (some settings deferred)' },
+  outOfDate: { id: 'devices.sync.outOfDate', defaultMessage: 'Out of date on the device' },
+}) as Record<string, MessageDescriptor>;
+/** By the English label (each message's defaultMessage is the label summarizeStatus gives). */
+const VERDICT_BY_LABEL: ReadonlyMap<string, MessageDescriptor> = new Map(
+  Object.values(SYNC_VERDICT_MESSAGES).map((m) => [m.defaultMessage as string, m]),
+);
+
+/** A verdict's label (summarizeStatus) in the console's language; a label it doesn't know is shown as is. */
+export function syncVerdictLabel(label: string, intl: IntlShape = EN_INTL): string {
+  const m = VERDICT_BY_LABEL.get(label);
+  return m ? intl.formatMessage(m) : label;
 }

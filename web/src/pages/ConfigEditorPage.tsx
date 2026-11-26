@@ -9,6 +9,7 @@ import {
   type Configuration,
 } from '../api/configurations';
 import { ApiError } from '../api/client';
+import { configDescription, configName } from '../data/seededConfigs';
 import { commitUpload, listApplications, uploadRawFile, type Application } from '../api/applications';
 import {
   KIOSK_IMAGE_AGENT,
@@ -21,6 +22,7 @@ import {
 import { getSyncSummary, type ConfigSyncSummary } from '../api/configSync';
 import {
   CONFIG_FIELDS,
+  GROUP_LABELS,
   GROUP_NOTES,
   GROUP_ORDER,
   LEGACY_FIELDS,
@@ -100,15 +102,16 @@ import {
   splitQrParameters,
   type QrParametersSplit,
 } from '../enroll/provisioning';
-import { defineMessage, defineMessages, useIntl, type MessageDescriptor } from '../i18n/plain';
+import { defineMessage, defineMessages, FormattedMessage, useIntl, type IntlShape, type MessageDescriptor } from 'react-intl';
+import { untyped } from '../data/configIntl';
 
-const enrollmentMessages = defineMessages({
+const enrollmentMessages = untyped(defineMessages({
   setupScreens: { id: 'configEditor.enrollment.setupScreens', defaultMessage: 'Setup screens' },
   setupScreensHelp: {
     id: 'configEditor.enrollment.setupScreensHelp',
     defaultMessage: 'Android applies these while the device sets itself up.',
   },
-});
+}));
 const qrInvalid = defineMessage({
   id: 'configEditor.enrollment.qrInvalid',
   defaultMessage: 'Not valid JSON yet. It is saved as typed; the Enroll page leaves it out until it is fixed.',
@@ -143,10 +146,247 @@ const qrDuplicates = defineMessage<{ keys: string }>({
   id: 'configEditor.enrollment.qrDuplicates',
   defaultMessage: '{keys}: use the setting above instead. Once that is set, it wins over this entry.',
 });
-import { AppPickerModal, CopyConfigModal, DeleteConfigModal, KioskConfirmModal } from './configurations/modals';
-import { devicesBlockingDelete, plural, usedByLine, wipedOnly, wipedOnlyLine } from './configurations/sync';
+const messages = untyped(defineMessages({
+  crumbConfigurations: { id: 'configEditor.page.crumbConfigurations', defaultMessage: 'Configurations' },
+  newTitle: { id: 'configEditor.page.newTitle', defaultMessage: 'New configuration' },
+  title: { id: 'configEditor.page.title', defaultMessage: 'Configuration' },
+  loading: { id: 'configEditor.page.loading', defaultMessage: 'Loading configuration…' },
+  failedThis: { id: 'configEditor.page.failedThis', defaultMessage: 'this configuration' },
+  templateMissing: { id: 'configEditor.page.templateMissing', defaultMessage: 'Template not found' },
+  configMissing: { id: 'configEditor.page.configMissing', defaultMessage: 'Configuration not found' },
+  allConfigurations: { id: 'configEditor.page.allConfigurations', defaultMessage: 'All configurations' },
+  templateMissingBody: {
+    id: 'configEditor.page.templateMissingBody',
+    defaultMessage: 'The configuration to copy no longer exists, or you don’t have access to it.',
+  },
+  configMissingBody: {
+    id: 'configEditor.page.configMissingBody',
+    defaultMessage: 'It may have been deleted, or you don’t have access to it.',
+  },
+  buttonsAndScreens: { id: 'configEditor.layout.buttonsAndScreens', defaultMessage: 'Buttons and system screens' },
+  leavingKiosk: { id: 'configEditor.layout.leavingKiosk', defaultMessage: 'Leaving kiosk mode' },
+  launcherLook: { id: 'configEditor.layout.launcherLook', defaultMessage: 'Launcher look' },
+  onlyInKiosk: { id: 'configEditor.layout.onlyInKiosk', defaultMessage: 'Only applies in kiosk mode' },
+  turnOnKiosk: { id: 'configEditor.layout.turnOnKiosk', defaultMessage: 'Turn on kiosk mode to change these' },
+  helpKioskMode: {
+    id: 'configEditor.help.kioskMode',
+    defaultMessage: 'When off, the settings below are ignored and the device uses its own launcher.',
+  },
+  helpKioskHome: { id: 'configEditor.help.kioskHome', defaultMessage: 'The Android home button or gesture.' },
+  helpKioskRecents: {
+    id: 'configEditor.help.kioskRecents',
+    defaultMessage: 'The app switcher. Needs Home button on (Android requires it).',
+  },
+  helpKioskNotifications: {
+    id: 'configEditor.help.kioskNotifications',
+    defaultMessage: 'The notification shade. Needs Home button on (Android requires it).',
+  },
+  subKiosk: { id: 'configEditor.section.kioskSub', defaultMessage: 'Lock the screen to the apps marked “Show in kiosk”.' },
+  subNetwork: { id: 'configEditor.section.networkSub', defaultMessage: 'Radios, location and connectivity. {note}' },
+  subSecurity: { id: 'configEditor.section.securitySub', defaultMessage: 'What people on the device can change. {note}' },
+  legacyNote: {
+    id: 'configEditor.legacy.note',
+    defaultMessage: 'The MDMesh agent ignores these. They stay stored, and saving keeps their values.',
+  },
+  changed: { id: 'configEditor.nav.changed', defaultMessage: '{count, plural, one {# changed} other {# changed}}' },
+  checkPin: { id: 'configEditor.nav.checkPin', defaultMessage: 'Check PIN' },
+  defaultPin: { id: 'configEditor.nav.defaultPin', defaultMessage: 'Default PIN' },
+  noPin: { id: 'configEditor.nav.noPin', defaultMessage: 'No PIN' },
+  oldPin: { id: 'configEditor.nav.oldPin', defaultMessage: 'Old PIN' },
+  syncPickUp: {
+    id: 'configEditor.sync.pickUp',
+    defaultMessage: 'Devices using this configuration pick up the changes on their next sync.',
+  },
+  syncAllOld: {
+    id: 'configEditor.sync.allOld',
+    defaultMessage:
+      '{total, plural, one {The device using this configuration has an agent too old for configuration sync, so it does not pick up changes until the agent is updated.} other {All # devices using this configuration have agents too old for configuration sync, so they do not pick up changes until the agent is updated.}}',
+  },
+  syncSomeOld: {
+    id: 'configEditor.sync.someOld',
+    defaultMessage:
+      'Devices using this configuration pick up the changes on their next sync, except {old, plural, one {# device that has an agent too old for configuration sync} other {# devices that have agents too old for configuration sync}}.',
+  },
+  imageStillUploadingTitle: { id: 'configEditor.toast.imageUploadingTitle', defaultMessage: 'Image still uploading' },
+  imageStillUploading: {
+    id: 'configEditor.toast.imageUploading',
+    defaultMessage: 'Wait for the selected background image to finish uploading before saving.',
+  },
+  nameRequiredTitle: { id: 'configEditor.toast.nameRequiredTitle', defaultMessage: 'Name required' },
+  nameRequired: { id: 'configEditor.toast.nameRequired', defaultMessage: 'Give the configuration a name.' },
+  stillLoadingTitle: { id: 'configEditor.toast.stillLoadingTitle', defaultMessage: 'Still loading' },
+  stillLoading: {
+    id: 'configEditor.toast.stillLoading',
+    defaultMessage: 'The assigned apps are still loading — try again in a moment.',
+  },
+  checkExitPin: { id: 'configEditor.toast.checkExitPin', defaultMessage: 'Check the exit PIN' },
+  fixProblems: {
+    id: 'configEditor.toast.fixProblems',
+    defaultMessage: 'Fix {count, plural, one {# problem} other {# problems}} before saving',
+  },
+  created: { id: 'configEditor.toast.created', defaultMessage: 'Configuration created' },
+  saved: { id: 'configEditor.toast.saved', defaultMessage: 'Configuration saved' },
+  saveFailed: { id: 'configEditor.toast.saveFailed', defaultMessage: 'Save failed' },
+  pinWarnProblem: {
+    id: 'configEditor.pin.warnProblem',
+    defaultMessage: '{problem} Devices on this configuration keep the PIN they have until you save.',
+  },
+  pinDefaultTemplate: {
+    id: 'configEditor.pin.defaultTemplate',
+    defaultMessage:
+      'This template uses a well-known default PIN. Duplicate it, set your own PIN, and move its devices to the copy.',
+  },
+  pinDefault: {
+    id: 'configEditor.pin.default',
+    defaultMessage: 'This is a well-known default PIN: anyone who knows it can leave kiosk. Choose one only your staff know.',
+  },
+  pinNoneTemplate: {
+    id: 'configEditor.pin.noneTemplate',
+    defaultMessage: 'This template has no exit PIN. Duplicate it, set a PIN, and move its devices to the copy.',
+  },
+  pinNone: {
+    id: 'configEditor.pin.none',
+    defaultMessage: 'No exit PIN: agents before 0.3.6 let anyone leave kiosk; later ones have no exit on the device. Set one.',
+  },
+  pinLegacy: {
+    id: 'configEditor.pin.legacy',
+    defaultMessage:
+      'This PIN was saved before exit PINs had to be 6 to 12 digits. Devices keep using it, but it is easier to guess. Set a new one.',
+  },
+  imageNotUsed: { id: 'configEditor.toast.imageNotUsed', defaultMessage: 'Image not used' },
+  imageUnreadable: { id: 'configEditor.toast.imageUnreadable', defaultMessage: 'The image could not be read.' },
+  imageNoIdentity: {
+    id: 'configEditor.toast.imageNoIdentity',
+    defaultMessage: 'The server did not return the uploaded image identity.',
+  },
+  imageUploaded: { id: 'configEditor.toast.imageUploaded', defaultMessage: 'Background image uploaded' },
+  imageUploadedBody: {
+    id: 'configEditor.toast.imageUploadedBody',
+    defaultMessage: 'Check the preview, then save and apply the configuration to use it in kiosk.',
+  },
+  imageUploadFailed: { id: 'configEditor.toast.imageUploadFailed', defaultMessage: 'Image upload failed' },
+  imageChosen: { id: 'configEditor.toast.imageChosen', defaultMessage: 'Background image chosen' },
+  imageChosenBody: {
+    id: 'configEditor.toast.imageChosenBody',
+    defaultMessage: '{name}. Save and apply the configuration to use it in kiosk.',
+  },
+  backgroundImage: { id: 'configEditor.background.label', defaultMessage: 'Background image' },
+  backgroundImageHelp: {
+    id: 'configEditor.background.help',
+    defaultMessage: 'A PNG, JPEG or WebP photo behind the kiosk launcher.',
+  },
+  backgroundImageMore: {
+    id: 'configEditor.background.more',
+    defaultMessage: 'Where the image can’t be shown, the background color is used.',
+  },
+  basedOn: { id: 'configEditor.header.basedOn', defaultMessage: 'Based on “{name}”. Not saved yet.' },
+  notSavedYet: { id: 'configEditor.header.notSavedYet', defaultMessage: 'Not saved yet.' },
+  notUsedYet: { id: 'configEditor.header.notUsedYet', defaultMessage: 'Not used by any device yet.' },
+  creating: { id: 'configEditor.action.creating', defaultMessage: 'Creating…' },
+  create: { id: 'configEditor.action.create', defaultMessage: 'Create configuration' },
+  saving: { id: 'configEditor.action.saving', defaultMessage: 'Saving…' },
+  saveAndApply: { id: 'configEditor.action.saveAndApply', defaultMessage: 'Save and apply' },
+  duplicateToEdit: { id: 'configEditor.action.duplicateToEdit', defaultMessage: 'Duplicate to edit' },
+  duplicate: { id: 'configEditor.action.duplicate', defaultMessage: 'Duplicate' },
+  delete: {
+    id: 'configEditor.action.delete',
+    defaultMessage: 'Delete',
+    description: 'DESTRUCTIVE: opens the confirmation to delete the configuration.',
+  },
+  saveOffLoading: {
+    id: 'configEditor.bar.saveOffLoading',
+    defaultMessage: 'Saving is off until the assigned apps load.',
+  },
+  loadingApps: { id: 'configEditor.bar.loadingApps', defaultMessage: 'Loading the assigned apps…' },
+  kioskChangeDevices: {
+    id: 'configEditor.bar.kioskChangeDevices',
+    defaultMessage:
+      'Kiosk settings change on {count, plural, one {# device. It re-applies kiosk at the next check-in.} other {# devices. They re-apply kiosk at the next check-in.}}',
+  },
+  kioskChangeUnknown: {
+    id: 'configEditor.bar.kioskChangeUnknown',
+    defaultMessage: 'Kiosk settings change on the devices that use this configuration, at their next check-in.',
+  },
+  notSaved: { id: 'configEditor.bar.notSaved', defaultMessage: 'This configuration is not saved yet.' },
+  wipedOnlySentence: {
+    id: 'configEditor.bar.wipedOnly',
+    defaultMessage: 'Used only by {count, plural, one {# wiped device} other {# wiped devices}}.',
+  },
+  noDeviceUses: { id: 'configEditor.bar.noDeviceUses', defaultMessage: 'No device uses this configuration yet.' },
+  identity: { id: 'configEditor.section.identity', defaultMessage: 'Identity' },
+  apps: { id: 'configEditor.section.apps', defaultMessage: 'Apps' },
+  appsSub: {
+    id: 'configEditor.section.appsSub',
+    defaultMessage: 'What gets installed, and which apps the kiosk shows.',
+  },
+  addApps: { id: 'configEditor.section.addApps', defaultMessage: 'Add apps' },
+  failedLibrary: { id: 'configEditor.section.failedLibrary', defaultMessage: 'the app library' },
+  failedLibraryDetail: {
+    id: 'configEditor.section.failedLibraryDetail',
+    defaultMessage: 'Apps can’t be added until it loads.',
+  },
+  mainAppOff: {
+    id: 'configEditor.section.mainAppOff',
+    defaultMessage: 'The app the kiosk opens. Turn kiosk mode on to choose one.',
+  },
+  mainAppMore: {
+    id: 'configEditor.section.mainAppMore',
+    defaultMessage: 'Only apps set to Install and shown in kiosk can be chosen.',
+  },
+  permissionsSummary: {
+    id: 'configEditor.permissions.summary',
+    defaultMessage: 'Permissions · {count, plural, one {# available} other {# available}}',
+  },
+  permissionsNote: {
+    id: 'configEditor.permissions.note',
+    defaultMessage: 'Each device applies what its Android and the app support. Default lifts the override.',
+  },
+  permissionDefault: { id: 'configEditor.permissions.default', defaultMessage: 'Default' },
+  permissionGrant: { id: 'configEditor.permissions.grant', defaultMessage: 'Grant' },
+  permissionDeny: { id: 'configEditor.permissions.deny', defaultMessage: 'Deny' },
+  onDevicesSummary: { id: 'configEditor.apps.onDevicesSummary', defaultMessage: 'What On devices does' },
+  onDevicesBody: {
+    id: 'configEditor.apps.onDevicesBody',
+    defaultMessage:
+      '“Do not install” keeps an app listed without installing it. “Remove” takes the app out of this configuration; it is not uninstalled from devices yet.{kiosk, select, true { “Show in kiosk” sets whether an installed app appears in the kiosk launcher.} other {}}',
+  },
+  sectionKiosk: { id: 'configEditor.section.kiosk', defaultMessage: 'Kiosk' },
+  sectionNetwork: { id: 'configEditor.section.network', defaultMessage: 'Network' },
+  sectionSecurity: { id: 'configEditor.section.security', defaultMessage: 'Security and restrictions' },
+  sectionEnrollment: { id: 'configEditor.section.enrollment', defaultMessage: 'Enrollment' },
+  legacyTitle: {
+    id: 'configEditor.legacy.title',
+    defaultMessage: 'Legacy launcher settings <count>{total}</count>',
+  },
+  legacySub: {
+    id: 'configEditor.legacy.sub',
+    defaultMessage: 'Only the Headwind launcher read these.{changed, plural, =0 {} one { # changed.} other { # changed.}}',
+  },
+  hideSettings: { id: 'configEditor.legacy.hide', defaultMessage: 'Hide settings' },
+  showSettings: { id: 'configEditor.legacy.show', defaultMessage: 'Show settings' },
+  builtin: { id: 'configEditor.badge.builtin', defaultMessage: 'Built-in' },
+  kiosk: { id: 'configEditor.badge.kiosk', defaultMessage: 'Kiosk' },
+  builtinNote: {
+    id: 'configEditor.page.builtinNote',
+    defaultMessage: 'A built-in template is view only. Duplicate it to make your own editable copy.',
+  },
+  failedAssigned: { id: 'configEditor.page.failedAssigned', defaultMessage: 'this configuration’s assigned apps' },
+  failedAssignedDetail: {
+    id: 'configEditor.page.failedAssignedDetail',
+    defaultMessage: 'Saving is off until they load, so the app list isn’t wiped.',
+  },
+  sections: { id: 'configEditor.page.sections', defaultMessage: 'Sections' },
+  unsavedNotCopied: {
+    id: 'configEditor.page.unsavedNotCopied',
+    defaultMessage: 'Unsaved changes on this page are not copied.',
+  },
+}));
+
+import { AppPickerModal, CopyConfigModal, DeleteConfigModal, KioskConfirmModal, configModalMessages } from './configurations/modals';
+import { devicesBlockingDelete, syncMessages, usedByState, wipedOnly } from './configurations/sync';
 import { WATCH_MS, type ConfigWatch } from './configurations/watch';
 import './ConfigEditorPage.css';
+import { apiErrorText } from '../api/apiErrorText';
 
 /** Configuration editor; `:id` is a configuration id or "new" (optionally `?from=<id>`). */
 export function ConfigEditorPage() {
@@ -174,6 +414,7 @@ type Library = Application[] | 'loading' | 'error';
 const parseId = (s: string | null): number | null => (s != null && /^\d{1,9}$/.test(s) ? Number(s) : null);
 
 function EditorLoader({ id, from }: { id: string; from: string | null }) {
+  const intl = useIntl();
   const isNew = id === 'new';
   const [state, setState] = useState<Loaded>({ kind: 'loading' });
   const [library, setLibrary] = useState<Library>('loading');
@@ -232,34 +473,32 @@ function EditorLoader({ id, from }: { id: string; from: string | null }) {
   }, [id, from, isNew, attempt]);
 
   const crumbs = (label: string) => (
-    <Breadcrumb items={[{ label: 'Configurations', to: paths.configurations }, { label }]} />
+    <Breadcrumb items={[{ label: intl.formatMessage(messages.crumbConfigurations), to: paths.configurations }, { label }]} />
   );
 
   if (state.kind !== 'ready') {
-    const title = isNew ? 'New configuration' : 'Configuration';
+    const title = intl.formatMessage(isNew ? messages.newTitle : messages.title);
     return (
       <>
         <PageHeader title={title} breadcrumb={crumbs(title)} />
         {state.kind === 'loading' ? (
           <Card aria-busy="true">
-            <SkeletonFacts count={6} label="Loading configuration…" />
+            <SkeletonFacts count={6} label={intl.formatMessage(messages.loading)} />
           </Card>
         ) : state.kind === 'error' ? (
-          <ErrorState thing="this configuration" onRetry={() => setAttempt((n) => n + 1)} />
+          <ErrorState thing={intl.formatMessage(messages.failedThis)} onRetry={() => setAttempt((n) => n + 1)} />
         ) : (
           <Card>
             <EmptyState
               icon={<IconConfigurations />}
-              title={state.template ? 'Template not found' : 'Configuration not found'}
+              title={intl.formatMessage(state.template ? messages.templateMissing : messages.configMissing)}
               action={
                 <ButtonLink to={paths.configurations}>
-                  All configurations
+                  {intl.formatMessage(messages.allConfigurations)}
                 </ButtonLink>
               }
             >
-              {state.template
-                ? 'The configuration to copy no longer exists, or you don’t have access to it.'
-                : 'It may have been deleted, or you don’t have access to it.'}
+              {intl.formatMessage(state.template ? messages.templateMissingBody : messages.configMissingBody)}
             </EmptyState>
           </Card>
         )}
@@ -312,13 +551,13 @@ function sectionOf(f: FieldDef): SectionId {
   }
 }
 
-type Item = { eyebrow: string | MessageDescriptor; help?: string | MessageDescriptor; kiosk?: boolean } | string;
+type Item = { eyebrow: MessageDescriptor; help?: MessageDescriptor; kiosk?: boolean } | string;
 
 /** Field order and sub-groups; every primary field not listed falls through to the end of its section. */
 const LAYOUT: Record<'kiosk' | 'network' | 'security' | 'enrollment', Item[]> = {
   kiosk: [
     'kioskMode',
-    { eyebrow: 'Buttons and system screens', kiosk: true },
+    { eyebrow: messages.buttonsAndScreens, kiosk: true },
     'kioskHome',
     'kioskRecents',
     'kioskNotifications',
@@ -326,10 +565,10 @@ const LAYOUT: Record<'kiosk' | 'network' | 'security' | 'enrollment', Item[]> = 
     'kioskKeyguard',
     'kioskLockButtons',
     'kioskLockVolume',
-    { eyebrow: 'Leaving kiosk mode', kiosk: true },
+    { eyebrow: messages.leavingKiosk, kiosk: true },
     'kioskExit',
     'password',
-    { eyebrow: 'Launcher look', kiosk: true },
+    { eyebrow: messages.launcherLook, kiosk: true },
     'backgroundColor',
     'textColor',
     'iconSize',
@@ -355,21 +594,27 @@ for (const [sec, items] of Object.entries(LAYOUT) as Array<[keyof typeof LAYOUT,
 }
 
 /** Board help where it is clearer and still accurate; otherwise configFields help is used. */
-const HELP: Record<string, string> = {
-  kioskMode: 'When off, the settings below are ignored and the device uses its own launcher.',
-  kioskHome: 'The Android home button or gesture.',
-  kioskRecents: 'The app switcher. Needs Home button on (Android requires it).',
-  kioskNotifications: 'The notification shade. Needs Home button on (Android requires it).',
+const HELP: Record<string, MessageDescriptor> = {
+  kioskMode: messages.helpKioskMode,
+  kioskHome: messages.helpKioskHome,
+  kioskRecents: messages.helpKioskRecents,
+  kioskNotifications: messages.helpKioskNotifications,
 };
 
-const SECTION_SUB = {
-  kiosk: 'Lock the screen to the apps marked “Show in kiosk”.',
-  network: `Radios, location and connectivity. ${GROUP_NOTES.Network ?? ''}`.trim(),
-  security: `What people on the device can change. ${GROUP_NOTES.Restrictions ?? ''}`.trim(),
-  enrollment: GROUP_NOTES.Enrollment ?? '',
-};
-
-const LEGACY_NOTE = 'The MDMesh agent ignores these. They stay stored, and saving keeps their values.';
+/** The line under a section's title: its own sentence, then the group's note where it has one. */
+function sectionSub(id: 'kiosk' | 'network' | 'security' | 'enrollment', intl: IntlShape): string {
+  const note = (g: keyof typeof GROUP_NOTES) => (GROUP_NOTES[g] ? intl.formatMessage(GROUP_NOTES[g]!) : '');
+  switch (id) {
+    case 'kiosk':
+      return intl.formatMessage(messages.subKiosk);
+    case 'network':
+      return intl.formatMessage(messages.subNetwork, { note: note('Network') }).trim();
+    case 'security':
+      return intl.formatMessage(messages.subSecurity, { note: note('Restrictions') }).trim();
+    default:
+      return note('Enrollment');
+  }
+}
 
 // ---- change detection ----------------------------------------------------------------------------------------------
 
@@ -461,16 +706,12 @@ function changedKeys(before: Configuration, after: Configuration, typed: TypedQr
   return out;
 }
 
-const changedLabel = (n: number) => (n > 0 ? `${n} changed` : '');
-
 /** Save-bar sentence for a configuration devices use: agents too old for config.apply never pick a change up. */
-function syncMessage(row: ConfigSyncSummary): string {
+function syncMessage(row: ConfigSyncSummary, intl: IntlShape): string {
   const old = Math.min(row.unsupported, row.total);
-  if (old === 0) return 'Devices using this configuration pick up the changes on their next sync.';
-  const tooOld = (n: number) => `${n === 1 ? 'has an agent' : 'have agents'} too old for configuration sync`;
-  if (old === row.total)
-    return `${row.total === 1 ? 'The device' : `All ${row.total} devices`} using this configuration ${tooOld(row.total)}, so ${row.total === 1 ? 'it does' : 'they do'} not pick up changes until the agent is updated.`;
-  return `Devices using this configuration pick up the changes on their next sync, except ${plural(old, 'device')} that ${tooOld(old)}.`;
+  if (old === 0) return intl.formatMessage(messages.syncPickUp);
+  if (old === row.total) return intl.formatMessage(messages.syncAllOld, { total: row.total });
+  return intl.formatMessage(messages.syncSomeOld, { old });
 }
 
 const FOCUSABLE = ['input', 'select', 'textarea', 'button'].map((tag) => `${tag}:not(:disabled)`).join(', ');
@@ -586,7 +827,7 @@ function Editor({
   const defaultPin = hasDefaultPin(draft) && (draft.password ?? '') === (baseline.password ?? '');
   const noPin = hasNoPin(draft);
   // A new or changed PIN must follow the rule; one saved before it may stay as it is (a copy is new: it may not).
-  const pinProblem = readOnly ? null : exitPinProblem(draft.password, isNew ? null : baseline.password);
+  const pinProblem = readOnly ? null : exitPinProblem(draft.password, isNew ? null : baseline.password, intl);
   const legacyPin = !pinProblem && hasLegacyPin(draft);
 
   const deviceCount = isNew ? 0 : affectedDeviceCount(syncRow);
@@ -605,20 +846,21 @@ function Editor({
   const kioskChanged = changedIn('kiosk');
   const appsChanged = changedIn('apps');
   const hwChanged = changedIn('headwind');
+  const changedLabel = (n: number) => (n > 0 ? intl.formatMessage(messages.changed, { count: n }) : '');
   const coreMeta: Record<CoreConfigSection, ConfigSectionMeta> = {
     identity: { meta: changedLabel(changedIn('identity')) },
     apps: { meta: appsChanged ? changedLabel(appsChanged) : String(allowed.length) },
     kiosk: {
       meta: pinProblem
-        ? 'Check PIN'
+        ? intl.formatMessage(messages.checkPin)
         : kioskChanged
           ? changedLabel(kioskChanged)
           : defaultPin
-            ? 'Default PIN'
+            ? intl.formatMessage(messages.defaultPin)
             : noPin
-              ? 'No PIN'
+              ? intl.formatMessage(messages.noPin)
               : legacyPin
-                ? 'Old PIN'
+                ? intl.formatMessage(messages.oldPin)
                 : '',
       metaTone: pinProblem ? 'alert' : !kioskChanged && (defaultPin || noPin || legacyPin) ? 'warn' : 'default',
     },
@@ -682,28 +924,28 @@ function Editor({
 
   function requestSave() {
     if (backgroundUploading) {
-      toast.push('err', 'Image still uploading', 'Wait for the selected background image to finish uploading before saving.');
+      toast.push('err', intl.formatMessage(messages.imageStillUploadingTitle), intl.formatMessage(messages.imageStillUploading));
       return;
     }
     if (!String(draft.name ?? '').trim()) {
-      setNameError('Give the configuration a name.');
-      toast.push('err', 'Name required', 'Give the configuration a name.');
+      setNameError(intl.formatMessage(messages.nameRequired));
+      toast.push('err', intl.formatMessage(messages.nameRequiredTitle), intl.formatMessage(messages.nameRequired));
       nameRef.current?.focus();
       return;
     }
     if (!appsReady) {
-      toast.push('err', 'Still loading', 'The assigned apps are still loading — try again in a moment.');
+      toast.push('err', intl.formatMessage(messages.stillLoadingTitle), intl.formatMessage(messages.stillLoading));
       return;
     }
     if (pinProblem) {
-      toast.push('err', 'Check the exit PIN', pinProblem);
+      toast.push('err', intl.formatMessage(messages.checkExitPin), pinProblem);
       focusSection('kiosk');
       document.querySelector<HTMLInputElement>(`[aria-labelledby="${ids}-password"]`)?.focus({ preventScroll: true });
       return;
     }
     const invalid = host.validate();
     if (invalid) {
-      toast.push('err', `Fix ${plural(invalid.problems, 'problem')} before saving`, `${invalid.title}: ${invalid.message}`);
+      toast.push('err', intl.formatMessage(messages.fixProblems, { count: invalid.problems }), `${invalid.title}: ${invalid.message}`);
       focusSection(invalid.anchor);
       return;
     }
@@ -723,7 +965,7 @@ function Editor({
       // Its `extensions` are the loaded ones, with the namespaces the sections changed on top (saveConfiguration).
       const name = String(draft.name ?? '').trim();
       await saveConfiguration({ ...draft, name, extensions: baseline.extensions }, host.changed);
-      toast.push('ok', isNew ? 'Configuration created' : 'Configuration saved', name);
+      toast.push('ok', intl.formatMessage(isNew ? messages.created : messages.saved), configName(intl, { id: draft.id, name }));
       const watch: ConfigWatch | undefined =
         initial.id != null ? { id: initial.id, until: Date.now() + WATCH_MS } : undefined;
       guard.exit(paths.configurations, watch ? { watch } : undefined);
@@ -732,14 +974,15 @@ function Editor({
       const refused = extensionErrorsOf(e);
       if (refused) {
         host.showServerErrors(refused);
-        toast.push('err', 'Save failed', refused.map((r) => r.message).join(' '));
+        toast.push('err', intl.formatMessage(messages.saveFailed), refused.map((r) => r.message).join(' '));
         setBusy(false);
         return;
       }
-      const msg = e instanceof Error ? e.message : '';
+      const msg = apiErrorText(intl, e);
       const dup = /duplicate/i.test(msg);
-      if (dup) setNameError('A configuration with that name exists.');
-      toast.push('err', 'Save failed', dup ? 'A configuration with that name exists.' : msg);
+      const exists = intl.formatMessage(configModalMessages.nameExists);
+      if (dup) setNameError(exists);
+      toast.push('err', intl.formatMessage(messages.saveFailed), dup ? exists : msg);
       setBusy(false);
     }
   }
@@ -754,17 +997,13 @@ function Editor({
 
   // ---- rows ----
   const pinWarn = pinProblem
-    ? `${pinProblem} Devices on this configuration keep the PIN they have until you save.`
+    ? intl.formatMessage(messages.pinWarnProblem, { problem: pinProblem })
     : defaultPin
-    ? readOnly
-      ? 'This template uses a well-known default PIN. Duplicate it, set your own PIN, and move its devices to the copy.'
-      : 'This is a well-known default PIN: anyone who knows it can leave kiosk. Choose one only your staff know.'
+    ? intl.formatMessage(readOnly ? messages.pinDefaultTemplate : messages.pinDefault)
     : noPin
-      ? readOnly
-        ? 'This template has no exit PIN. Duplicate it, set a PIN, and move its devices to the copy.'
-        : 'No exit PIN: agents before 0.3.6 let anyone leave kiosk; later ones have no exit on the device. Set one.'
+      ? intl.formatMessage(readOnly ? messages.pinNoneTemplate : messages.pinNone)
       : legacyPin
-        ? 'This PIN was saved before exit PINs had to be 6 to 12 digits. Devices keep using it, but it is easier to guess. Set a new one.'
+        ? intl.formatMessage(messages.pinLegacy)
         : null;
 
   const row = (key: string, opts: { divider?: boolean } = {}) => {
@@ -784,7 +1023,7 @@ function Editor({
     const help =
       field.qrKey && !qrSettingValueOk(field.qrKey, value)
         ? intl.formatMessage(qrSettingInvalid, { value: String(value) })
-        : HELP[key] ?? def.help;
+        : intl.formatMessage(HELP[key] ?? def.help);
     let qrNote: { tone: 'alert' | 'warn'; text: string } | null = null;
     if (key === 'qrParameters') {
       const rest = qrRestOf(draft, typedQr.current);
@@ -813,8 +1052,8 @@ function Editor({
       <FieldRow
         key={key}
         id={`${ids}-${key}`}
-        label={def.label}
-        help={<FieldHelp text={help} more={def.more} />}
+        label={intl.formatMessage(def.label)}
+        help={<FieldHelp text={help} more={def.more ? intl.formatMessage(def.more) : undefined} />}
         adornment={
           def.agent || (changed.has(key) && !readOnly) ? (
             <>
@@ -857,9 +1096,9 @@ function Editor({
   };
 
   async function uploadBackgroundImage(picked: File) {
-    const typeProblem = kioskImageProblem({ type: picked.type, size: 0 });
+    const typeProblem = kioskImageProblem({ type: picked.type, size: 0 }, intl);
     if (typeProblem) {
-      toast.push('err', 'Image not used', typeProblem);
+      toast.push('err', intl.formatMessage(messages.imageNotUsed), typeProblem);
       return;
     }
     setBackgroundUploading(true);
@@ -867,21 +1106,21 @@ function Editor({
       // At most 3840 px along its long edge (drawn upright when scaled); the server removes the metadata.
       let file: File;
       try {
-        file = (await normalizeKioskImage(picked)).file;
+        file = (await normalizeKioskImage(picked, undefined, intl)).file;
       } catch (e) {
-        toast.push('err', 'Image not used', e instanceof Error ? e.message : 'The image could not be read.');
+        toast.push('err', intl.formatMessage(messages.imageNotUsed), apiErrorText(intl, e) || intl.formatMessage(messages.imageUnreadable));
         return;
       }
-      const problem = kioskImageProblem(file);
+      const problem = kioskImageProblem(file, intl);
       if (problem) {
-        toast.push('err', 'Image not used', problem);
+        toast.push('err', intl.formatMessage(messages.imageNotUsed), problem);
         return;
       }
       // Hosted under a name from its content: an edited image with the same file name doesn't clash with the old one.
       const name = kioskImageUploadName(file.name, await kioskImageContentId(file));
       const temporary = await uploadRawFile(new File([file], name, { type: file.type }));
       const saved = await commitUpload(temporary.serverPath);
-      if (saved.id == null) throw new Error('The server did not return the uploaded image identity.');
+      if (saved.id == null) throw new Error(intl.formatMessage(messages.imageNoIdentity));
       // URL and checksum are server-canonicalized on save. Clearing the old values avoids a stale preview payload.
       // Another image: its own focal point starts at the centre (Fill or Fit stays as chosen).
       setDraft((d) => ({
@@ -893,9 +1132,9 @@ function Editor({
         backgroundImageFocalX: 0.5,
         backgroundImageFocalY: 0.5,
       }));
-      toast.push('ok', 'Background image uploaded', 'Check the preview, then save and apply the configuration to use it in kiosk.');
+      toast.push('ok', intl.formatMessage(messages.imageUploaded), intl.formatMessage(messages.imageUploadedBody));
     } catch (e) {
-      toast.push('err', 'Image upload failed', kioskImageErrorText(e));
+      toast.push('err', intl.formatMessage(messages.imageUploadFailed), kioskImageErrorText(e, intl));
     } finally {
       setBackgroundUploading(false);
     }
@@ -917,8 +1156,8 @@ function Editor({
   const backgroundImageRow = kioskOn ? (
     <FieldRow
       id={`${ids}-backgroundImage`}
-      label="Background image"
-      help={<FieldHelp text="A PNG, JPEG or WebP photo behind the kiosk launcher." more="Where the image can’t be shown, the background color is used." />}
+      label={intl.formatMessage(messages.backgroundImage)}
+      help={<FieldHelp text={intl.formatMessage(messages.backgroundImageHelp)} more={intl.formatMessage(messages.backgroundImageMore)} />}
       adornment={
         <>
           <AgentTag version={KIOSK_IMAGE_AGENT} />
@@ -992,7 +1231,7 @@ function Editor({
           backgroundImageFocalY: item.fileId === backgroundFileId ? d.backgroundImageFocalY : 0.5,
         }));
         setGalleryOpen(false);
-        toast.push('ok', 'Background image chosen', `${item.name}. Save and apply the configuration to use it in kiosk.`);
+        toast.push('ok', intl.formatMessage(messages.imageChosen), intl.formatMessage(messages.imageChosenBody, { name: item.name }));
       }}
     />
   ) : null;
@@ -1000,8 +1239,8 @@ function Editor({
   const renderItems = (items: Item[]) =>
     items.map((it) => {
       if (typeof it === 'string') return row(it);
-      const text = (m: string | MessageDescriptor | undefined) => (m == null || typeof m === 'string' ? m : intl.formatMessage(m));
-      const help = it.kiosk ? (kioskOn ? 'Only applies in kiosk mode' : 'Turn on kiosk mode to change these') : text(it.help);
+      const text = (m: MessageDescriptor | undefined) => (m == null ? m : intl.formatMessage(m));
+      const help = it.kiosk ? intl.formatMessage(kioskOn ? messages.onlyInKiosk : messages.turnOnKiosk) : text(it.help);
       const eyebrow = text(it.eyebrow);
       return (
         <div key={eyebrow} className="v2-cfged-eyebrow">
@@ -1014,7 +1253,7 @@ function Editor({
 
   const section = (id: 'kiosk' | 'network' | 'security' | 'enrollment', title: string) => (
     <Card as="section" id={id} padding="rows" aria-labelledby={`${ids}-${id}-h`}>
-      <CardHeader titleId={`${ids}-${id}-h`} title={title} subtitle={SECTION_SUB[id]} spacing={12} />
+      <CardHeader titleId={`${ids}-${id}-h`} title={title} subtitle={sectionSub(id, intl)} spacing={12} />
       {renderItems(LAYOUT[id])}
       {id === 'kiosk' ? backgroundImageRow : null}
       {id === 'kiosk' ? gallery : null}
@@ -1026,65 +1265,74 @@ function Editor({
   );
 
   // ---- header ----
-  const savedName = isNew ? 'New configuration' : String(baseline.name ?? '');
-  const usedBy = usedByLine(syncRow);
+  const savedName = isNew ? intl.formatMessage(messages.newTitle) : configName(intl, baseline);
+  const usedBy = usedByState(syncRow);
   let subtitle: ReactNode = null;
-  if (isNew) subtitle = base ? `Based on “${base.name}”. Not saved yet.` : 'Not saved yet.';
+  if (isNew) subtitle = base ? intl.formatMessage(messages.basedOn, { name: configName(intl, base) }) : intl.formatMessage(messages.notSavedYet);
   else if (usedBy && initial.id != null)
     subtitle = (
-      <>
-        Used by{' '}
-        <Link to={`${paths.devices}?config=${initial.id}`} className="v2-cfged-devlink">
-          {plural(usedBy.count, 'device')}
-        </Link>
-        {usedBy.rest}
-      </>
+      <FormattedMessage
+        {...syncMessages.usedBy}
+        values={{
+          count: usedBy.count,
+          state: usedBy.state,
+          inSync: usedBy.inSync,
+          link: (chunks) => (
+            <Link to={`${paths.devices}?config=${initial.id}`} className="v2-cfged-devlink">
+              {chunks}
+            </Link>
+          ),
+        }}
+      />
     );
   else if (wipedOnly(syncRow) > 0 && initial.id != null)
     subtitle = (
-      <>
-        Used only by{' '}
-        <Link to={`${paths.devices}?status=wiped&config=${initial.id}`} className="v2-cfged-devlink">
-          {plural(wipedOnly(syncRow), 'wiped device')}
-        </Link>
-        .
-      </>
+      <FormattedMessage
+        {...syncMessages.usedByWipedLink}
+        values={{
+          count: wipedOnly(syncRow),
+          link: (chunks) => (
+            <Link to={`${paths.devices}?status=wiped&config=${initial.id}`} className="v2-cfged-devlink">
+              {chunks}
+            </Link>
+          ),
+        }}
+      />
     );
-  else if (syncKnown) subtitle = 'Not used by any device yet.';
+  else if (syncKnown) subtitle = intl.formatMessage(messages.notUsedYet);
 
   // Duplicate = the server copy (PUT /configurations/copy), the same path as the list's Duplicate: it copies every
   // setting, the apps, configuration files and app settings of the saved configuration.
   const actions = isNew ? (
     <Button size="lg" variant="primary" onClick={requestSave} disabled={busy || !appsReady || backgroundUploading}>
-      {busy ? 'Creating…' : 'Create configuration'}
+      {intl.formatMessage(busy ? messages.creating : messages.create)}
     </Button>
   ) : !canCopy ? null : readOnly ? (
     <Button size="lg" variant="primary" icon={<IconCopy />} onClick={() => setCopying(true)}>
-      Duplicate to edit
+      {intl.formatMessage(messages.duplicateToEdit)}
     </Button>
   ) : (
     <>
       <Button icon={<IconCopy />} onClick={() => setCopying(true)}>
-        Duplicate
+        {intl.formatMessage(messages.duplicate)}
       </Button>
       <Button variant="danger" icon={<IconTrash />} onClick={() => setDeleting(true)}>
-        Delete
+        {intl.formatMessage(messages.delete)}
       </Button>
     </>
   );
 
   // ---- save bar sentence ----
   let message: ReactNode;
-  if (appsError && !appsReady) message = 'Saving is off until the assigned apps load.';
-  else if (!appsReady) message = 'Loading the assigned apps…';
+  if (appsError && !appsReady) message = intl.formatMessage(messages.saveOffLoading);
+  else if (!appsReady) message = intl.formatMessage(messages.loadingApps);
   else if (kioskKeys.length > 0 && deviceCount != null && deviceCount > 0)
-    message = `Kiosk settings change on ${plural(deviceCount, 'device')}. ${deviceCount === 1 ? 'It re-applies' : 'They re-apply'} kiosk at the next check-in.`;
-  else if (kioskKeys.length > 0 && deviceCount == null)
-    message = 'Kiosk settings change on the devices that use this configuration, at their next check-in.';
-  else if (isNew) message = 'This configuration is not saved yet.';
-  else if (syncRow && syncRow.total > 0) message = syncMessage(syncRow);
-  else if (wipedOnly(syncRow) > 0) message = `${wipedOnlyLine(syncRow)}.`;
-  else if (syncKnown) message = 'No device uses this configuration yet.';
+    message = intl.formatMessage(messages.kioskChangeDevices, { count: deviceCount });
+  else if (kioskKeys.length > 0 && deviceCount == null) message = intl.formatMessage(messages.kioskChangeUnknown);
+  else if (isNew) message = intl.formatMessage(messages.notSaved);
+  else if (syncRow && syncRow.total > 0) message = syncMessage(syncRow, intl);
+  else if (wipedOnly(syncRow) > 0) message = intl.formatMessage(messages.wipedOnlySentence, { count: wipedOnly(syncRow) });
+  else if (syncKnown) message = intl.formatMessage(messages.noDeviceUses);
 
   // ---- sections ----
   // Core's cards, which its contributions render among the extensions' sections (ext/core/config.tsx).
@@ -1092,13 +1340,13 @@ function Editor({
     identity: (
       <Card as="section" id="identity" aria-labelledby={`${ids}-identity-h`} gap={14}>
         <h2 id={`${ids}-identity-h`} className="v2-cfged-h2">
-          Identity
+          {intl.formatMessage(messages.identity)}
         </h2>
         <div className="v2-cfged-identity">
           <Field
             label={
               <span className="v2-cfged-labelline">
-                {FIELD.name.label}
+                {intl.formatMessage(FIELD.name.label)}
                 {changed.has('name') && !readOnly ? <ChangedChip /> : null}
               </span>
             }
@@ -1106,7 +1354,7 @@ function Editor({
           >
             <Input
               ref={nameRef}
-              value={draft.name == null ? '' : String(draft.name)}
+              value={readOnly ? configName(intl, initial) : draft.name == null ? '' : String(draft.name)}
               disabled={readOnly}
               required
               onChange={(e) => {
@@ -1118,14 +1366,14 @@ function Editor({
           <Field
             label={
               <span className="v2-cfged-labelline">
-                {FIELD.description.label}
+                {intl.formatMessage(FIELD.description.label)}
                 {changed.has('description') && !readOnly ? <ChangedChip /> : null}
               </span>
             }
           >
             <Textarea
               rows={3}
-              value={draft.description == null ? '' : String(draft.description)}
+              value={readOnly ? configDescription(intl, initial) : draft.description == null ? '' : String(draft.description)}
               disabled={readOnly}
               onChange={(e) =>
                 set('description', e.target.value === '' && baseline.description == null ? baseline.description : e.target.value)
@@ -1139,29 +1387,33 @@ function Editor({
       <Card as="section" id="apps" padding="rows" aria-labelledby={`${ids}-apps-h`}>
         <CardHeader
           titleId={`${ids}-apps-h`}
-          title="Apps"
-          subtitle="What gets installed, and which apps the kiosk shows."
+          title={intl.formatMessage(messages.apps)}
+          subtitle={intl.formatMessage(messages.appsSub)}
           spacing={12}
           actions={
             readOnly ? undefined : (
               <Button size="sm" icon={<IconPlus />} onClick={() => setPickerOpen(true)} disabled={!appsReady || !libraryReady}>
-                Add apps
+                {intl.formatMessage(messages.addApps)}
               </Button>
             )
           }
         />
         {library === 'error' ? (
           <div className="v2-cfged-libnote">
-            <ErrorState thing="the app library" detail="Apps can’t be added until it loads." onRetry={onRetryLibrary} />
+            <ErrorState
+              thing={intl.formatMessage(messages.failedLibrary)}
+              detail={intl.formatMessage(messages.failedLibraryDetail)}
+              onRetry={onRetryLibrary}
+            />
           </div>
         ) : null}
         <FieldRow
           id={`${ids}-mainAppId`}
-          label={FIELD.mainAppId.label}
+          label={intl.formatMessage(FIELD.mainAppId.label)}
           help={
             <FieldHelp
-              text={kioskOn ? FIELD.mainAppId.help : 'The app the kiosk opens. Turn kiosk mode on to choose one.'}
-              more={kioskOn ? 'Only apps set to Install and shown in kiosk can be chosen.' : undefined}
+              text={intl.formatMessage(kioskOn ? FIELD.mainAppId.help : messages.mainAppOff)}
+              more={kioskOn ? intl.formatMessage(messages.mainAppMore) : undefined}
             />
           }
           adornment={changed.has('mainAppId') && !readOnly ? <ChangedChip /> : undefined}
@@ -1200,14 +1452,14 @@ function Editor({
             if (permissions.length === 0) return null;
             return (
               <details className="v2-cfged-permission-app">
-                <summary>Permissions · {permissions.length} available</summary>
-                <p>Each device applies what its Android and the app support. Default lifts the override.</p>
+                <summary>{intl.formatMessage(messages.permissionsSummary, { count: permissions.length })}</summary>
+                <p>{intl.formatMessage(messages.permissionsNote)}</p>
                 {permissions.map((permission) => (
                   <label className="v2-cfged-permission-app__row" key={permission}>
-                    <span>{managedAppPermissionLabel(permission)}</span>
+                    <span>{managedAppPermissionLabel(permission, intl)}</span>
                     {/* The shared Select: the 3:1 input border every select has (componentEdges.test.ts). */}
-                    <Select size="sm" aria-label={managedAppPermissionLabel(permission)} value={appPermissionState(app.id, permission)} disabled={readOnly} onChange={(e) => setAppPermission(app.id, permission, e.target.value)}>
-                      <option value="default">Default</option><option value="grant">Grant</option><option value="deny">Deny</option>
+                    <Select size="sm" aria-label={managedAppPermissionLabel(permission, intl)} value={appPermissionState(app.id, permission)} disabled={readOnly} onChange={(e) => setAppPermission(app.id, permission, e.target.value)}>
+                      <option value="default">{intl.formatMessage(messages.permissionDefault)}</option><option value="grant">{intl.formatMessage(messages.permissionGrant)}</option><option value="deny">{intl.formatMessage(messages.permissionDeny)}</option>
                     </Select>
                   </label>
                 ))}
@@ -1216,27 +1468,29 @@ function Editor({
           }}
         />
         <details className="v2-cfged-apps__note">
-          <summary>What On devices does</summary>
-          <p>
-            “Do not install” keeps an app listed without installing it. “Remove” takes the app out of this
-            configuration; it is not uninstalled from devices yet.
-            {kioskOn ? ' “Show in kiosk” sets whether an installed app appears in the kiosk launcher.' : ''}
-          </p>
+          <summary>{intl.formatMessage(messages.onDevicesSummary)}</summary>
+          <p>{intl.formatMessage(messages.onDevicesBody, { kiosk: String(kioskOn) })}</p>
         </details>
       </Card>
     ),
-    kiosk: section('kiosk', 'Kiosk'),
-    network: section('network', 'Network'),
-    security: section('security', 'Security and restrictions'),
-    enrollment: section('enrollment', 'Enrollment'),
+    kiosk: section('kiosk', intl.formatMessage(messages.sectionKiosk)),
+    network: section('network', intl.formatMessage(messages.sectionNetwork)),
+    security: section('security', intl.formatMessage(messages.sectionSecurity)),
+    enrollment: section('enrollment', intl.formatMessage(messages.sectionEnrollment)),
     headwind: (
       <Card as="section" id="headwind" tone="dashed" padding="none" className="v2-cfged-hw" aria-labelledby={`${ids}-hw-h`}>
         <div className="v2-cfged-hw__head">
           <div className="v2-cfged-hw__text">
             <h2 id={`${ids}-hw-h`} className="v2-cfged-h2">
-              Legacy launcher settings <span className="v2-cfged-hw__count v2-num">{LEGACY_FIELDS.length}</span>
+              <FormattedMessage
+                {...messages.legacyTitle}
+                values={{
+                  total: LEGACY_FIELDS.length,
+                  count: (chunks) => <span className="v2-cfged-hw__count v2-num">{chunks}</span>,
+                }}
+              />
             </h2>
-            <span className="v2-cfged-hw__sub">Only the Headwind launcher read these. {hwChanged ? `${hwChanged} changed.` : ''}</span>
+            <span className="v2-cfged-hw__sub">{intl.formatMessage(messages.legacySub, { changed: hwChanged })}</span>
           </div>
           <Button
             size="sm"
@@ -1245,16 +1499,16 @@ function Editor({
             iconEnd={<IconChevronDown className={advanced ? 'v2-cfged-chev is-open' : 'v2-cfged-chev'} />}
             onClick={() => setAdvanced((v) => !v)}
           >
-            {advanced ? 'Hide settings' : 'Show settings'}
+            {intl.formatMessage(advanced ? messages.hideSettings : messages.showSettings)}
           </Button>
         </div>
         {advanced ? (
           <div id={`${ids}-hw-body`} className="v2-cfged-hw__body">
-            <p className="v2-cfged-hw__note">{LEGACY_NOTE}</p>
+            <p className="v2-cfged-hw__note">{intl.formatMessage(messages.legacyNote)}</p>
             {legacyGroups.map(({ group, fields }) => (
               <div key={group} className="v2-cfged-hw__group">
                 <div className="v2-cfged-eyebrow">
-                  <Eyebrow as="h3">{group}</Eyebrow>
+                  <Eyebrow as="h3">{intl.formatMessage(GROUP_LABELS[group])}</Eyebrow>
                 </div>
                 {fields.map((f) => row(f.key))}
               </div>
@@ -1276,10 +1530,10 @@ function Editor({
             <span className="v2-cfged-tags">
               {readOnly ? (
                 <Badge tone="neutral" size="md" icon={<IconLockSmall />}>
-                  Built-in
+                  {intl.formatMessage(messages.builtin)}
                 </Badge>
               ) : null}
-              {baseline.kioskMode === true ? <Badge size="md">Kiosk</Badge> : null}
+              {baseline.kioskMode === true ? <Badge size="md">{intl.formatMessage(messages.kiosk)}</Badge> : null}
             </span>
           ) : undefined
         }
@@ -1290,19 +1544,19 @@ function Editor({
 
       {readOnly ? (
         <Callout tone="info" icon={<IconInfo size={16} />}>
-          A built-in template is view only. Duplicate it to make your own editable copy.
+          {intl.formatMessage(messages.builtinNote)}
         </Callout>
       ) : null}
 
       {appsError && !appsReady ? (
         <ErrorState
-          thing="this configuration’s assigned apps"
-          detail="Saving is off until they load, so the app list isn’t wiped."
+          thing={intl.formatMessage(messages.failedAssigned)}
+          detail={intl.formatMessage(messages.failedAssignedDetail)}
           onRetry={() => setAppsAttempt((n) => n + 1)}
         />
       ) : null}
 
-      <SectionLayout nav={<SectionNav aria-label="Sections" items={host.nav} />}>
+      <SectionLayout nav={<SectionNav aria-label={intl.formatMessage(messages.sections)} items={host.nav} />}>
         <CoreConfigProvider parts={coreParts}>{host.sections}</CoreConfigProvider>
 
         {readOnly ? null : (
@@ -1311,9 +1565,9 @@ function Editor({
             message={message}
             onDiscard={discard}
             onSave={requestSave}
-            saveLabel={isNew ? 'Create configuration' : 'Save and apply'}
+            saveLabel={intl.formatMessage(isNew ? messages.create : messages.saveAndApply)}
             busy={busy}
-            busyLabel={isNew ? 'Creating…' : 'Saving…'}
+            busyLabel={intl.formatMessage(isNew ? messages.creating : messages.saving)}
             saveDisabled={!appsReady || backgroundUploading}
           />
         )}
@@ -1339,7 +1593,7 @@ function Editor({
       />
       <CopyConfigModal
         source={copying ? initial : null}
-        note={count > 0 ? 'Unsaved changes on this page are not copied.' : undefined}
+        note={count > 0 ? intl.formatMessage(messages.unsavedNotCopied) : undefined}
         onClose={() => setCopying(false)}
         onDone={(_name, copyId) => {
           setCopying(false);

@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
+import type { IntlShape } from 'react-intl';
 import type { DeviceView } from '../../api/devices';
 import type { DeviceEvent } from '../../api/events';
-import { EVENT_VERBS, parseCommandResult } from '../../data/deviceActivity';
+import { eventVerb, parseCommandResult } from '../../data/deviceActivity';
 import {
   IconAlert,
   IconBattery,
@@ -16,13 +17,17 @@ import {
   type StatusTone,
 } from '../../ui';
 
-/** How the Overview's recent activity shows a device event: icon, tone, verb phrase and detail. */
+/**
+ * How the Overview's recent activity shows a device event: icon, tone, verb phrase and detail. The verb phrase is in
+ * the console's language when the caller passes its `intl` (useIntl()), else in English.
+ */
 export function eventView(
   ev: DeviceEvent,
   device: DeviceView,
   appNames: Record<string, string>,
+  intl?: IntlShape,
 ): { icon: ReactNode; tone: StatusTone; what: string; detail?: string } {
-  const what = EVENT_VERBS[ev.type] ?? ev.type;
+  const what = eventVerb(ev.type, intl);
   // Classic: the event detail, else the device description.
   const detail = ev.detail || device.description || undefined;
   switch (ev.type) {

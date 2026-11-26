@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { FormattedMessage, defineMessages, useIntl, type IntlShape, type MessageDescriptor } from 'react-intl';
 import type { CommandHistoryItem, QueueCommandRequest } from '../api/commands';
 import type { AppInfo } from '../api/deviceApps';
 import {
@@ -21,6 +22,56 @@ import {
 } from '../ui';
 import { appsCsv, byLabel, filterApps, latestScan, scanProgress } from '../data/deviceApps';
 import { DASH } from './deviceDetailFormat';
+
+const messagesRaw = defineMessages({
+  scanLabel: { id: 'deviceDetail.apps.scanLabel', defaultMessage: 'App scan' },
+  scanTimedOut: {
+    id: 'deviceDetail.apps.scanTimedOut',
+    defaultMessage: 'Timed out waiting for the device (is it online?)',
+  },
+  colApp: { id: 'deviceDetail.apps.colApp', defaultMessage: 'App' },
+  colPackage: { id: 'deviceDetail.apps.colPackage', defaultMessage: 'Package' },
+  colVersion: { id: 'deviceDetail.apps.colVersion', defaultMessage: 'Version' },
+  colType: { id: 'deviceDetail.apps.colType', defaultMessage: 'Type' },
+  typeSystem: { id: 'deviceDetail.apps.typeSystem', defaultMessage: 'System' },
+  typeUser: { id: 'deviceDetail.apps.typeUser', defaultMessage: 'User' },
+  noScanTitle: { id: 'deviceDetail.apps.noScanTitle', defaultMessage: 'No recent scan' },
+  noScanText: {
+    id: 'deviceDetail.apps.noScanText',
+    defaultMessage: 'The device’s recent commands hold no finished app scan.',
+  },
+  noScanTextCanScan: {
+    id: 'deviceDetail.apps.noScanTextCanScan',
+    defaultMessage: 'The device’s recent commands hold no finished app scan. Scan now asks it for its apps.',
+  },
+  emptyScanTitle: { id: 'deviceDetail.apps.emptyScanTitle', defaultMessage: 'The last scan listed no apps' },
+  emptyScanText: {
+    id: 'deviceDetail.apps.emptyScanText',
+    defaultMessage: 'Give the device a moment after an update, then scan again.',
+  },
+  title: { id: 'deviceDetail.apps.title', defaultMessage: 'Installed apps' },
+  subtitle: {
+    id: 'deviceDetail.apps.subtitle',
+    defaultMessage: 'The apps with a launcher icon, from the device’s latest scan.',
+  },
+  count: { id: 'deviceDetail.apps.count', defaultMessage: '{count, plural, one {# app} other {# apps}}' },
+  scanned: { id: 'deviceDetail.apps.scanned', defaultMessage: 'scanned {when}' },
+  exportTip: { id: 'deviceDetail.apps.exportTip', defaultMessage: 'All apps, system ones included' },
+  exportCsv: { id: 'deviceDetail.apps.exportCsv', defaultMessage: 'Export CSV' },
+  scanning: { id: 'deviceDetail.apps.scanning', defaultMessage: 'Scanning…' },
+  scanNow: { id: 'deviceDetail.apps.scanNow', defaultMessage: 'Scan now' },
+  asking: { id: 'deviceDetail.apps.asking', defaultMessage: 'Asking the device for its apps…' },
+  searchLabel: { id: 'deviceDetail.apps.searchLabel', defaultMessage: 'Search apps' },
+  searchPlaceholder: { id: 'deviceDetail.apps.searchPlaceholder', defaultMessage: 'Search name or package' },
+  showSystem: { id: 'deviceDetail.apps.showSystem', defaultMessage: 'Show system apps' },
+  loadingScan: { id: 'deviceDetail.apps.loadingScan', defaultMessage: 'Loading the last scan' },
+  noMatch: { id: 'deviceDetail.apps.noMatch', defaultMessage: 'No apps match.' },
+  noMatchSystemHidden: {
+    id: 'deviceDetail.apps.noMatchSystemHidden',
+    defaultMessage: 'No apps match. System apps are hidden.',
+  },
+});
+const messages: Record<keyof typeof messagesRaw, MessageDescriptor> = messagesRaw;
 
 /** How long Scan now waits for the device, as the kiosk picker does (api/deviceApps runForResult). */
 const SCAN_TIMEOUT_MS = 75_000;
@@ -49,6 +100,7 @@ export function useAppScan(number: string | undefined, history: readonly Command
   const [queued, setQueued] = useState<string | null>(null);
   const [timedOut, setTimedOut] = useState(false);
   const seq = useRef(0);
+  const intl = useIntl();
 
   useEffect(() => {
     seq.current++;
@@ -57,7 +109,7 @@ export function useAppScan(number: string | undefined, history: readonly Command
     setTimedOut(false);
   }, [number]);
 
-  const progress = queued ? scanProgress(history, queued) : null;
+  const progress = queued ? scanProgress(history, queued, intl) : null;
   const waiting = progress?.state === 'pending';
   useEffect(() => {
     if (!waiting) return;
@@ -71,7 +123,7 @@ export function useAppScan(number: string | undefined, history: readonly Command
     setQueued(null);
     setTimedOut(false);
     try {
-      await queue('App scan', () => ({ type: 'apps.scan' }), (cmdId) => {
+      await queue(intl.formatMessage(messages.scanLabel), () => ({ type: 'apps.scan' }), (cmdId) => {
         if (mine === seq.current && cmdId != null) setQueued(String(cmdId));
       });
     } finally {
@@ -85,23 +137,29 @@ export function useAppScan(number: string | undefined, history: readonly Command
       progress?.state === 'failed'
         ? progress.reason
         : waiting && timedOut
-          ? 'Timed out waiting for the device (is it online?)'
+          ? intl.formatMessage(messages.scanTimedOut)
           : null,
     start: () => void start(),
   };
 }
 
-const COLUMNS: ReadonlyArray<Column<AppInfo>> = [
-  { key: 'app', header: 'App', cell: (a) => a.label },
-  { key: 'pkg', header: 'Package', cell: (a) => a.pkg, mono: true },
-  {
-    key: 'version',
-    header: 'Version',
-    cell: (a) => `${a.versionName ?? DASH}${a.versionCode != null ? ` (${a.versionCode})` : ''}`,
-    mono: true,
-  },
-  { key: 'type', header: 'Type', cell: (a) => (a.system ? 'System' : 'User') },
-];
+function appColumns(intl: IntlShape): ReadonlyArray<Column<AppInfo>> {
+  return [
+    { key: 'app', header: intl.formatMessage(messages.colApp), cell: (a) => a.label },
+    { key: 'pkg', header: intl.formatMessage(messages.colPackage), cell: (a) => a.pkg, mono: true },
+    {
+      key: 'version',
+      header: intl.formatMessage(messages.colVersion),
+      cell: (a) => `${a.versionName ?? DASH}${a.versionCode != null ? ` (${a.versionCode})` : ''}`,
+      mono: true,
+    },
+    {
+      key: 'type',
+      header: intl.formatMessage(messages.colType),
+      cell: (a) => intl.formatMessage(a.system ? messages.typeSystem : messages.typeUser),
+    },
+  ];
+}
 
 function downloadCsv(name: string, text: string) {
   const url = URL.createObjectURL(new Blob(['\uFEFF' + text], { type: 'text/csv;charset=utf-8' }));
@@ -131,6 +189,8 @@ export function AppsTab({
   scan?: AppScanState;
 }) {
   const titleId = useId();
+  const intl = useIntl();
+  const columns = useMemo(() => appColumns(intl), [intl]);
   const [query, setQuery] = useState('');
   const [showSystem, setShowSystem] = useState(false);
   const latest = useMemo(() => latestScan(history), [history]);
@@ -142,11 +202,14 @@ export function AppsTab({
   let empty: { title: string; text?: string } | null = null;
   if (!latest) {
     empty = {
-      title: 'No recent scan',
-      text: `The device’s recent commands hold no finished app scan.${scan ? ' Scan now asks it for its apps.' : ''}`,
+      title: intl.formatMessage(messages.noScanTitle),
+      text: intl.formatMessage(scan ? messages.noScanTextCanScan : messages.noScanText),
     };
   } else if (all.length === 0) {
-    empty = { title: 'The last scan listed no apps', text: scan ? 'Give the device a moment after an update, then scan again.' : undefined };
+    empty = {
+      title: intl.formatMessage(messages.emptyScanTitle),
+      text: scan ? intl.formatMessage(messages.emptyScanText) : undefined,
+    };
   }
 
   return (
@@ -154,33 +217,33 @@ export function AppsTab({
       <CardHeader
         inset
         spacing={8}
-        title="Installed apps"
+        title={intl.formatMessage(messages.title)}
         titleId={titleId}
-        subtitle="The apps with a launcher icon, from the device’s latest scan."
+        subtitle={intl.formatMessage(messages.subtitle)}
         actions={
           <>
             {latest ? (
               <span className="v2-device-meta">
-                {counted} app{counted === 1 ? '' : 's'}
+                {intl.formatMessage(messages.count, { count: counted })}
                 {latest.scannedAt ? (
                   <>
-                    {' · scanned '}
-                    <RelativeTime value={latest.scannedAt} />
+                    {' · '}
+                    <FormattedMessage {...messages.scanned} values={{ when: <RelativeTime value={latest.scannedAt} /> }} />
                   </>
                 ) : null}
               </span>
             ) : null}
             {/* X7: nothing to export until a scan lists apps. */}
             {all.length ? (
-              <Tooltip content="All apps, system ones included">
+              <Tooltip content={intl.formatMessage(messages.exportTip)}>
                 <Button size="sm" icon={<IconDownload size={16} />} onClick={() => downloadCsv(`apps-${number}.csv`, appsCsv(all))}>
-                  Export CSV
+                  <FormattedMessage {...messages.exportCsv} />
                 </Button>
               </Tooltip>
             ) : null}
             {scan ? (
               <Button size="sm" icon={<IconSync />} disabled={scan.scanning} onClick={scan.start}>
-                {scan.scanning ? 'Scanning…' : 'Scan now'}
+                {intl.formatMessage(scan.scanning ? messages.scanning : messages.scanNow)}
               </Button>
             ) : null}
           </>
@@ -195,25 +258,25 @@ export function AppsTab({
           ) : null}
           {scan?.scanning ? (
             <p className="v2-device-meta" role="status">
-              Asking the device for its apps…
+              <FormattedMessage {...messages.asking} />
             </p>
           ) : null}
           {all.length ? (
             <div className="v2-device-apps__tools">
               <SearchInput
                 className="v2-device-apps__search"
-                aria-label="Search apps"
-                placeholder="Search name or package"
+                aria-label={intl.formatMessage(messages.searchLabel)}
+                placeholder={intl.formatMessage(messages.searchPlaceholder)}
                 value={query}
                 onChange={setQuery}
               />
-              <Checkbox label="Show system apps" checked={showSystem} onChange={(e) => setShowSystem(e.target.checked)} />
+              <Checkbox label={intl.formatMessage(messages.showSystem)} checked={showSystem} onChange={(e) => setShowSystem(e.target.checked)} />
             </div>
           ) : null}
         </div>
       ) : null}
       {!loaded && !all.length ? (
-        <SkeletonRows compact count={5} label="Loading the last scan" />
+        <SkeletonRows compact count={5} label={intl.formatMessage(messages.loadingScan)} />
       ) : empty ? (
         <div className="v2-device-cmds__empty">
           <EmptyState bare icon={<IconApps />} title={empty.title}>
@@ -222,12 +285,12 @@ export function AppsTab({
         </div>
       ) : (
         <Table
-          aria-label="Installed apps"
-          columns={COLUMNS}
+          aria-label={intl.formatMessage(messages.title)}
+          columns={columns}
           rows={shown}
           rowKey={(a) => a.pkg}
           minWidth={560}
-          empty={`No apps match.${systemHidden ? ' System apps are hidden.' : ''}`}
+          empty={intl.formatMessage(systemHidden ? messages.noMatchSystemHidden : messages.noMatch)}
         />
       )}
     </Card>

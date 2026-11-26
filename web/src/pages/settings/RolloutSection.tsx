@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { FormattedMessage, defineMessages, useIntl, type IntlShape, type MessageDescriptor } from 'react-intl';
+import { untyped } from '../../data/configIntl';
 import { searchDevices, type DeviceView } from '../../api/devices';
 import {
   cancelRollout,
@@ -10,6 +12,7 @@ import {
   type RolloutTargetSummary,
 } from '../../api/rollout';
 import type { UpdateStatus } from '../../api/updates';
+import { agoText } from '../../data/updateStatus';
 import {
   Button,
   Callout,
@@ -24,13 +27,13 @@ import {
   SearchInput,
   Skeleton,
   SkeletonRows,
-  formatRelative,
   useStickyValue,
   type RolloutStep,
 } from '../../ui';
 import { CORE_ACTION_ACCESS } from '../../ext/core/access';
 import { usePermission } from '../../ext/permissions';
 import { rolloutActive, type RolloutState } from './hooks';
+import { apiErrorText } from '../../api/apiErrorText';
 
 const AGENT_PACKAGE = (import.meta.env.VITE_AGENT_PACKAGE as string) || 'com.mdmesh.agent';
 /** Devices fetched per search in the canary picker (classic: one page of 200). */
@@ -38,61 +41,214 @@ const PICKER_PAGE = 200;
 /** How often "current on every device" is checked again, so a device enrolled meanwhile brings the offer back. */
 export const SUMMARY_POLL_MS = 30000;
 
+const messages = untyped(defineMessages({
+  errorActive: { id: 'rollout.error.active', defaultMessage: 'Another rollout is already running. Refresh to see it.' },
+  errorCanaryEmpty: {
+    id: 'rollout.error.canaryEmpty',
+    defaultMessage: 'None of the chosen devices can take part. Pick devices you manage.',
+  },
+  errorSha256: {
+    id: 'rollout.error.sha256',
+    defaultMessage: 'This agent release has no complete SHA-256 checksum, so it can’t be rolled out.',
+  },
+  errorInvalid: {
+    id: 'rollout.error.invalid',
+    defaultMessage: 'This agent release is incomplete. Check for updates, then try again.',
+  },
+  errorStage: { id: 'rollout.error.stage', defaultMessage: 'The rollout has already moved on. The page now shows where it is.' },
+  errorPermission: {
+    id: 'rollout.error.permissionDenied',
+    defaultMessage: 'Managing rollouts needs permission to edit devices and access to every device.',
+  },
+  errorUnknown: { id: 'rollout.error.unknown', defaultMessage: 'Something went wrong.' },
+  noteUpdated: { id: 'rollout.cohort.updated', defaultMessage: '{count} updated' },
+  noteInstalling: { id: 'rollout.cohort.installing', defaultMessage: '{count} installing' },
+  noteWaiting: { id: 'rollout.cohort.waiting', defaultMessage: '{count} waiting to check in' },
+  noteTooOld: {
+    id: 'rollout.cohort.tooOld',
+    defaultMessage: '{count, plural, one {# too old to update itself} other {# too old to update themselves}}',
+  },
+  hintNone: {
+    id: 'rollout.promote.hintNone',
+    defaultMessage: 'None of the canary devices can install the agent on their own. Cancel and pick others.',
+  },
+  hintDone: {
+    id: 'rollout.promote.hintDone',
+    defaultMessage: '{count, plural, one {The canary device has updated.} other {All # canary devices have updated.}}',
+  },
+  hintWaitOne: { id: 'rollout.promote.hintWaitOne', defaultMessage: 'Available once the canary device has updated.' },
+  hintWaitTwo: { id: 'rollout.promote.hintWaitTwo', defaultMessage: 'Available once both canary devices have updated.' },
+  hintWaitAll: { id: 'rollout.promote.hintWaitAll', defaultMessage: 'Available once all {count} canary devices have updated.' },
+  step1: { id: 'rollout.step.one', defaultMessage: 'Step 1' },
+  step2: { id: 'rollout.step.two', defaultMessage: 'Step 2' },
+  canary: { id: 'rollout.step.canary', defaultMessage: 'Canary' },
+  everyoneElse: { id: 'rollout.step.everyoneElse', defaultMessage: 'Everyone else' },
+  stateDone: { id: 'rollout.state.done', defaultMessage: 'Done' },
+  stateBlocked: { id: 'rollout.state.blocked', defaultMessage: 'Blocked' },
+  stateInProgress: { id: 'rollout.state.inProgress', defaultMessage: 'In progress' },
+  stateNotNeeded: { id: 'rollout.state.notNeeded', defaultMessage: 'Not needed' },
+  stateWaiting: { id: 'rollout.state.waiting', defaultMessage: 'Waiting' },
+  noOthers: { id: 'rollout.step.noOthers', defaultMessage: 'No other devices.' },
+  ofOthers: { id: 'rollout.step.ofOtherDevices', defaultMessage: 'other devices' },
+  allInCanary: { id: 'rollout.step.allInCanary', defaultMessage: 'Every device is in the canary.' },
+  ofRest: { id: 'rollout.step.ofRest', defaultMessage: 'of the rest of the fleet' },
+  ofUpdated: { id: 'rollout.step.ofUpdated', defaultMessage: 'of {total} updated' },
+  startsOnPromote: { id: 'rollout.step.startsOnPromote', defaultMessage: 'Starts when you promote the rollout.' },
+  pickerTitle: { id: 'rollout.picker.title', defaultMessage: 'Choose canary devices' },
+  pickerDescription: {
+    id: 'rollout.picker.description',
+    defaultMessage: 'They get agent {version} first. Once they’ve updated, you promote it to everyone else.',
+  },
+  pickerSelected: {
+    id: 'rollout.picker.selected',
+    defaultMessage: '{count, plural, one {# device selected} other {# devices selected}}',
+  },
+  cancel: { id: 'rollout.picker.cancel', defaultMessage: 'Cancel' },
+  starting: { id: 'rollout.picker.starting', defaultMessage: 'Starting…' },
+  startCanary: { id: 'rollout.picker.start', defaultMessage: 'Start canary ({count})' },
+  searchLabel: { id: 'rollout.picker.searchLabel', defaultMessage: 'Search devices' },
+  searchPlaceholder: { id: 'rollout.picker.searchPlaceholder', defaultMessage: 'Search by number or description' },
+  devicesThing: { id: 'rollout.picker.loadThing', defaultMessage: 'devices' },
+  devicesList: { id: 'rollout.picker.listLabel', defaultMessage: 'Devices' },
+  // Read before a relative time ("seen 3m ago"); keeps its trailing space.
+  seenPrefix: { id: 'rollout.picker.seenPrefix', defaultMessage: 'seen ' },
+  noMatch: { id: 'rollout.picker.noMatch', defaultMessage: 'No devices match.' },
+  noDevices: { id: 'rollout.picker.noDevices', defaultMessage: 'No devices enrolled yet.' },
+  loadingDevices: { id: 'rollout.picker.loading', defaultMessage: 'Loading devices' },
+  showing: {
+    id: 'rollout.picker.showing',
+    defaultMessage: 'Showing {shown} of {total} devices. Search to find others.',
+  },
+  title: { id: 'rollout.card.title', defaultMessage: 'Agent rollout' },
+  subtitleFleet: {
+    id: 'rollout.card.subtitleFleet',
+    defaultMessage: 'Updating the agent to {version} on every device. Started {ago}.',
+  },
+  subtitleCanary: {
+    id: 'rollout.card.subtitleCanary',
+    defaultMessage:
+      'Updating the agent to {version} on {count, plural, one {# canary device} other {# canary devices}} first, then the rest of the fleet. Started {ago}.',
+  },
+  finishRollout: { id: 'rollout.action.finish', defaultMessage: 'Finish rollout' },
+  cancelRollout: { id: 'rollout.action.cancel', defaultMessage: 'Cancel rollout' },
+  refreshFailed: { id: 'rollout.load.refreshFailed', defaultMessage: 'Couldn’t refresh the rollout: {error}' },
+  wholeFleetDone: {
+    id: 'rollout.hint.wholeFleetDone',
+    defaultMessage: 'Every device is in the canary, so there is no one to promote to. Finish the rollout to close it.',
+  },
+  wholeFleetWaiting: {
+    id: 'rollout.hint.wholeFleetWaiting',
+    defaultMessage: 'Every device is in the canary. The rollout closes once they’ve updated; if one can’t, finish it.',
+  },
+  promote: { id: 'rollout.action.promoteToEveryone', defaultMessage: 'Promote to everyone else' },
+  fleetDone: {
+    id: 'rollout.hint.fleetDone',
+    defaultMessage: 'Every device that can update has the new agent. Finish the rollout to close it.',
+  },
+  fleetWaiting: {
+    id: 'rollout.hint.fleetWaiting',
+    defaultMessage: 'Devices that are offline get the update when they next check in. Finish the rollout once you’re done.',
+  },
+  checking: { id: 'rollout.card.loading', defaultMessage: 'Checking for a rollout' },
+  current: {
+    id: 'rollout.start.current',
+    defaultMessage: 'Agent {version} is current on every device that can update itself.',
+  },
+  ready: { id: 'rollout.start.ready', defaultMessage: 'Agent {version} is ready to roll out' },
+  readyHelp: {
+    id: 'rollout.start.help',
+    defaultMessage: 'Pick a few canary devices to update first. Once they’ve updated, promote it to everyone else.',
+  },
+  rollOut: { id: 'rollout.start.button', defaultMessage: 'Roll out agent' },
+  none: {
+    id: 'rollout.start.none',
+    defaultMessage:
+      'No rollout is running. Each verified server release brings a new agent; once the updater has downloaded it, you can roll it out to devices here.',
+  },
+  promoteTitle: { id: 'rollout.promote.title', defaultMessage: 'Promote to everyone else?' },
+  notYet: { id: 'rollout.promote.notYet', defaultMessage: 'Not yet' },
+  promoting: { id: 'rollout.promote.promoting', defaultMessage: 'Promoting…' },
+  promoteButton: { id: 'rollout.promote.button', defaultMessage: 'Promote' },
+  promoteText: {
+    id: 'rollout.promote.text',
+    defaultMessage:
+      'Agent {version} is sent to every other device that can install it. Devices that are offline get it when they next check in.',
+  },
+  finishTitle: { id: 'rollout.stop.finishTitle', defaultMessage: 'Finish this rollout?' },
+  cancelTitle: { id: 'rollout.stop.cancelTitle', defaultMessage: 'Cancel this rollout?' },
+  keepRunning: { id: 'rollout.stop.keepRunning', defaultMessage: 'Keep it running' },
+  stopping: { id: 'rollout.stop.stopping', defaultMessage: 'Stopping…' },
+  stopRemaining: {
+    id: 'rollout.stop.remaining',
+    defaultMessage:
+      '{count, plural, one {# device hasn’t} other {# devices haven’t}} updated yet and stop being offered agent {version}.',
+  },
+  stopText: {
+    id: 'rollout.stop.text',
+    defaultMessage: 'Installs already under way finish on their own, and devices that updated keep the new agent.',
+  },
+}));
+
 /** Server error keys (RolloutResource) in words. Anything else is shown as the server sent it. */
-const ROLLOUT_ERRORS: Record<string, string> = {
-  'error.rollout.active': 'Another rollout is already running. Refresh to see it.',
-  'error.rollout.canary.empty': 'None of the chosen devices can take part. Pick devices you manage.',
-  'error.rollout.sha256': 'This agent release has no complete SHA-256 checksum, so it can’t be rolled out.',
-  'error.rollout.invalid': 'This agent release is incomplete. Check for updates, then try again.',
-  'error.rollout.stage': 'The rollout has already moved on. The page now shows where it is.',
-  'error.permission.denied': 'Managing rollouts needs permission to edit devices and access to every device.',
+const ROLLOUT_ERRORS: Record<string, MessageDescriptor> = {
+  'error.rollout.active': messages.errorActive,
+  'error.rollout.canary.empty': messages.errorCanaryEmpty,
+  'error.rollout.sha256': messages.errorSha256,
+  'error.rollout.invalid': messages.errorInvalid,
+  'error.rollout.stage': messages.errorStage,
+  'error.permission.denied': messages.errorPermission,
 };
-const rolloutError = (e: unknown) => {
-  const m = (e as Error)?.message || 'Something went wrong.';
-  return ROLLOUT_ERRORS[m] ?? m;
+const rolloutError = (e: unknown, intl: IntlShape) => {
+  const m = apiErrorText(intl, e);
+  if (!m) return intl.formatMessage(messages.errorUnknown);
+  return Object.prototype.hasOwnProperty.call(ROLLOUT_ERRORS, m) ? intl.formatMessage(ROLLOUT_ERRORS[m]) : m;
 };
 
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 const eligibleOf = (c: RolloutCounts) => Math.max(0, c.total - c.ineligible);
 const cohortDone = (c: RolloutCounts) => eligibleOf(c) > 0 && c.pending === 0 && c.outstanding === 0;
 
 /** "1 updated · 1 installing · 2 waiting to check in · 1 too old to update itself". */
-function cohortNote(c: RolloutCounts): string {
-  const parts = [`${c.updated} updated`];
-  if (c.pending > 0) parts.push(`${c.pending} installing`);
-  if (c.outstanding > 0) parts.push(`${c.outstanding} waiting to check in`);
-  if (c.ineligible > 0) parts.push(`${c.ineligible} too old to update ${c.ineligible === 1 ? 'itself' : 'themselves'}`);
+function cohortNote(c: RolloutCounts, intl: IntlShape): string {
+  const m = messages;
+  const parts = [intl.formatMessage(m.noteUpdated, { count: c.updated })];
+  if (c.pending > 0) parts.push(intl.formatMessage(m.noteInstalling, { count: c.pending }));
+  if (c.outstanding > 0) parts.push(intl.formatMessage(m.noteWaiting, { count: c.outstanding }));
+  if (c.ineligible > 0) parts.push(intl.formatMessage(m.noteTooOld, { count: c.ineligible }));
   return parts.join(' · ');
 }
 
-function promoteHint(c: RolloutCounts): string {
+function promoteHint(c: RolloutCounts, intl: IntlShape): string {
+  const m = messages;
   const n = eligibleOf(c);
-  if (n === 0) return 'None of the canary devices can install the agent on their own. Cancel and pick others.';
-  if (cohortDone(c)) return n === 1 ? 'The canary device has updated.' : `All ${n} canary devices have updated.`;
-  if (n === 1) return 'Available once the canary device has updated.';
-  if (n === 2) return 'Available once both canary devices have updated.';
-  return `Available once all ${n} canary devices have updated.`;
+  if (n === 0) return intl.formatMessage(m.hintNone);
+  if (cohortDone(c)) return intl.formatMessage(m.hintDone, { count: n });
+  if (n === 1) return intl.formatMessage(m.hintWaitOne);
+  if (n === 2) return intl.formatMessage(m.hintWaitTwo);
+  return intl.formatMessage(m.hintWaitAll, { count: n });
 }
 
 /** A canary-stage rollout whose canary is every device: there is nobody to promote to, so it can only be finished. */
 const wholeFleetCanary = (r: ActiveRollout) => r.stage === 'canary' && r.progress.others === 0;
 
-function steps(r: ActiveRollout, wholeFleet: boolean): RolloutStep[] {
+function steps(r: ActiveRollout, wholeFleet: boolean, intl: IntlShape): RolloutStep[] {
+  const m = messages;
+  const t = (d: MessageDescriptor) => intl.formatMessage(d);
   const c = r.progress.canary;
   const f = r.progress.fleet;
   const canaryOk = cohortDone(c) || r.stage === 'fleet';
   const out: RolloutStep[] = [
     {
       key: 'canary',
-      step: 'Step 1',
-      name: 'Canary',
-      state: canaryOk ? 'Done' : eligibleOf(c) === 0 ? 'Blocked' : 'In progress',
+      step: t(m.step1),
+      name: t(m.canary),
+      state: t(canaryOk ? m.stateDone : eligibleOf(c) === 0 ? m.stateBlocked : m.stateInProgress),
       stateTone: canaryOk ? 'ok' : 'warn',
       active: r.stage === 'canary',
       done: c.updated,
       busy: c.pending,
       total: eligibleOf(c),
-      note: cohortNote(c),
+      ofLabel: intl.formatMessage(m.ofUpdated, { total: eligibleOf(c) }),
+      note: cohortNote(c, intl),
     },
   ];
   if (r.stage === 'fleet' && f) {
@@ -100,39 +256,40 @@ function steps(r: ActiveRollout, wholeFleet: boolean): RolloutStep[] {
     const done = cohortDone(f) || (fe === 0 && f.total === 0);
     out.push({
       key: 'fleet',
-      step: 'Step 2',
-      name: 'Everyone else',
-      state: done ? 'Done' : 'In progress',
+      step: t(m.step2),
+      name: t(m.everyoneElse),
+      state: t(done ? m.stateDone : m.stateInProgress),
       stateTone: done ? 'ok' : 'warn',
       active: true,
       done: f.updated,
       busy: f.pending,
       total: fe,
-      note: f.total === 0 ? 'No other devices.' : cohortNote(f),
+      ofLabel: intl.formatMessage(m.ofUpdated, { total: fe }),
+      note: f.total === 0 ? t(m.noOthers) : cohortNote(f, intl),
     });
   } else if (wholeFleet) {
     out.push({
       key: 'fleet',
-      step: 'Step 2',
-      name: 'Everyone else',
-      state: 'Not needed',
+      step: t(m.step2),
+      name: t(m.everyoneElse),
+      state: t(m.stateNotNeeded),
       stateTone: 'muted',
       done: 0,
       total: 0,
-      ofLabel: 'other devices',
-      note: 'Every device is in the canary.',
+      ofLabel: t(m.ofOthers),
+      note: t(m.allInCanary),
     });
   } else {
     out.push({
       key: 'fleet',
-      step: 'Step 2',
-      name: 'Everyone else',
-      state: 'Waiting',
+      step: t(m.step2),
+      name: t(m.everyoneElse),
+      state: t(m.stateWaiting),
       stateTone: 'muted',
       done: 0,
       total: null,
-      ofLabel: 'of the rest of the fleet',
-      note: 'Starts when you promote the rollout.',
+      ofLabel: t(m.ofRest),
+      note: t(m.startsOnPromote),
     });
   }
   return out;
@@ -163,6 +320,8 @@ function CanaryPicker({
   const [selected, setSelected] = useState<Map<string, DeviceView>>(new Map());
   const [retry, setRetry] = useState(0);
   const seq = useRef(0);
+  const intl = useIntl();
+  const m = messages;
 
   useEffect(() => {
     if (!open) return;
@@ -178,7 +337,7 @@ function CanaryPicker({
             setTotal(r.devices?.totalItemsCount ?? 0);
           })
           .catch((e) => {
-            if (id === seq.current) setLoadErr((e as Error).message || '');
+            if (id === seq.current) setLoadErr(apiErrorText(intl, e));
           })
           .finally(() => {
             if (id === seq.current) setLoading(false);
@@ -204,23 +363,20 @@ function CanaryPicker({
       onClose={() => !busy && onCancel()}
       dismissOnBackdrop={false}
       size="md"
-      title="Choose canary devices"
+      title={intl.formatMessage(m.pickerTitle)}
       description={
-        <>
-          They get agent <span className="v2-num">{version}</span> first. Once they&rsquo;ve updated, you promote it
-          to everyone else.
-        </>
+        <FormattedMessage {...m.pickerDescription} values={{ version: <span className="v2-num">{version}</span> }} />
       }
       footer={
         <>
           <span className="v2-settings-picker__count" aria-live="polite">
-            {plural(n, 'device', 'devices')} selected
+            {intl.formatMessage(m.pickerSelected, { count: n })}
           </span>
           <Button size="lg" onClick={onCancel} disabled={busy}>
-            Cancel
+            {intl.formatMessage(m.cancel)}
           </Button>
           <Button variant="primary" size="lg" onClick={() => onStart(Array.from(selected.keys()))} disabled={busy || n === 0}>
-            {busy ? 'Starting…' : `Start canary (${n})`}
+            {busy ? intl.formatMessage(m.starting) : intl.formatMessage(m.startCanary, { count: n })}
           </Button>
         </>
       }
@@ -229,8 +385,8 @@ function CanaryPicker({
         <SearchInput
           value={query}
           onChange={setQuery}
-          aria-label="Search devices"
-          placeholder="Search by number or description"
+          aria-label={intl.formatMessage(m.searchLabel)}
+          placeholder={intl.formatMessage(m.searchPlaceholder)}
         />
         {error ? (
           <Callout tone="alert" role="alert" icon={<IconAlert />}>
@@ -238,9 +394,9 @@ function CanaryPicker({
           </Callout>
         ) : null}
         {loadErr !== null ? (
-          <ErrorState thing="devices" detail={loadErr || undefined} onRetry={() => setRetry((r) => r + 1)} retrying={loading} />
+          <ErrorState thing={intl.formatMessage(m.devicesThing)} detail={loadErr || undefined} onRetry={() => setRetry((r) => r + 1)} retrying={loading} />
         ) : null}
-        <ul className="v2-settings-picker__list" aria-label="Devices" aria-busy={loading || undefined}>
+        <ul className="v2-settings-picker__list" aria-label={intl.formatMessage(m.devicesList)} aria-busy={loading || undefined}>
           {devices.map((d) => (
             <li key={d.id}>
               <Checkbox
@@ -251,7 +407,7 @@ function CanaryPicker({
                     <span className="v2-mono">{d.number}</span>
                     {d.description ? <span className="v2-settings-picker__desc">{d.description}</span> : null}
                     {d.lastUpdate ? (
-                      <RelativeTime value={d.lastUpdate} prefix="seen " className="v2-settings-picker__seen" />
+                      <RelativeTime value={d.lastUpdate} prefix={intl.formatMessage(m.seenPrefix)} className="v2-settings-picker__seen" />
                     ) : null}
                   </span>
                 }
@@ -260,12 +416,12 @@ function CanaryPicker({
           ))}
         </ul>
         {!loading && loadErr === null && devices.length === 0 ? (
-          <p className="v2-settings-muted">{query ? 'No devices match.' : 'No devices enrolled yet.'}</p>
+          <p className="v2-settings-muted">{intl.formatMessage(query ? m.noMatch : m.noDevices)}</p>
         ) : null}
-        {loading && devices.length === 0 ? <SkeletonRows count={4} compact label="Loading devices" /> : null}
+        {loading && devices.length === 0 ? <SkeletonRows count={4} compact label={intl.formatMessage(m.loadingDevices)} /> : null}
         {total > devices.length ? (
           <p className="v2-settings-muted">
-            Showing {devices.length} of {total} devices. Search to find others.
+            {intl.formatMessage(m.showing, { shown: devices.length, total })}
           </p>
         ) : null}
       </div>
@@ -309,10 +465,13 @@ export function RolloutSection({
   // Starting, promoting and stopping a rollout queue commands on the whole fleet (ext/core/access.ts): a role without
   // edit_devices, or a user limited to some device groups, sees the rollout without its buttons.
   const canEdit = usePermission(CORE_ACTION_ACCESS.rollout);
+  const intl = useIntl();
+  const m = messages;
+  const num = (text: string | undefined) => <span className="v2-num">{text}</span>;
   // A canary of every device can only be finished. Whole-fleet reach comes with canEdit, so for an editor `others`
   // counts the whole fleet; a user limited to some groups may simply not see the other devices.
   const wholeFleet = canEdit && !!active && wholeFleetCanary(active);
-  const items = useMemo(() => (active ? steps(active, wholeFleet) : []), [active, wholeFleet]);
+  const items = useMemo(() => (active ? steps(active, wholeFleet, intl) : []), [active, wholeFleet, intl]);
 
   const refreshSummary = useCallback(() => {
     const request = ++summaryRequest.current;
@@ -359,7 +518,7 @@ export function RolloutSection({
       setErr(null);
       void ro.refresh();
     } catch (e) {
-      setPickErr(rolloutError(e));
+      setPickErr(rolloutError(e, intl));
     } finally {
       setBusy(false);
     }
@@ -373,7 +532,7 @@ export function RolloutSection({
       ro.set(await promoteRollout(active.id));
       void ro.refresh();
     } catch (e) {
-      setErr(rolloutError(e));
+      setErr(rolloutError(e, intl));
       void ro.refresh();
     } finally {
       setBusy(false);
@@ -390,7 +549,7 @@ export function RolloutSection({
       ro.set(null);
       void ro.refresh();
     } catch (e) {
-      setErr(rolloutError(e));
+      setErr(rolloutError(e, intl));
       void ro.refresh(); // show what the server has now, as a failed promote does
     } finally {
       setBusy(false);
@@ -417,36 +576,37 @@ export function RolloutSection({
     <Card id={id} aria-labelledby={titleId} gap={12} className="v2-settings-card">
       {active ? (
         <CardHeader
-          title="Agent rollout"
+          title={intl.formatMessage(m.title)}
           titleId={titleId}
           subtitle={
-            <>
-              Updating the agent to <span className="v2-num">{active.targetVersion}</span>
-              {fleet
-                ? ' on every device.'
-                : ` on ${plural(eligibleOf(active.progress.canary), 'canary device', 'canary devices')} first, then the rest of the fleet.`}{' '}
-              Started {formatRelative(active.createdAt, Date.now(), 'long').replace(/^Y/, 'y')}.
-            </>
+            <FormattedMessage
+              {...(fleet ? m.subtitleFleet : m.subtitleCanary)}
+              values={{
+                version: num(active.targetVersion),
+                count: eligibleOf(active.progress.canary),
+                ago: agoText(active.createdAt, intl),
+              }}
+            />
           }
           actions={
             !canEdit ? undefined : finishing ? (
               <Button size="sm" onClick={() => setConfirm('cancel')} disabled={busy}>
-                Finish rollout
+                {intl.formatMessage(m.finishRollout)}
               </Button>
             ) : (
               <Button size="sm" variant="danger" onClick={() => setConfirm('cancel')} disabled={busy}>
-                Cancel rollout
+                {intl.formatMessage(m.cancelRollout)}
               </Button>
             )
           }
         />
       ) : (
-        <CardHeader title="Agent rollout" titleId={titleId} />
+        <CardHeader title={intl.formatMessage(m.title)} titleId={titleId} />
       )}
 
       {loadError ? (
         <Callout tone="warn" icon={<IconAlert />}>
-          Couldn’t refresh the rollout: {rolloutError({ message: loadError })}
+          {intl.formatMessage(m.refreshFailed, { error: rolloutError({ message: loadError }, intl) })}
         </Callout>
       ) : null}
       {err ? (
@@ -460,9 +620,7 @@ export function RolloutSection({
           <RolloutSteps steps={items} />
           {finishing && !fleet ? (
             <p className="v2-settings-promote__hint">
-              {remaining === 0
-                ? 'Every device is in the canary, so there is no one to promote to. Finish the rollout to close it.'
-                : 'Every device is in the canary. The rollout closes once they’ve updated; if one can’t, finish it.'}
+              {intl.formatMessage(remaining === 0 ? m.wholeFleetDone : m.wholeFleetWaiting)}
             </p>
           ) : !fleet ? (
             <div className="v2-settings-promote">
@@ -472,36 +630,34 @@ export function RolloutSection({
                   disabled={busy || !cohortDone(active.progress.canary)}
                   onClick={() => setConfirm('promote')}
                 >
-                  Promote to everyone else
+                  {intl.formatMessage(m.promote)}
                 </Button>
               ) : null}
-              <span className="v2-settings-promote__hint">{promoteHint(active.progress.canary)}</span>
+              <span className="v2-settings-promote__hint">{promoteHint(active.progress.canary, intl)}</span>
             </div>
           ) : (
             <p className="v2-settings-promote__hint">
-              {remaining === 0
-                ? 'Every device that can update has the new agent. Finish the rollout to close it.'
-                : 'Devices that are offline get the update when they next check in. Finish the rollout once you’re done.'}
+              {intl.formatMessage(remaining === 0 ? m.fleetDone : m.fleetWaiting)}
             </p>
           )}
         </>
       ) : !loaded || (!statusLoaded && !loadError) ? (
         <div className="v2-settings-skel" role="status">
-          <span className="v2-visually-hidden">Checking for a rollout</span>
+          <span className="v2-visually-hidden">{intl.formatMessage(m.checking)}</span>
           <Skeleton width="60%" />
         </div>
       ) : apk?.available && summary?.complete ? (
         <p className="v2-settings-muted">
-          Agent <span className="v2-num">{apk.version}</span> is current on every device that can update itself.
+          <FormattedMessage {...m.current} values={{ version: num(apk.version) }} />
         </p>
       ) : apk?.available ? (
         <div className="v2-settings-start">
           <div className="v2-settings-start__text">
             <span className="v2-settings-start__label">
-              Agent <span className="v2-num">{apk.version}</span> is ready to roll out
+              <FormattedMessage {...m.ready} values={{ version: num(apk.version) }} />
             </span>
             <span className="v2-settings-start__help">
-              Pick a few canary devices to update first. Once they&rsquo;ve updated, promote it to everyone else.
+              {intl.formatMessage(m.readyHelp)}
             </span>
           </div>
           {canEdit ? (
@@ -513,14 +669,13 @@ export function RolloutSection({
                 setPicking(true);
               }}
             >
-              Roll out agent
+              {intl.formatMessage(m.rollOut)}
             </Button>
           ) : null}
         </div>
       ) : (
         <p className="v2-settings-muted">
-          No rollout is running. Each verified server release brings a new agent; once the updater has downloaded it,
-          you can roll it out to devices here.
+          {intl.formatMessage(m.none)}
         </p>
       )}
 
@@ -540,21 +695,20 @@ export function RolloutSection({
         open={confirm === 'promote' && !!active}
         onClose={() => !busy && setConfirm(null)}
         size="sm"
-        title="Promote to everyone else?"
+        title={intl.formatMessage(m.promoteTitle)}
         footer={
           <>
             <Button size="lg" onClick={() => setConfirm(null)} disabled={busy}>
-              Not yet
+              {intl.formatMessage(m.notYet)}
             </Button>
             <Button variant="primary" size="lg" onClick={() => void promote()} disabled={busy}>
-              {busy ? 'Promoting…' : 'Promote'}
+              {busy ? intl.formatMessage(m.promoting) : intl.formatMessage(m.promoteButton)}
             </Button>
           </>
         }
       >
         <p className="v2-settings-modal-text">
-          Agent <span className="v2-num">{shownConfirm?.version}</span> is sent to every other device that can install
-          it. Devices that are offline get it when they next check in.
+          <FormattedMessage {...m.promoteText} values={{ version: num(shownConfirm?.version) }} />
         </p>
       </Modal>
 
@@ -563,11 +717,11 @@ export function RolloutSection({
         onClose={() => !busy && setConfirm(null)}
         role="alertdialog"
         size="sm"
-        title={shownConfirm?.finishing ? 'Finish this rollout?' : 'Cancel this rollout?'}
+        title={intl.formatMessage(shownConfirm?.finishing ? m.finishTitle : m.cancelTitle)}
         footer={
           <>
             <Button size="lg" onClick={() => setConfirm(null)} disabled={busy}>
-              Keep it running
+              {intl.formatMessage(m.keepRunning)}
             </Button>
             {/* Stopping is not undone, but nothing is lost: devices keep what they installed (danger, not solid). */}
             <Button
@@ -576,16 +730,18 @@ export function RolloutSection({
               onClick={() => void stop()}
               disabled={busy}
             >
-              {busy ? 'Stopping…' : shownConfirm?.finishing ? 'Finish rollout' : 'Cancel rollout'}
+              {busy
+                ? intl.formatMessage(m.stopping)
+                : intl.formatMessage(shownConfirm?.finishing ? m.finishRollout : m.cancelRollout)}
             </Button>
           </>
         }
       >
         <p className="v2-settings-modal-text">
           {shownConfirm && shownConfirm.remaining > 0
-            ? `${plural(shownConfirm.remaining, 'device hasn’t', 'devices haven’t')} updated yet and stop being offered agent ${shownConfirm.version}. `
+            ? `${intl.formatMessage(m.stopRemaining, { count: shownConfirm.remaining, version: shownConfirm.version })} `
             : ''}
-          Installs already under way finish on their own, and devices that updated keep the new agent.
+          {intl.formatMessage(m.stopText)}
         </p>
       </Modal>
     </Card>

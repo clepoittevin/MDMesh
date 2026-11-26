@@ -1,4 +1,6 @@
+import { defineMessages, type IntlShape, type MessageDescriptor } from 'react-intl';
 import { apiClient } from './client';
+import { apiErrorText } from './apiErrorText';
 
 // Queue a command for a device (agent v1 contract):
 //   POST /rest/private/agent/v1/devices/{deviceId}/commands
@@ -32,17 +34,39 @@ export interface CommandTemplate {
 /** Why a command type isn't sent to several devices at once (isBulkForbidden). */
 export const BULK_FORBIDDEN_TEXT = 'Wipe, passcode reset and app uninstall are sent from the device’s page only.';
 
-const commandMessages: Record<string, string> = {
-  'error.agent.command.wiped': 'The device was wiped, so it takes no more commands.',
-  'error.agent.command.noConfiguration': 'The device has no configuration, so there is no configured kiosk to return to.',
-  'error.agent.command.serverOwned': 'The server sends the configuration itself. Use Retry apply on the device page.',
-  'error.agent.command.bulkForbidden': BULK_FORBIDDEN_TEXT,
-  'error.agent.device.unknown': 'The server has no device with this number. It may have been deleted.',
-};
+/** The server's error keys for a refused command, as messages (shown translated; commandErrorText gives the English). */
+export const commandErrorMessages: Record<string, MessageDescriptor> = defineMessages({
+  'error.agent.command.wiped': {
+    id: 'commands.error.wiped',
+    defaultMessage: 'The device was wiped, so it takes no more commands.',
+  },
+  'error.agent.command.noConfiguration': {
+    id: 'commands.error.noConfiguration',
+    defaultMessage: 'The device has no configuration, so there is no configured kiosk to return to.',
+  },
+  'error.agent.command.serverOwned': {
+    id: 'commands.error.serverOwned',
+    defaultMessage: 'The server sends the configuration itself. Use Retry apply on the device page.',
+  },
+  'error.agent.command.bulkForbidden': {
+    id: 'commands.error.bulkForbidden',
+    defaultMessage: 'Wipe, passcode reset and app uninstall are sent from the device’s page only.',
+  },
+  'error.agent.device.unknown': {
+    id: 'commands.error.deviceUnknown',
+    defaultMessage: 'The server has no device with this number. It may have been deleted.',
+  },
+});
+const hasOwn = (o: object, k: string) => Object.prototype.hasOwnProperty.call(o, k);
 /** What a refused command (or Install configuration apps, or Retry apply) says, by the server's error key. */
 export function commandErrorText(e: unknown): string {
   const message = e instanceof Error ? e.message : '';
-  return commandMessages[message] ?? message;
+  return hasOwn(commandErrorMessages, message) ? String(commandErrorMessages[message].defaultMessage) : message;
+}
+/** commandErrorText in the console's language: a known server key is translated, anything else is shown as sent. */
+export function formatCommandError(intl: IntlShape, e: unknown): string {
+  const message = e instanceof Error ? e.message : '';
+  return hasOwn(commandErrorMessages, message) ? intl.formatMessage(commandErrorMessages[message]) : apiErrorText(intl, e);
 }
 
 export async function queueCommand(
@@ -226,6 +250,162 @@ export const ACTION_TEMPLATES: CommandTemplateExt[] = [
     request: { type: 'kiosk.clearPinLockout', requiresCapability: 'device.kioskClearPinLockout' },
   },
 ];
+
+/** The wording of one catalog entry (ACTION_TEMPLATES, by `key`), as messages. */
+export interface ActionTemplateMessages {
+  label: MessageDescriptor;
+  title?: MessageDescriptor;
+  description: MessageDescriptor;
+  /** By the param's key. */
+  params?: Record<string, { label: MessageDescriptor; placeholder?: MessageDescriptor }>;
+}
+
+const actionParamMessages = defineMessages({
+  message: { id: 'commands.param.message.label', defaultMessage: 'Message' },
+  messagePlaceholder: { id: 'commands.param.lockscreenMessage.placeholder', defaultMessage: 'Property of ACME IT' },
+  title: { id: 'commands.param.title.label', defaultMessage: 'Title' },
+  titlePlaceholder: { id: 'commands.param.title.placeholder', defaultMessage: 'Message from IT' },
+  newPassword: { id: 'commands.param.newPassword.label', defaultMessage: 'New passcode (blank to clear)' },
+});
+
+export const actionTemplateMessages: Record<string, ActionTemplateMessages> = {
+  'lockscreen-message': {
+    ...defineMessages({
+      label: { id: 'commands.action.lockscreenMessage.label', defaultMessage: 'Set lock-screen message' },
+      title: { id: 'commands.action.lockscreenMessage.title', defaultMessage: 'Lock-screen message' },
+      description: {
+        id: 'commands.action.lockscreenMessage.description',
+        defaultMessage: 'Shows your message on the lock screen. Leave it empty to clear it.',
+      },
+    }),
+    params: { message: { label: actionParamMessages.message, placeholder: actionParamMessages.messagePlaceholder } },
+  },
+  alert: {
+    ...defineMessages({
+      label: { id: 'commands.action.alert.label', defaultMessage: 'Send alert' },
+      description: { id: 'commands.action.alert.description', defaultMessage: 'Shows a high-priority message on the device.' },
+    }),
+    params: {
+      title: { label: actionParamMessages.title, placeholder: actionParamMessages.titlePlaceholder },
+      body: { label: actionParamMessages.message },
+    },
+  },
+  ring: defineMessages({
+    label: { id: 'commands.action.ring.label', defaultMessage: 'Ring' },
+    description: { id: 'commands.action.ring.description', defaultMessage: 'Plays a loud locate tone for 30 seconds.' },
+  }),
+  'ring-stop': defineMessages({
+    label: { id: 'commands.action.ringStop.label', defaultMessage: 'Stop ringing' },
+    description: { id: 'commands.action.ringStop.description', defaultMessage: 'Silences a locate tone that is playing.' },
+  }),
+  lock: defineMessages({
+    label: { id: 'commands.action.lock.label', defaultMessage: 'Lock' },
+    title: { id: 'commands.action.lock.title', defaultMessage: 'Lock device?' },
+    description: { id: 'commands.action.lock.description', defaultMessage: 'Locks the screen now.' },
+  }),
+  reboot: defineMessages({
+    label: { id: 'commands.action.reboot.label', defaultMessage: 'Reboot' },
+    title: { id: 'commands.action.reboot.title', defaultMessage: 'Reboot device?' },
+    description: {
+      id: 'commands.action.reboot.description',
+      defaultMessage: 'The device restarts and is unavailable for about a minute.',
+    },
+  }),
+  'passcode-reset': {
+    ...defineMessages({
+      label: { id: 'commands.action.passcodeReset.label', defaultMessage: 'Reset passcode' },
+      title: { id: 'commands.action.passcodeReset.title', defaultMessage: 'Reset passcode?' },
+      description: {
+        id: 'commands.action.passcodeReset.description',
+        defaultMessage: 'The current passcode stops working. Leave the new one blank to remove it.',
+      },
+    }),
+    params: { newPassword: { label: actionParamMessages.newPassword } },
+  },
+  wipe: defineMessages({
+    label: { id: 'commands.action.wipe.label', defaultMessage: 'Factory reset' },
+    title: { id: 'commands.action.wipe.title', defaultMessage: 'Factory reset?' },
+    description: {
+      id: 'commands.action.wipe.description',
+      defaultMessage: 'Erases all data. This can’t be undone.',
+      description: 'DESTRUCTIVE: erases the device',
+    },
+  }),
+  'power-adaptive': defineMessages({
+    label: { id: 'commands.action.powerAdaptive.label', defaultMessage: 'Connectivity: Battery-saver' },
+    description: {
+      id: 'commands.action.powerAdaptive.description',
+      defaultMessage:
+        'Hold the live connection only when the screen is on or charging; use the low-power heartbeat when idle. Battery-friendly default.',
+    },
+  }),
+  'power-always': defineMessages({
+    label: { id: 'commands.action.powerAlways.label', defaultMessage: 'Connectivity: Always-on' },
+    description: {
+      id: 'commands.action.powerAlways.description',
+      defaultMessage: 'Keep the live connection up 24/7 for constant instant connectivity (higher battery use).',
+    },
+  }),
+  'location-passive': defineMessages({
+    label: { id: 'commands.action.locationPassive.label', defaultMessage: 'Location: Battery-saver' },
+    description: {
+      id: 'commands.action.locationPassive.description',
+      defaultMessage: 'Report the device’s last-known location each check-in — near-zero battery, no active GPS.',
+    },
+  }),
+  'location-active': defineMessages({
+    label: { id: 'commands.action.locationActive.label', defaultMessage: 'Location: Accurate' },
+    description: {
+      id: 'commands.action.locationActive.description',
+      defaultMessage: 'Take a fresh GPS fix each check-in for tighter tracking (higher battery use).',
+    },
+  }),
+  'kiosk-enter': defineMessages({
+    label: { id: 'commands.action.kioskEnter.label', defaultMessage: 'Custom kiosk' },
+    description: {
+      id: 'commands.action.kioskEnter.description',
+      defaultMessage: 'Locks the device to apps you pick now, as a one-time kiosk its configuration doesn’t define.',
+    },
+  }),
+  'kiosk-exit': defineMessages({
+    label: { id: 'commands.action.kioskExit.label', defaultMessage: 'Exit kiosk' },
+    description: {
+      id: 'commands.action.kioskExit.description',
+      defaultMessage: 'Ends kiosk mode and restores the normal home screen.',
+    },
+  }),
+  'kiosk-clear-lockout': defineMessages({
+    label: { id: 'commands.action.kioskClearLockout.label', defaultMessage: 'Clear PIN lockout' },
+    description: {
+      id: 'commands.action.kioskClearLockout.description',
+      defaultMessage: 'Lets staff try the exit PIN again now, with a full set of tries. The device stays in kiosk.',
+    },
+  }),
+};
+
+/** A catalog entry's wording in the console's language: `label`, the dialog `title` (the label when it has none), the
+ *  description, and each param with its translated label and placeholder. An entry without messages (a plugin's)
+ *  keeps its own text. */
+export function formatActionTemplate(
+  intl: IntlShape,
+  t: CommandTemplateExt,
+): { label: string; title: string; description: string; params: ActionParam[] } {
+  const m = hasOwn(actionTemplateMessages, t.key) ? actionTemplateMessages[t.key] : undefined;
+  const label = m ? intl.formatMessage(m.label) : t.label;
+  return {
+    label,
+    title: m?.title ? intl.formatMessage(m.title) : m ? label : (t.title ?? label),
+    description: m ? intl.formatMessage(m.description) : t.description,
+    params: (t.params ?? []).map((p) => {
+      const pm = m?.params && hasOwn(m.params, p.key) ? m.params[p.key] : undefined;
+      return {
+        ...p,
+        label: pm ? intl.formatMessage(pm.label) : p.label,
+        placeholder: pm?.placeholder ? intl.formatMessage(pm.placeholder) : p.placeholder,
+      };
+    }),
+  };
+}
 
 /** The agent release that takes Clear PIN lockout (`kiosk.clearPinLockout`, protocol 1.11). */
 export const CLEAR_PIN_LOCKOUT_AGENT = '0.5.0';

@@ -1,12 +1,29 @@
 import type { ReactNode } from 'react';
+import { defineMessages, useIntl, type MessageDescriptor } from 'react-intl';
 import { Link } from 'react-router';
 import { Badge } from './Badge';
 import { ProgressBar, batteryTone } from './Bars';
-import { DEVICE_KIND_LABEL, DeviceGlyph, DeviceTile, type DeviceKind } from './DeviceGlyph';
-import { STATUS_META, StatusDot, StatusPill, StatusText, type StatusKind } from './Status';
+import { DeviceGlyph, DeviceTile, type DeviceKind } from './DeviceGlyph';
+import { STATUS_LABEL_MESSAGES, STATUS_META, StatusDot, StatusPill, StatusText, type StatusKind } from './Status';
 import { Tooltip } from './Tooltip';
 import { cx } from './cx';
 import './DeviceCells.css';
+
+/** DEVICE_KIND_LABEL as messages (same text): the device type's name, shown in the console's language. */
+export const deviceKindMessages = defineMessages({
+  kiosk: { id: 'devices.kind.kiosk', defaultMessage: 'Kiosk' },
+  signage: { id: 'devices.kind.signage', defaultMessage: 'Signage' },
+  tablet: { id: 'devices.kind.tablet', defaultMessage: 'Tablet' },
+  phone: { id: 'devices.kind.phone', defaultMessage: 'Phone' },
+  scanner: { id: 'devices.kind.scanner', defaultMessage: 'Scanner' },
+});
+
+const cellMessages: Record<string, MessageDescriptor> = defineMessages({
+  duplicates: { id: 'devices.cells.hardwareIdChip', defaultMessage: '{count}× hardware ID' },
+  glyphType: { id: 'devices.cells.glyphType', defaultMessage: '{type}:' },
+  configuration: { id: 'devices.cells.configuration', defaultMessage: 'Configuration' },
+  charging: { id: 'devices.cells.charging', defaultMessage: '(charging)' },
+});
 
 export interface DeviceIdentityProps {
   name: ReactNode;
@@ -28,11 +45,12 @@ export interface DeviceIdentityProps {
 
 /** Device glyph + name + number (the type is the glyph's tooltip and accessible name in rows). */
 export function DeviceIdentity({ name, number, kind, model, dupCount, to, variant = 'row', className }: DeviceIdentityProps) {
-  const type = DEVICE_KIND_LABEL[kind];
+  const intl = useIntl();
+  const type = intl.formatMessage(deviceKindMessages[kind]);
   const dup =
     dupCount && dupCount > 1 ? (
       <Badge tone="warn" size="xs">
-        {dupCount}× hardware ID
+        {intl.formatMessage(cellMessages.duplicates, { count: dupCount })}
       </Badge>
     ) : null;
   const body =
@@ -60,7 +78,7 @@ export function DeviceIdentity({ name, number, kind, model, dupCount, to, varian
         <Tooltip content={type}>
           <span className="v2-devid__glyph">
             <DeviceGlyph kind={kind} size={16} />
-            <span className="v2-visually-hidden">{type}: </span>
+            <span className="v2-visually-hidden">{intl.formatMessage(cellMessages.glyphType, { type })}{' '}</span>
           </span>
         </Tooltip>
         <span className="v2-devid__name">{name}</span>
@@ -120,18 +138,19 @@ export interface ConfigSyncProps {
 
 /** Configuration name with its sync state: in tables a quiet mark when in sync, the words when it is not. */
 export function ConfigSync({ name, to, sync, syncLabel, layout = 'stack', className }: ConfigSyncProps) {
+  const intl = useIntl();
   const label = to ? <Link to={to}>{name}</Link> : name;
   if (layout === 'row') {
     return (
       <div className={cx('v2-cfgsync', 'v2-cfgsync--row', className)}>
-        <span className="v2-cfgsync__key">Configuration</span>
+        <span className="v2-cfgsync__key">{intl.formatMessage(cellMessages.configuration)}</span>
         <span className="v2-cfgsync__name">{label}</span>
         <StatusText status={sync}>{syncLabel}</StatusText>
       </div>
     );
   }
   const quiet = STATUS_META[sync].tone === 'ok' || sync === 'notReported';
-  const words = syncLabel ?? STATUS_META[sync].label;
+  const words = syncLabel ?? intl.formatMessage(STATUS_LABEL_MESSAGES[sync]);
   return (
     <span className={cx('v2-cfgsync', 'v2-cfgsync--line', className)}>
       <span className="v2-cfgsync__name">{label}</span>
@@ -160,13 +179,14 @@ export interface BatteryBarProps {
 
 /** Battery level: bar in the tone rule (< 15 alert, < 40 warn, else grey) and a mono percentage. */
 export function BatteryBar({ percent, charging, layout = 'table', className }: BatteryBarProps) {
+  const intl = useIntl();
   const known = typeof percent === 'number' && Number.isFinite(percent);
   const pct = known ? Math.round(percent as number) : 0;
   const low = known && pct < 15;
   const text = (
     <span className={cx('v2-battery__pct', low && 'is-low')}>
-      {known ? `${pct}%` : '—'}
-      {charging ? <span className="v2-visually-hidden"> (charging)</span> : null}
+      {known ? intl.formatNumber(pct / 100, { style: 'percent' }) : '—'}
+      {charging ? <span className="v2-visually-hidden"> {intl.formatMessage(cellMessages.charging)}</span> : null}
     </span>
   );
   const bar = <ProgressBar size={layout === 'card' ? 'micro' : 'mini'} value={pct} tone={batteryTone(known ? pct : 100)} />;

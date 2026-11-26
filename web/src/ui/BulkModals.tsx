@@ -4,12 +4,15 @@
 // from useStickyValue, a fresh `key` per opening) so it animates out. Not in the barrel (API code): import from
 // '../ui/BulkModals'.
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { FormattedMessage, defineMessages, useIntl, type IntlShape, type MessageDescriptor } from 'react-intl';
 import { listApplications, type Application } from '../api/applications';
+import { configName } from '../data/seededConfigs';
 import {
   ACTION_TEMPLATES,
   buildInstallCommand,
   bulkQueueCommand,
-  commandErrorText,
+  formatActionTemplate,
+  formatCommandError,
   isBulkForbidden,
   type AppInstallSpec,
   type CommandTemplateExt,
@@ -21,14 +24,14 @@ import {
   type ConfigurationSummary,
 } from '../api/configurations';
 import { bulkSetConfiguration, deleteDevicesBulk } from '../api/devices';
-import { EXIT_PIN_RULE, exitPinValid } from '../data/configurationRules';
+import { exitPinRule, exitPinValid } from '../data/configurationRules';
 import {
   buildKioskPayload,
   configuredKiosk,
   configuredKioskCommand,
   configuredKioskSummary,
-  EXIT_PIN_HELP,
-  EXIT_PIN_PLACEHOLDER,
+  exitPinHelp,
+  kioskMessages,
   kioskTheme,
   type ConfiguredKiosk,
   type KioskChoice,
@@ -46,9 +49,186 @@ import { Segmented } from './Segmented';
 import { SkeletonRows } from './Skeleton';
 import { Tooltip } from './Tooltip';
 import './BulkModals.css';
+import { apiErrorText } from '../api/apiErrorText';
 
-const plural = (n: number, word = 'device') => `${n} ${word}${n === 1 ? '' : 's'}`;
-const errText = (e: unknown) => (e instanceof Error ? e.message : '');
+const messages: Record<string, MessageDescriptor> = defineMessages({
+  devices: { id: 'devices.bulk.devices.count', defaultMessage: '{count, plural, one {# device} other {# devices}}' },
+  queuedFor: {
+    id: 'devices.bulk.toast.queuedFor',
+    defaultMessage: 'Queued for {count, plural, one {# device} other {# devices}}{skipped, plural, =0 {} other { (# skipped)}}.',
+  },
+  actionQueued: { id: 'devices.bulk.toast.actionQueued', defaultMessage: '{label} queued' },
+  actionFailed: { id: 'devices.bulk.toast.actionFailed', defaultMessage: '{label} failed' },
+  notInstallable: { id: 'devices.bulk.toast.notInstallable', defaultMessage: 'Not installable' },
+  noHostedApk: { id: 'devices.bulk.toast.noHostedApk', defaultMessage: '{name} has no hosted APK.' },
+  installQueued: { id: 'devices.bulk.toast.installQueued', defaultMessage: 'Install queued' },
+  installQueuedBody: {
+    id: 'devices.bulk.toast.installQueuedBody',
+    defaultMessage: '{name} → {count, plural, one {# device} other {# devices}}{skipped, plural, =0 {} other { (# skipped)}}.',
+  },
+  installFailed: { id: 'devices.bulk.toast.installFailed', defaultMessage: 'Install failed' },
+  customKioskQueued: { id: 'devices.bulk.toast.customKioskQueued', defaultMessage: 'Custom kiosk queued' },
+  customKioskFailed: { id: 'devices.bulk.toast.customKioskFailed', defaultMessage: 'Custom kiosk failed' },
+  configuredKioskQueued: { id: 'devices.bulk.toast.configuredKioskQueued', defaultMessage: 'Return to configured kiosk queued' },
+  couldntQueue: {
+    id: 'devices.bulk.error.couldntQueue',
+    defaultMessage:
+      'Couldn’t queue the command: {reason}.{queued, plural, =0 {} one { It was already queued for # device.} other { It was already queued for # devices.}}',
+  },
+  notAccepted: { id: 'devices.bulk.error.notAccepted', defaultMessage: 'the server didn’t accept it' },
+  requestFailed: { id: 'devices.bulk.error.requestFailed', defaultMessage: 'request failed' },
+  loadAppsFailed: { id: 'devices.bulk.error.loadAppsFailed', defaultMessage: 'Failed to load apps' },
+  groupActions: { id: 'devices.bulk.catalog.groupActions', defaultMessage: 'Actions' },
+  groupDisruptive: { id: 'devices.bulk.catalog.groupDisruptive', defaultMessage: 'Disruptive' },
+  groupApps: { id: 'devices.bulk.catalog.groupApps', defaultMessage: 'Apps' },
+  groupKiosk: { id: 'devices.bulk.catalog.groupKiosk', defaultMessage: 'Kiosk' },
+  installApp: { id: 'devices.bulk.catalog.installApp', defaultMessage: 'Install app' },
+  returnToKiosk: { id: 'devices.bulk.catalog.returnToKiosk', defaultMessage: 'Return to configured kiosk' },
+  returnToKioskHint: {
+    id: 'devices.bulk.catalog.returnToKioskHint',
+    defaultMessage: 'Puts each device back into the kiosk its configuration defines.',
+  },
+  customKiosk: { id: 'devices.bulk.catalog.customKiosk', defaultMessage: 'Custom kiosk' },
+  customKioskHint: {
+    id: 'devices.bulk.catalog.customKioskHint',
+    defaultMessage: 'Locks the devices to apps you pick now, as a one-time kiosk their configurations don’t define.',
+  },
+  close: { id: 'devices.bulk.common.close', defaultMessage: 'Close' },
+  back: { id: 'devices.bulk.common.back', defaultMessage: 'Back' },
+  cancel: { id: 'devices.bulk.common.cancel', defaultMessage: 'Cancel' },
+  queueing: { id: 'devices.bulk.common.queueing', defaultMessage: 'Queueing…' },
+  runTitle: {
+    id: 'devices.bulk.run.title',
+    defaultMessage: 'Run action on {count, plural, one {# device} other {# devices}}',
+  },
+  runsOn: {
+    id: 'devices.bulk.run.runsOn',
+    defaultMessage: 'This will run on <strong>{count, plural, one {# device} other {# devices}}</strong>.',
+  },
+  optional: { id: 'devices.bulk.run.optionalField', defaultMessage: '{label} (optional)' },
+  actionOnDevices: {
+    id: 'devices.bulk.run.actionOnDevices',
+    defaultMessage: '{label} {count, plural, one {# device} other {# devices}}',
+  },
+  sendTo: { id: 'devices.bulk.run.sendTo', defaultMessage: 'Send to {count, plural, one {# device} other {# devices}}' },
+  installTitle: {
+    id: 'devices.bulk.install.title',
+    defaultMessage: 'Install app on {count, plural, one {# device} other {# devices}}',
+  },
+  filterApps: { id: 'devices.bulk.install.filterApps', defaultMessage: 'Filter apps' },
+  configuredTitle: { id: 'devices.bulk.configured.title', defaultMessage: 'Return to configured kiosk?' },
+  configuredDescription: {
+    id: 'devices.bulk.configured.description',
+    defaultMessage: 'Each device goes back into the kiosk its configuration defines. Devices without one are skipped.',
+  },
+  configuredThing: { id: 'devices.bulk.configured.loadThing', defaultMessage: 'the configurations’ kiosks' },
+  configuredLoading: { id: 'devices.bulk.configured.loading', defaultMessage: 'Loading the configurations’ kiosks' },
+  byConfiguration: { id: 'devices.bulk.configured.listLabel', defaultMessage: 'By configuration' },
+  groupRow: {
+    id: 'devices.bulk.configured.groupRow',
+    defaultMessage: '<strong>{name}</strong> · {count, plural, one {# device} other {# devices}}: {detail}',
+  },
+  groupKioskLeftOut: {
+    id: 'devices.bulk.configured.mainAppLeftOut',
+    defaultMessage: '{summary}. Its main app isn’t set to Install and shown in kiosk, so the kiosk leaves it out',
+  },
+  groupNone: { id: 'devices.bulk.configured.noConfigurationName', defaultMessage: 'No configuration' },
+  groupUnknown: { id: 'devices.bulk.configured.unknownConfigurationName', defaultMessage: 'Configuration {id}' },
+  skipNone: {
+    id: 'devices.bulk.configured.skipNoConfiguration',
+    defaultMessage: 'skipped, no configuration, so no configured kiosk',
+  },
+  skipUnavailable: {
+    id: 'devices.bulk.configured.skipUnavailable',
+    defaultMessage: 'skipped, its configuration isn’t available to you',
+  },
+  skipKioskOff: {
+    id: 'devices.bulk.configured.skipKioskOff',
+    defaultMessage: 'skipped, kiosk mode is off in this configuration',
+  },
+  skipNoApps: {
+    id: 'devices.bulk.configured.skipNoApps',
+    defaultMessage: 'skipped, no app is set to Install and shown in kiosk',
+  },
+  returnDevices: {
+    id: 'devices.bulk.configured.returnDevices',
+    defaultMessage: 'Return {count, plural, one {# device} other {# devices}} to configured kiosk',
+  },
+  kioskTitle: {
+    id: 'devices.bulk.kiosk.title',
+    defaultMessage: 'Custom kiosk on {count, plural, one {# device} other {# devices}}',
+  },
+  kioskDescription: {
+    id: 'devices.bulk.kiosk.description',
+    defaultMessage: 'A one-time kiosk with apps you pick now. The devices’ configurations don’t define it.',
+  },
+  kioskModeLabel: { id: 'devices.bulk.kiosk.modeLabel', defaultMessage: 'Kiosk mode' },
+  modeLauncher: { id: 'devices.bulk.kiosk.modeLauncher', defaultMessage: 'Allowed apps (launcher grid)' },
+  modeSingle: { id: 'devices.bulk.kiosk.modeSingle', defaultMessage: 'Pin a single app' },
+  filterLibraryApps: { id: 'devices.bulk.kiosk.filterLibraryApps', defaultMessage: 'Filter Library apps' },
+  appToPin: { id: 'devices.bulk.kiosk.appToPin', defaultMessage: 'App to pin' },
+  allowedApps: { id: 'devices.bulk.kiosk.allowedApps', defaultMessage: 'Allowed apps' },
+  exitMode: { id: 'devices.bulk.kiosk.exitMode', defaultMessage: 'Exit mode' },
+  exitGesture: { id: 'devices.bulk.kiosk.exitGesture', defaultMessage: 'Gesture' },
+  exitVisible: { id: 'devices.bulk.kiosk.exitVisible', defaultMessage: 'Visible button' },
+  exitRemote: { id: 'devices.bulk.kiosk.exitRemote', defaultMessage: 'Remote only' },
+  exitPin: { id: 'devices.bulk.kiosk.exitPin', defaultMessage: 'Kiosk exit PIN' },
+  pinDigits: { id: 'devices.bulk.kiosk.pinDigits', defaultMessage: '6 to 12 digits' },
+  showPin: { id: 'devices.bulk.kiosk.showPin', defaultMessage: 'Show PIN' },
+  enterKiosk: {
+    id: 'devices.bulk.kiosk.enterOn',
+    defaultMessage: 'Enter kiosk on {count, plural, one {# device} other {# devices}}',
+  },
+  libraryThing: { id: 'devices.bulk.library.loadThing', defaultMessage: 'the library' },
+  libraryLoading: { id: 'devices.bulk.library.loading', defaultMessage: 'Loading the library' },
+  noAppsMatch: { id: 'devices.bulk.library.noMatch', defaultMessage: 'No apps match' },
+  noAppsYet: { id: 'devices.bulk.library.empty', defaultMessage: 'No apps in the library yet' },
+  tryAnother: { id: 'devices.bulk.library.tryAnother', defaultMessage: 'Try another name or package.' },
+  addAppsFirst: { id: 'devices.bulk.library.addAppsFirst', defaultMessage: 'Add apps under Apps first.' },
+  configurationFallback: { id: 'devices.bulk.move.configurationFallback', defaultMessage: 'configuration' },
+  configurationChanged: { id: 'devices.bulk.move.changed', defaultMessage: 'Configuration changed' },
+  movedBody: {
+    id: 'devices.bulk.move.changedBody',
+    defaultMessage: '{count, plural, one {# device} other {# devices}} → {name}.',
+  },
+  changeFailed: { id: 'devices.bulk.move.failed', defaultMessage: 'Change failed' },
+  moveTitle: { id: 'devices.bulk.move.title', defaultMessage: 'Change configuration' },
+  moveDescription: {
+    id: 'devices.bulk.move.description',
+    defaultMessage:
+      '{label} {count, plural, one {takes} other {take}} the new configuration at the next check-in.',
+  },
+  moving: { id: 'devices.bulk.move.moving', defaultMessage: 'Moving…' },
+  move: { id: 'devices.bulk.move.move', defaultMessage: 'Move' },
+  configuration: { id: 'devices.bulk.move.configuration', defaultMessage: 'Configuration' },
+  selectConfiguration: { id: 'devices.bulk.move.selectConfiguration', defaultMessage: 'Select a configuration' },
+  deleted: {
+    id: 'devices.bulk.delete.deleted',
+    defaultMessage: '{count, plural, one {Device deleted} other {Devices deleted}}',
+    description: 'DESTRUCTIVE: the devices were removed from MDMesh',
+  },
+  deletedBody: { id: 'devices.bulk.delete.deletedBody', defaultMessage: '{subject} removed.' },
+  deleteFailed: { id: 'devices.bulk.delete.failed', defaultMessage: 'Delete failed' },
+  deleteTitle: {
+    id: 'devices.bulk.delete.title',
+    defaultMessage: '{count, plural, one {Delete device?} other {Delete # devices?}}',
+    description: 'DESTRUCTIVE: removes the devices from MDMesh',
+  },
+  deleteDescription: {
+    id: 'devices.bulk.delete.description',
+    defaultMessage:
+      '{count, plural, one {Removes it from MDMesh. It comes back if it checks in again.} other {Removes them from MDMesh. They come back if they check in again.}}',
+    description: 'DESTRUCTIVE: removes the devices from MDMesh',
+  },
+  deleting: { id: 'devices.bulk.delete.deleting', defaultMessage: 'Deleting…' },
+  deleteButton: {
+    id: 'devices.bulk.delete.button',
+    defaultMessage: 'Delete {subject}',
+    description: 'DESTRUCTIVE: removes the devices from MDMesh',
+  },
+});
+
+const strong = (chunks: ReactNode) => <strong>{chunks}</strong>;
 
 // ---------------------------------------------------------------------------------------------------------------
 // Run action
@@ -57,9 +237,9 @@ const errText = (e: unknown) => (e instanceof Error ? e.message : '');
 // Only safe + disruptive actions run in bulk: the server refuses the destructive ones (isBulkForbidden) there,
 // and kiosk-enter has its own steps (Return to configured kiosk, and Custom kiosk's Library picker). Same rule as
 // the classic BulkActionModal.
-const BULK_GROUPS: Array<{ id: 'safe' | 'disruptive'; title: string }> = [
-  { id: 'safe', title: 'Actions' },
-  { id: 'disruptive', title: 'Disruptive' },
+const BULK_GROUPS: Array<{ id: 'safe' | 'disruptive'; title: MessageDescriptor }> = [
+  { id: 'safe', title: messages.groupActions },
+  { id: 'disruptive', title: messages.groupDisruptive },
 ];
 
 function bulkable(t: CommandTemplateExt): boolean {
@@ -90,12 +270,30 @@ type Step =
   | { kind: 'configured' };
 
 /** The selected devices of one configuration, and its kiosk (null: skipped, `skip` says why). */
+type SkipReason = 'none' | 'unavailable' | 'kioskOff' | 'noApps';
 interface KioskGroup {
   key: string;
+  /** The configuration's name (English placeholders for "none" and "unknown": shown through groupName). */
   name: string;
+  /** The configuration's id when it is not available to the user (its placeholder name is "Configuration {id}"). */
+  unknownId?: number;
   ids: number[];
   kiosk: ConfiguredKiosk | null;
-  skip?: string;
+  skip?: SkipReason;
+}
+
+const SKIP_MESSAGES: Record<SkipReason, MessageDescriptor> = {
+  none: messages.skipNone,
+  unavailable: messages.skipUnavailable,
+  kioskOff: messages.skipKioskOff,
+  noApps: messages.skipNoApps,
+};
+
+function groupName(intl: IntlShape, g: KioskGroup): string {
+  if (g.skip === 'none') return intl.formatMessage(messages.groupNone);
+  if (g.unknownId != null) return intl.formatMessage(messages.groupUnknown, { id: g.unknownId });
+  // The key is the configuration's id for a configuration that loaded.
+  return configName(intl, { id: Number(g.key), name: g.name });
 }
 
 /**
@@ -117,17 +315,17 @@ async function loadKioskGroups(
     const cfg = cid == null ? undefined : configs.find((c) => c.id === cid);
     const key = String(cid ?? 'none');
     if (cid == null) {
-      groups.push({ key, name: 'No configuration', ids, kiosk: null, skip: 'no configuration, so no configured kiosk' });
+      groups.push({ key, name: 'No configuration', ids, kiosk: null, skip: 'none' });
     } else if (!cfg) {
-      groups.push({ key, name: `Configuration ${cid}`, ids, kiosk: null, skip: 'its configuration isn’t available to you' });
+      groups.push({ key, name: `Configuration ${cid}`, unknownId: cid, ids, kiosk: null, skip: 'unavailable' });
     } else if (cfg.kioskMode !== true) {
-      groups.push({ key, name: cfg.name, ids, kiosk: null, skip: 'kiosk mode is off in this configuration' });
+      groups.push({ key, name: cfg.name, ids, kiosk: null, skip: 'kioskOff' });
     } else {
       const kiosk = configuredKiosk(cfg, await getConfigurationApps(cid));
       groups.push(
         kiosk && kiosk.apps.length
           ? { key, name: cfg.name, ids, kiosk }
-          : { key, name: cfg.name, ids, kiosk: null, skip: 'no app is set to Install and shown in kiosk' },
+          : { key, name: cfg.name, ids, kiosk: null, skip: 'noApps' },
       );
     }
   }
@@ -137,6 +335,7 @@ async function loadKioskGroups(
 
 /** Library apps, loaded when a step needs them. */
 function useLibrary(enabled: boolean) {
+  const intl = useIntl();
   const [apps, setApps] = useState<Application[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
   useEffect(() => {
@@ -147,11 +346,13 @@ function useLibrary(enabled: boolean) {
         if (!cancelled) setApps(r);
       })
       .catch((e) => {
-        if (!cancelled) setErr(errText(e) || 'Failed to load apps');
+        if (!cancelled) setErr(apiErrorText(intl, e) || intl.formatMessage(messages.loadAppsFailed));
       });
     return () => {
       cancelled = true;
     };
+    // intl is stable for the page's language
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, apps]);
   return { apps, err };
 }
@@ -171,6 +372,8 @@ export function RunActionModal({
   onDone: () => void;
 }) {
   const toast = useToast();
+  const intl = useIntl();
+  const queuedFor = (count: number, skipped: number) => intl.formatMessage(messages.queuedFor, { count, skipped });
   const n = deviceIds.length;
   const [step, setStep] = useState<Step>({ kind: 'catalog' });
   const [values, setValues] = useState<Record<string, string>>({});
@@ -201,11 +404,13 @@ export function RunActionModal({
         if (!cancelled) setGroups(g);
       })
       .catch((e) => {
-        if (!cancelled) setGroupsErr(errText(e) || 'request failed');
+        if (!cancelled) setGroupsErr(apiErrorText(intl, e) || intl.formatMessage(messages.requestFailed));
       });
     return () => {
       cancelled = true;
     };
+    // intl is stable for the page's language
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step.kind, deviceIds, devices, groupsAttempt]);
 
   const finish = () => {
@@ -214,19 +419,16 @@ export function RunActionModal({
   };
 
   async function run(t: CommandTemplateExt, vals: Record<string, string>) {
+    const { label } = formatActionTemplate(intl, t);
     setBusy(true);
     try {
       const req = t.build ? t.build(vals) : t.request;
       const res = await bulkQueueCommand(deviceIds, req);
       const skipped = res.skipped?.length ?? 0;
-      toast.push(
-        'ok',
-        `${t.label} queued`,
-        `Queued for ${plural(res.queued)}` + (skipped ? ` (${skipped} skipped)` : '') + '.',
-      );
+      toast.push('ok', intl.formatMessage(messages.actionQueued, { label }), queuedFor(res.queued, skipped));
       finish();
     } catch (e) {
-      toast.push('err', `${t.label} failed`, commandErrorText(e));
+      toast.push('err', intl.formatMessage(messages.actionFailed, { label }), formatCommandError(intl, e));
     } finally {
       setBusy(false);
     }
@@ -235,17 +437,21 @@ export function RunActionModal({
   async function runInstall(app: Application) {
     const spec = specForApp(app);
     if (!spec) {
-      toast.push('err', 'Not installable', `${app.name} has no hosted APK.`);
+      toast.push('err', intl.formatMessage(messages.notInstallable), intl.formatMessage(messages.noHostedApk, { name: app.name }));
       return;
     }
     setBusy(true);
     try {
       const res = await bulkQueueCommand(deviceIds, buildInstallCommand(spec));
       const skipped = res.skipped?.length ?? 0;
-      toast.push('ok', 'Install queued', `${app.name} → ${plural(res.queued)}` + (skipped ? ` (${skipped} skipped)` : '') + '.');
+      toast.push(
+        'ok',
+        intl.formatMessage(messages.installQueued),
+        intl.formatMessage(messages.installQueuedBody, { name: app.name, count: res.queued, skipped }),
+      );
       finish();
     } catch (e) {
-      toast.push('err', 'Install failed', commandErrorText(e));
+      toast.push('err', intl.formatMessage(messages.installFailed), formatCommandError(intl, e));
     } finally {
       setBusy(false);
     }
@@ -270,10 +476,10 @@ export function RunActionModal({
         queued += res.queued ?? 0;
         skipped += res.skipped?.length ?? 0;
       }
-      toast.push('ok', 'Custom kiosk queued', `Queued for ${plural(queued)}` + (skipped ? ` (${skipped} skipped)` : '') + '.');
+      toast.push('ok', intl.formatMessage(messages.customKioskQueued), queuedFor(queued, skipped));
       finish();
     } catch (e) {
-      toast.push('err', 'Custom kiosk failed', commandErrorText(e));
+      toast.push('err', intl.formatMessage(messages.customKioskFailed), formatCommandError(intl, e));
     } finally {
       setBusy(false);
     }
@@ -293,16 +499,14 @@ export function RunActionModal({
         queued += res.queued ?? 0;
         skipped += res.skipped?.length ?? 0;
       }
-      toast.push(
-        'ok',
-        'Return to configured kiosk queued',
-        `Queued for ${plural(queued)}` + (skipped ? ` (${skipped} skipped)` : '') + '.',
-      );
+      toast.push('ok', intl.formatMessage(messages.configuredKioskQueued), queuedFor(queued, skipped));
       finish();
     } catch (e) {
       setSendErr(
-        `Couldn’t queue the command: ${errText(e) || 'the server didn’t accept it'}.` +
-          (queued ? ` It was already queued for ${plural(queued)}.` : ''),
+        intl.formatMessage(messages.couldntQueue, {
+          reason: apiErrorText(intl, e) || intl.formatMessage(messages.notAccepted),
+          queued,
+        }),
       );
     } finally {
       setBusy(false);
@@ -340,11 +544,11 @@ export function RunActionModal({
 
   const back = (
     <Button size="lg" disabled={busy} onClick={() => setStep({ kind: 'catalog' })}>
-      Back
+      {intl.formatMessage(messages.back)}
     </Button>
   );
 
-  let title = `Run action on ${plural(n)}`;
+  let title = intl.formatMessage(messages.runTitle, { count: n });
   let description: string | undefined;
   let body: ReactNode;
   let footer: ReactNode;
@@ -353,27 +557,28 @@ export function RunActionModal({
     body = (
       <>
         {BULK_GROUPS.map((g) => (
-          <ActionGroup key={g.id} title={g.title}>
+          <ActionGroup key={g.id} title={intl.formatMessage(g.title)}>
             {ACTION_TEMPLATES.filter(bulkable)
               .filter((t) => (t.group ?? 'safe') === g.id)
               .map((t) => {
+                const text = formatActionTemplate(intl, t);
                 return (
-                  <Tooltip key={t.key} content={t.description}>
+                  <Tooltip key={t.key} content={text.description}>
                     <Button variant={t.danger ? 'danger' : 'secondary'} disabled={busy} onClick={() => pick(t)}>
-                      {t.label}
+                      {text.label}
                     </Button>
                   </Tooltip>
                 );
               })}
           </ActionGroup>
         ))}
-        <ActionGroup title="Apps">
+        <ActionGroup title={intl.formatMessage(messages.groupApps)}>
           <Button disabled={busy} onClick={() => setStep({ kind: 'apps' })}>
-            Install app
+            {intl.formatMessage(messages.installApp)}
           </Button>
         </ActionGroup>
-        <ActionGroup title="Kiosk">
-          <Tooltip content="Puts each device back into the kiosk its configuration defines.">
+        <ActionGroup title={intl.formatMessage(messages.groupKiosk)}>
+          <Tooltip content={intl.formatMessage(messages.returnToKioskHint)}>
             <Button
               disabled={busy}
               onClick={() => {
@@ -381,12 +586,12 @@ export function RunActionModal({
                 setStep({ kind: 'configured' });
               }}
             >
-              Return to configured kiosk
+              {intl.formatMessage(messages.returnToKiosk)}
             </Button>
           </Tooltip>
-          <Tooltip content="Locks the devices to apps you pick now, as a one-time kiosk their configurations don’t define.">
+          <Tooltip content={intl.formatMessage(messages.customKioskHint)}>
             <Button disabled={busy} onClick={() => setStep({ kind: 'kiosk' })}>
-              Custom kiosk
+              {intl.formatMessage(messages.customKiosk)}
             </Button>
           </Tooltip>
         </ActionGroup>
@@ -394,20 +599,21 @@ export function RunActionModal({
     );
     footer = (
       <Button size="lg" disabled={busy} onClick={onClose}>
-        Close
+        {intl.formatMessage(messages.close)}
       </Button>
     );
   } else if (step.kind === 'params') {
     const t = step.t;
+    const text = formatActionTemplate(intl, t);
     const canSend = !t.params?.some((p) => p.required && !values[p.key]);
-    title = t.title ?? t.label;
-    description = t.description;
+    title = text.title;
+    description = text.description;
     body = (
       <>
         <p className="v2-bulkmodal__text">
-          This will run on <strong>{plural(n)}</strong>.
+          <FormattedMessage {...messages.runsOn} values={{ count: n, strong }} />
         </p>
-        {t.params?.map((p) =>
+        {text.params.map((p) =>
           p.kind === 'password' ? (
             <Field key={p.key} label={p.label}>
               <PasswordInput
@@ -417,7 +623,7 @@ export function RunActionModal({
               />
             </Field>
           ) : (
-            <Field key={p.key} label={p.required ? p.label : `${p.label} (optional)`}>
+            <Field key={p.key} label={p.required ? p.label : intl.formatMessage(messages.optional, { label: p.label })}>
               <Input
                 type={p.kind === 'number' ? 'number' : 'text'}
                 placeholder={p.placeholder}
@@ -441,15 +647,24 @@ export function RunActionModal({
             void run(t, values);
           }}
         >
-          {busy ? 'Queueing…' : t.danger ? `${t.label} ${plural(n)}` : `Send to ${plural(n)}`}
+          {busy
+            ? intl.formatMessage(messages.queueing)
+            : t.danger
+              ? intl.formatMessage(messages.actionOnDevices, { label: text.label, count: n })
+              : intl.formatMessage(messages.sendTo, { count: n })}
         </Button>
       </>
     );
   } else if (step.kind === 'apps') {
-    title = `Install app on ${plural(n)}`;
+    title = intl.formatMessage(messages.installTitle, { count: n });
     body = (
       <>
-        <SearchInput aria-label="Filter apps" placeholder="Filter apps" value={appQuery} onChange={setAppQuery} />
+        <SearchInput
+          aria-label={intl.formatMessage(messages.filterApps)}
+          placeholder={intl.formatMessage(messages.filterApps)}
+          value={appQuery}
+          onChange={setAppQuery}
+        />
         <LibraryState apps={library.apps} err={library.err} empty={filteredApps.length === 0} />
         {filteredApps.length > 0 ? (
           <div className="v2-bulkmodal__grid">
@@ -474,27 +689,31 @@ export function RunActionModal({
   } else if (step.kind === 'configured') {
     const ready = groups?.filter((g) => g.kiosk) ?? [];
     const readyCount = ready.reduce((k, g) => k + g.ids.length, 0);
-    title = 'Return to configured kiosk?';
-    description = 'Each device goes back into the kiosk its configuration defines. Devices without one are skipped.';
+    title = intl.formatMessage(messages.configuredTitle);
+    description = intl.formatMessage(messages.configuredDescription);
     body = (
       <>
         {groupsErr ? (
-          <ErrorState thing="the configurations’ kiosks" detail={groupsErr} onRetry={() => setGroupsAttempt((k) => k + 1)} />
+          <ErrorState thing={intl.formatMessage(messages.configuredThing)} detail={groupsErr} onRetry={() => setGroupsAttempt((k) => k + 1)} />
         ) : !groups ? (
-          <SkeletonRows compact count={2} label="Loading the configurations’ kiosks" />
+          <SkeletonRows compact count={2} label={intl.formatMessage(messages.configuredLoading)} />
         ) : (
-          <ul className="v2-bulkmodal__kiosks" aria-label="By configuration">
+          <ul className="v2-bulkmodal__kiosks" aria-label={intl.formatMessage(messages.byConfiguration)}>
             {groups.map((g) => (
               <li key={g.key} className={g.kiosk ? undefined : 'is-skipped'}>
-                <strong>{g.name}</strong> · {plural(g.ids.length)}:{' '}
-                {g.kiosk ? (
-                  <>
-                    {configuredKioskSummary(g.kiosk)}
-                    {g.kiosk.mainAppLeftOut ? '. Its main app isn’t set to Install and shown in kiosk, so the kiosk leaves it out' : ''}
-                  </>
-                ) : (
-                  `skipped, ${g.skip}`
-                )}
+                <FormattedMessage
+                  {...messages.groupRow}
+                  values={{
+                    strong,
+                    name: groupName(intl, g),
+                    count: g.ids.length,
+                    detail: g.kiosk
+                      ? g.kiosk.mainAppLeftOut
+                        ? intl.formatMessage(messages.groupKioskLeftOut, { summary: configuredKioskSummary(g.kiosk, intl) })
+                        : configuredKioskSummary(g.kiosk, intl)
+                      : intl.formatMessage(SKIP_MESSAGES[g.skip ?? 'noApps']),
+                  }}
+                />
               </li>
             ))}
           </ul>
@@ -517,32 +736,37 @@ export function RunActionModal({
             void returnToConfiguredKiosk();
           }}
         >
-          {busy ? 'Queueing…' : `Return ${plural(readyCount)} to configured kiosk`}
+          {busy ? intl.formatMessage(messages.queueing) : intl.formatMessage(messages.returnDevices, { count: readyCount })}
         </Button>
       </>
     );
   } else {
     // A custom kiosk's PIN is new: it follows the configurations' rule.
-    const pinError = exitPinValid(password) ? undefined : EXIT_PIN_RULE;
+    const pinError = exitPinValid(password) ? undefined : exitPinRule(intl);
     const canApply = pkgs.size > 0 && (mode === 'launcher' || pkgs.size === 1) && pinError == null;
-    title = `Custom kiosk on ${plural(n)}`;
-    description = 'A one-time kiosk with apps you pick now. The devices’ configurations don’t define it.';
+    title = intl.formatMessage(messages.kioskTitle, { count: n });
+    description = intl.formatMessage(messages.kioskDescription);
     body = (
       <>
         <Segmented
-          aria-label="Kiosk mode"
+          aria-label={intl.formatMessage(messages.kioskModeLabel)}
           value={mode}
           onChange={switchMode}
           options={[
-            { value: 'launcher', label: 'Allowed apps (launcher grid)' },
-            { value: 'single', label: 'Pin a single app' },
+            { value: 'launcher', label: intl.formatMessage(messages.modeLauncher) },
+            { value: 'single', label: intl.formatMessage(messages.modeSingle) },
           ]}
         />
-        <SearchInput aria-label="Filter Library apps" placeholder="Filter Library apps" value={appQuery} onChange={setAppQuery} />
+        <SearchInput
+          aria-label={intl.formatMessage(messages.filterLibraryApps)}
+          placeholder={intl.formatMessage(messages.filterLibraryApps)}
+          value={appQuery}
+          onChange={setAppQuery}
+        />
         <LibraryState apps={library.apps} err={library.err} empty={filteredApps.length === 0} />
         {filteredApps.length > 0 ? (
           // I8: one row per app, its checkbox first (as the device page's custom kiosk).
-          <div className="v2-bulkmodal__apps" role="group" aria-label={mode === 'single' ? 'App to pin' : 'Allowed apps'}>
+          <div className="v2-bulkmodal__apps" role="group" aria-label={intl.formatMessage(mode === 'single' ? messages.appToPin : messages.allowedApps)}>
             {filteredApps.map((a) => {
               const on = pkgs.has(a.pkg);
               return (
@@ -557,25 +781,25 @@ export function RunActionModal({
             })}
           </div>
         ) : null}
-        <Field label="Exit mode">
+        <Field label={intl.formatMessage(messages.exitMode)}>
           <Select value={exitMode} onChange={(e) => setExitMode(e.target.value as KioskChoice['exitMode'])}>
-            <option value="gesture">Gesture</option>
-            <option value="visible">Visible button</option>
-            <option value="remote">Remote only</option>
+            <option value="gesture">{intl.formatMessage(messages.exitGesture)}</option>
+            <option value="visible">{intl.formatMessage(messages.exitVisible)}</option>
+            <option value="remote">{intl.formatMessage(messages.exitRemote)}</option>
           </Select>
         </Field>
         <Field
-          label="Kiosk exit PIN"
-          help={pinLeft && pinError ? undefined : '6 to 12 digits'}
+          label={intl.formatMessage(messages.exitPin)}
+          help={pinLeft && pinError ? undefined : intl.formatMessage(messages.pinDigits)}
           error={pinLeft ? pinError : undefined}
         >
-          <Tooltip content={EXIT_PIN_HELP}>
+          <Tooltip content={exitPinHelp(intl)}>
             <PasswordInput
               value={password}
               autoComplete="new-password"
               inputMode="numeric"
-              toggleLabel="Show PIN"
-              placeholder={EXIT_PIN_PLACEHOLDER}
+              toggleLabel={intl.formatMessage(messages.showPin)}
+              placeholder={intl.formatMessage(kioskMessages.exitPinPlaceholder)}
               onChange={(e) => setPassword(e.target.value)}
               onBlur={() => setPinLeft(true)}
             />
@@ -594,7 +818,7 @@ export function RunActionModal({
             void enterKiosk();
           }}
         >
-          {busy ? 'Queueing…' : `Enter kiosk on ${plural(n)}`}
+          {busy ? intl.formatMessage(messages.queueing) : intl.formatMessage(messages.enterKiosk, { count: n })}
         </Button>
       </>
     );
@@ -624,12 +848,13 @@ function ActionGroup({ title, children }: { title: string; children: ReactNode }
 }
 
 function LibraryState({ apps, err, empty }: { apps: Application[] | null; err: string | null; empty: boolean }) {
-  if (err) return <ErrorState thing="the library" detail={err} />;
-  if (!apps) return <SkeletonRows compact count={4} label="Loading the library" />;
+  const intl = useIntl();
+  if (err) return <ErrorState thing={intl.formatMessage(messages.libraryThing)} detail={err} />;
+  if (!apps) return <SkeletonRows compact count={4} label={intl.formatMessage(messages.libraryLoading)} />;
   if (empty)
     return (
-      <EmptyState bare title={apps.length ? 'No apps match' : 'No apps in the library yet'}>
-        {apps.length ? 'Try another name or package.' : 'Add apps under Apps first.'}
+      <EmptyState bare title={intl.formatMessage(apps.length ? messages.noAppsMatch : messages.noAppsYet)}>
+        {intl.formatMessage(apps.length ? messages.tryAnother : messages.addAppsFirst)}
       </EmptyState>
     );
   return null;
@@ -660,6 +885,7 @@ export function ChangeConfigurationModal({
   onDone: () => void | Promise<void>;
 }) {
   const toast = useToast();
+  const intl = useIntl();
   const [target, setTarget] = useState('');
   const [busy, setBusy] = useState(false);
   const n = ids.length;
@@ -669,12 +895,13 @@ export function ChangeConfigurationModal({
     setBusy(true);
     try {
       await bulkSetConfiguration(ids, Number(target));
-      const name = configurations.find((c) => c.id === Number(target))?.name ?? 'configuration';
-      toast.push('ok', 'Configuration changed', `${plural(n)} → ${name}.`);
+      const picked = configurations.find((c) => c.id === Number(target));
+      const name = picked ? configName(intl, picked) : intl.formatMessage(messages.configurationFallback);
+      toast.push('ok', intl.formatMessage(messages.configurationChanged), intl.formatMessage(messages.movedBody, { count: n, name }));
       onClose();
       await onDone();
     } catch (e) {
-      toast.push('err', 'Change failed', errText(e));
+      toast.push('err', intl.formatMessage(messages.changeFailed), apiErrorText(intl, e));
     } finally {
       setBusy(false);
     }
@@ -685,12 +912,15 @@ export function ChangeConfigurationModal({
       open={open}
       size="sm"
       onClose={busy ? () => undefined : onClose}
-      title="Change configuration"
-      description={`${label ?? plural(n)} ${n === 1 ? 'takes' : 'take'} the new configuration at the next check-in.`}
+      title={intl.formatMessage(messages.moveTitle)}
+      description={intl.formatMessage(messages.moveDescription, {
+        label: label ?? intl.formatMessage(messages.devices, { count: n }),
+        count: n,
+      })}
       footer={
         <>
           <Button size="lg" disabled={busy} onClick={onClose}>
-            Cancel
+            {intl.formatMessage(messages.cancel)}
           </Button>
           <Button
             size="lg"
@@ -700,7 +930,7 @@ export function ChangeConfigurationModal({
               void apply();
             }}
           >
-            {busy ? 'Moving…' : 'Move'}
+            {busy ? intl.formatMessage(messages.moving) : intl.formatMessage(messages.move)}
           </Button>
         </>
       }
@@ -710,12 +940,12 @@ export function ChangeConfigurationModal({
           {configurationsError}
         </Callout>
       ) : null}
-      <Field label="Configuration">
+      <Field label={intl.formatMessage(messages.configuration)}>
         <Select value={target} disabled={!!configurationsError} onChange={(e) => setTarget(e.target.value)}>
-          <option value="">Select a configuration</option>
+          <option value="">{intl.formatMessage(messages.selectConfiguration)}</option>
           {configurations.map((c) => (
             <option key={c.id} value={String(c.id)}>
-              {c.name}
+              {configName(intl, c)}
             </option>
           ))}
         </Select>
@@ -742,18 +972,21 @@ export function DeleteDevicesModal({
   onDone: () => void | Promise<void>;
 }) {
   const toast = useToast();
+  const intl = useIntl();
   const [busy, setBusy] = useState(false);
   const n = ids.length;
+  // "KSK-0151" for one device named from its menu, otherwise "N devices".
+  const subject = label && n === 1 ? label : intl.formatMessage(messages.devices, { count: n });
 
   async function apply() {
     setBusy(true);
     try {
       await deleteDevicesBulk(ids);
-      toast.push('ok', n === 1 ? 'Device deleted' : 'Devices deleted', `${label && n === 1 ? label : plural(n)} removed.`);
+      toast.push('ok', intl.formatMessage(messages.deleted, { count: n }), intl.formatMessage(messages.deletedBody, { subject }));
       onClose();
       await onDone();
     } catch (e) {
-      toast.push('err', 'Delete failed', errText(e));
+      toast.push('err', intl.formatMessage(messages.deleteFailed), apiErrorText(intl, e));
     } finally {
       setBusy(false);
     }
@@ -765,16 +998,12 @@ export function DeleteDevicesModal({
       size="sm"
       role="alertdialog"
       onClose={busy ? () => undefined : onClose}
-      title={n === 1 ? 'Delete device?' : `Delete ${plural(n)}?`}
-      description={
-        n === 1
-          ? 'Removes it from MDMesh. It comes back if it checks in again.'
-          : 'Removes them from MDMesh. They come back if they check in again.'
-      }
+      title={intl.formatMessage(messages.deleteTitle, { count: n })}
+      description={intl.formatMessage(messages.deleteDescription, { count: n })}
       footer={
         <>
           <Button size="lg" disabled={busy} onClick={onClose}>
-            Cancel
+            {intl.formatMessage(messages.cancel)}
           </Button>
           <Button
             size="lg"
@@ -784,7 +1013,7 @@ export function DeleteDevicesModal({
               void apply();
             }}
           >
-            {busy ? 'Deleting…' : `Delete ${label && n === 1 ? label : plural(n)}`}
+            {busy ? intl.formatMessage(messages.deleting) : intl.formatMessage(messages.deleteButton, { subject })}
           </Button>
         </>
       }

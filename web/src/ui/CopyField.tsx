@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useIntl } from 'react-intl';
 import { Button } from './Button';
 import { useFieldControl } from './Field';
 import { IconCheck, IconCopy } from './icons';
@@ -12,6 +13,7 @@ export interface CopyFieldProps {
   'aria-label'?: string;
   /** Called after a successful copy (e.g. to toast). */
   onCopied?: () => void;
+  /** "Copy" when omitted. */
   copyLabel?: string;
   className?: string;
 }
@@ -21,7 +23,8 @@ export interface CopyFieldProps {
  * (page fill + card border). If the clipboard is unavailable (plain http), the text is selected and the
  * button asks for Ctrl+C instead.
  */
-export function CopyField({ value, onCopied, copyLabel = 'Copy', className, 'aria-label': ariaLabel }: CopyFieldProps) {
+export function CopyField({ value, onCopied, copyLabel, className, 'aria-label': ariaLabel }: CopyFieldProps) {
+  const intl = useIntl();
   const field = useFieldControl();
   const input = useRef<HTMLInputElement>(null);
   const [state, setState] = useState<'idle' | 'copied' | 'manual'>('idle');
@@ -56,10 +59,18 @@ export function CopyField({ value, onCopied, copyLabel = 'Copy', className, 'ari
         onFocus={(e) => e.target.select()}
       />
       <Button icon={state === 'copied' ? <IconCheck size={14} /> : <IconCopy size={14} />} onClick={() => void copy()}>
-        {state === 'copied' ? 'Copied' : state === 'manual' ? 'Press Ctrl+C' : copyLabel}
+        {state === 'copied'
+          ? intl.formatMessage({ id: 'shell.copy.copied', defaultMessage: 'Copied' })
+          : state === 'manual'
+            ? intl.formatMessage({ id: 'shell.copy.manual', defaultMessage: 'Press Ctrl+C' })
+            : (copyLabel ?? intl.formatMessage({ id: 'shell.copy.copy', defaultMessage: 'Copy' }))}
       </Button>
       <span className="v2-visually-hidden" aria-live="polite">
-        {state === 'copied' ? 'Copied to the clipboard' : state === 'manual' ? 'Selected. Press Control+C to copy.' : ''}
+        {state === 'copied'
+          ? intl.formatMessage({ id: 'shell.copy.copiedLive', defaultMessage: 'Copied to the clipboard' })
+          : state === 'manual'
+            ? intl.formatMessage({ id: 'shell.copy.manualLive', defaultMessage: 'Selected. Press Control+C to copy.' })
+            : ''}
       </span>
     </span>
   );

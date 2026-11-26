@@ -1,4 +1,5 @@
 import { forwardRef, type ButtonHTMLAttributes } from 'react';
+import { useIntl } from 'react-intl';
 import { cx } from './cx';
 import './Toggle.css';
 
@@ -18,9 +19,14 @@ export interface ToggleProps
  * #D6DAE1 track alone is 1.40:1 on white, under the 3:1 a control needs.
  */
 export const Toggle = forwardRef<HTMLButtonElement, ToggleProps>(function Toggle(
-  { checked, onChange, showState = true, stateLabels = ['On', 'Off'], className, disabled, onClick, ...rest },
+  { checked, onChange, showState = true, stateLabels: stateLabelsProp, className, disabled, onClick, ...rest },
   ref,
 ) {
+  const intl = useIntl();
+  const stateLabels = stateLabelsProp ?? [
+    intl.formatMessage({ id: 'ui.toggle.on', defaultMessage: 'On' }),
+    intl.formatMessage({ id: 'ui.toggle.off', defaultMessage: 'Off' }),
+  ];
   if (import.meta.env.DEV && !rest['aria-label'] && !rest['aria-labelledby']) {
     console.warn('Toggle: give the switch a name with aria-label or aria-labelledby.');
   }

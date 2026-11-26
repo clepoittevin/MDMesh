@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useInsertionEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import * as D from '@radix-ui/react-dialog';
+import { defineMessages, useIntl } from 'react-intl';
 import { IconButton } from './Button';
 import { IconClose } from './icons';
 import { cx } from './cx';
@@ -25,6 +26,10 @@ export interface ModalProps {
   role?: 'dialog' | 'alertdialog';
   className?: string;
 }
+
+const messages = defineMessages({
+  close: { id: 'ui.modal.close', defaultMessage: 'Close' },
+});
 
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -86,6 +91,7 @@ export function Modal({
   role = 'dialog',
   className,
 }: ModalProps) {
+  const intl = useIntl();
   const closeRef = useRef<HTMLButtonElement>(null);
   // The body as state, not only a ref: the portal mounts it after this component, and the scroll stop watches it.
   const [body, setBody] = useState<HTMLDivElement | null>(null);
@@ -164,7 +170,7 @@ export function Modal({
                 </D.Title>
                 {description ? <D.Description className="v2-modal__desc">{description}</D.Description> : null}
               </div>
-              <IconButton ref={closeRef} label="Close" size="sm" onClick={() => onCloseRef.current()}>
+              <IconButton ref={closeRef} label={intl.formatMessage(messages.close)} size="sm" onClick={() => onCloseRef.current()}>
                 <IconClose />
               </IconButton>
             </div>

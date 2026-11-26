@@ -9,6 +9,16 @@ Unreleased.
 
 ## Unreleased
 
+New
+- Console in French. Settings → Appearance → Language picks Browser, English or Français; a browser set to French
+  gets it at once. Dates, times, sizes and numbers follow the language. The seeded roles (Headwind's Russian names,
+  or the installers' English ones) show in the console's language; the database keeps their names.
+
+Under the hood
+- Console: the groundwork for translations. New console text is written as react-intl messages (English stays in
+  the code), and a test fails on most new untranslated text in core files; French is the first translation
+  ([web/README.md](web/README.md#translatable-text)).
+
 ## v0.5.1 — 2026-11-25
 
 Upgrading

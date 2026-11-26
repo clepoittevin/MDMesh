@@ -3,6 +3,7 @@
 // hands them over with the device value (withCoreParts), and the contributions here only pick theirs out. So core
 // and extension tabs share one host: ordering, `requires`, the error boundary and the `?tab=` URL.
 import type { ReactNode } from 'react';
+import { defineMessages, type MessageDescriptor } from 'react-intl';
 import { IconApps, IconControl, IconHistory, IconPin, IconPulse } from '../../ui/icons';
 import type { KeyValueItem } from '../../ui/KeyValueList';
 import { coreComponent, type DeviceContextValue, type DeviceRailGroupContribution, type DeviceTabContribution } from '../types';
@@ -11,6 +12,24 @@ import { ORDER } from './order';
 
 type CoreTab = keyof typeof ORDER.deviceTab;
 type CoreRailGroup = keyof typeof ORDER.deviceRailGroup;
+
+/** Core's tab labels as messages, by tab id (a core tab's `label` stays its English text; the strip shows these). */
+export const coreTabMessages: Readonly<Record<string, MessageDescriptor>> = defineMessages({
+  control: { id: 'ext.deviceTab.control', defaultMessage: 'Control' },
+  telemetry: { id: 'ext.deviceTab.telemetry', defaultMessage: 'Telemetry' },
+  apps: { id: 'ext.deviceTab.apps', defaultMessage: 'Apps' },
+  activity: { id: 'ext.deviceTab.activity', defaultMessage: 'Activity' },
+  location: { id: 'ext.deviceTab.location', defaultMessage: 'Location' },
+});
+
+/** Core's rail group titles as messages, by group id. */
+export const coreRailMessages: Readonly<Record<string, MessageDescriptor>> = defineMessages({
+  status: { id: 'ext.deviceRail.status', defaultMessage: 'Status' },
+  location: { id: 'ext.deviceRail.location', defaultMessage: 'Location' },
+  hardware: { id: 'ext.deviceRail.hardware', defaultMessage: 'Hardware' },
+  network: { id: 'ext.deviceRail.network', defaultMessage: 'Network' },
+  management: { id: 'ext.deviceRail.management', defaultMessage: 'Management' },
+});
 
 /**
  * What the page builds for core's own contributions. Page-private: not part of `useDevice()`'s value. It is found

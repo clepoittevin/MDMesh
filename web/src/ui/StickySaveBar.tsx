@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react';
+import { useIntl } from 'react-intl';
 import { Button } from './Button';
 import { cx } from './cx';
 import './StickySaveBar.css';
@@ -10,10 +11,13 @@ export interface StickySaveBarProps {
   message?: ReactNode;
   onDiscard: () => void;
   onSave: () => void;
+  /** "Save and apply" when omitted. */
   saveLabel?: string;
+  /** "Discard" when omitted. */
   discardLabel?: string;
   /** Saving in progress: both buttons disabled, save label swapped. */
   busy?: boolean;
+  /** "Saving…" when omitted. */
   busyLabel?: string;
   /** Block saving (e.g. assigned apps failed to load) while still showing the bar. */
   saveDisabled?: boolean;
@@ -30,13 +34,14 @@ export function StickySaveBar({
   message,
   onDiscard,
   onSave,
-  saveLabel = 'Save and apply',
-  discardLabel = 'Discard',
+  saveLabel,
+  discardLabel,
   busy,
-  busyLabel = 'Saving…',
+  busyLabel,
   saveDisabled,
   className,
 }: StickySaveBarProps) {
+  const intl = useIntl();
   const ref = useRef<HTMLDivElement>(null);
   const visible = count > 0;
 
@@ -62,18 +67,26 @@ export function StickySaveBar({
 
   if (!visible) return null;
   return (
-    <div ref={ref} role="region" aria-label="Unsaved changes" className={cx('v2-savebar', className)}>
+    <div ref={ref} role="region" aria-label={intl.formatMessage({ id: 'shell.saveBar.label', defaultMessage: 'Unsaved changes' })} className={cx('v2-savebar', className)}>
       <span className="v2-savebar__count" aria-live="polite">
         <span className="v2-savebar__dot" aria-hidden="true" />
-        {count === 1 ? '1 unsaved change' : `${count} unsaved changes`}
+        {intl.formatMessage(
+          {
+            id: 'shell.saveBar.count',
+            defaultMessage: '{count, plural, one {# unsaved change} other {# unsaved changes}}',
+          },
+          { count },
+        )}
       </span>
       {message ? <span className="v2-savebar__msg">{message}</span> : <span className="v2-savebar__msg" />}
       <div className="v2-savebar__actions">
         <Button size="lg" onClick={onDiscard} disabled={busy}>
-          {discardLabel}
+          {discardLabel ?? intl.formatMessage({ id: 'shell.saveBar.discard', defaultMessage: 'Discard' })}
         </Button>
         <Button size="lg" variant="primary" className="v2-savebar__save" onClick={onSave} disabled={busy || saveDisabled}>
-          {busy ? busyLabel : saveLabel}
+          {busy
+            ? (busyLabel ?? intl.formatMessage({ id: 'shell.saveBar.saving', defaultMessage: 'Saving…' }))
+            : (saveLabel ?? intl.formatMessage({ id: 'shell.saveBar.save', defaultMessage: 'Save and apply' }))}
         </Button>
       </div>
     </div>

@@ -1,4 +1,5 @@
 import { createElement } from 'react';
+import { FormattedMessage, useIntl } from 'react-intl';
 import { Card } from '../../ui/Card';
 import { EmptyState } from '../../ui/EmptyState';
 import { IconLock } from '../../ui/icons';
@@ -12,10 +13,14 @@ import { useAccess } from '../useContributions';
  * shows it too for a path its route's permission doesn't cover (the Configurations editor's /new without add_config).
  */
 export function NoAccess() {
+  const intl = useIntl();
   return (
     <Card>
-      <EmptyState icon={<IconLock size={18} />} title="You don’t have access to this page">
-        Your role doesn’t include it. Ask an administrator if you need it.
+      <EmptyState
+        icon={<IconLock size={18} />}
+        title={intl.formatMessage({ id: 'ext.noAccess.title', defaultMessage: 'You don’t have access to this page' })}
+      >
+        <FormattedMessage id="ext.noAccess.body" defaultMessage="Your role doesn’t include it. Ask an administrator if you need it." />
       </EmptyState>
     </Card>
   );

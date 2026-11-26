@@ -1,9 +1,11 @@
 // Settings data hooks: the active rollout and the server connection. The supervisor status hook is shared
 // (web/src/data/useSupervisor.ts).
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { defineMessages, useIntl } from 'react-intl';
 import { fetchAuthOptions } from '../../api/auth';
 import { getActiveRollout, type ActiveRollout } from '../../api/rollout';
 import { rolloutActive } from '../../data/rollout';
+import { apiErrorText } from '../../api/apiErrorText';
 
 export { rolloutActive };
 
@@ -16,6 +18,10 @@ export interface RolloutState {
   set: (r: ActiveRollout | null) => void;
 }
 
+const messages = defineMessages({
+  loadFailed: { id: 'rollout.load.failed', defaultMessage: 'Could not load the rollout.' },
+});
+
 /** Poll cadence while a rollout runs (classic RolloutPanel). */
 const ROLLOUT_POLL_MS = 10000;
 
@@ -25,6 +31,12 @@ const ROLLOUT_POLL_MS = 10000;
  * older than that action and is dropped, so it can't put the previous stage back on screen.
  */
 export function useActiveRollout(): RolloutState {
+  const intl = useIntl();
+  // A ref, so a change of language doesn't refetch.
+  const loadFailed = useRef('');
+  loadFailed.current = intl.formatMessage(messages.loadFailed);
+  const intlNow = useRef(intl);
+  intlNow.current = intl;
   const [rollout, setRollout] = useState<ActiveRollout | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -52,7 +64,7 @@ export function useActiveRollout(): RolloutState {
       setLoadError(null);
     } catch (e) {
       if (!on.current || id !== seq.current) return;
-      setLoadError((e as Error).message || 'Could not load the rollout.');
+      setLoadError(apiErrorText(intlNow.current, e) || loadFailed.current);
     }
     setLoaded(true);
     arm();
