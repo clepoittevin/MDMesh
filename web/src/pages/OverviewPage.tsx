@@ -2,11 +2,11 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { defineMessages, FormattedMessage, useIntl, type IntlShape, type MessageDescriptor } from 'react-intl';
 import { forceSync } from '../api/commands';
-import type { ConfigSyncSummary } from '../api/configSync';
+import { syncVerdictLabel, type ConfigSyncSummary } from '../api/configSync';
 import type { ConfigurationLookup, DeviceView } from '../api/devices';
 import type { ActiveRollout } from '../api/rollout';
 import { isOnline } from '../data/presence';
-import { LOAD_DEVICES_FAILED } from '../data/useDevices';
+import { LOAD_DEVICES_FAILED, loadErrorText } from '../data/useDevices';
 import { CORE_ACTION_ACCESS } from '../ext/core/access';
 import { CoreOverviewProvider } from '../ext/core/overview';
 import { OverviewRows, OverviewStats, useHasExtensionStats } from '../ext/hosts/OverviewCards';
@@ -247,7 +247,10 @@ function reasonText(intl: IntlShape, issue: ConfigIssue | undefined): { key: str
     return { key: 'offline', phrase: intl.formatMessage(REASON_PHRASE.offline), text: intl.formatMessage(messages.rowOffline) };
   }
   const kind = issueKind(issue);
-  if (!kind) return { key: `label:${issue.label}`, phrase: issue.label.toLowerCase(), text: issue.label };
+  if (!kind) {
+    const text = syncVerdictLabel(issue.label, intl);
+    return { key: `label:${issue.label}`, phrase: text.toLowerCase(), text };
+  }
   return { key: kind, phrase: intl.formatMessage(REASON_PHRASE[kind]), text: intl.formatMessage(ISSUE_REASON_MESSAGES[kind]) };
 }
 
@@ -384,7 +387,7 @@ export function OverviewPage() {
       {data.error ? (
         <ErrorState
           thing={intl.formatMessage(messages.fleetThing)}
-          detail={[data.error === LOAD_DEVICES_FAILED ? null : data.error, data.loadedAt !== null ? intl.formatMessage(messages.lastData) : null]
+          detail={[data.error === LOAD_DEVICES_FAILED ? null : loadErrorText(data.error, intl), data.loadedAt !== null ? intl.formatMessage(messages.lastData) : null]
             .filter(Boolean)
             .join(' ') || undefined}
           onRetry={data.refresh}
@@ -639,7 +642,7 @@ function NeedsAttention({
   const shown = rows.slice(0, ATTENTION_ROWS);
   const items: AttentionItem[] = shown.map((d) => {
     const issue = isOnline(d.lastUpdate, now) ? issues[d.id] : undefined;
-    const r = reasonFor(issue);
+    const r = reasonFor(issue, intl);
     const reasonLabel = reasonText(intl, issue).text;
     const to = paths.device(d.number);
     const name = d.description || d.number;
@@ -768,7 +771,7 @@ function ByConfiguration({
           to,
           count: byId.get(id) ?? 0,
           segments: [],
-          note: wipedOnlyLine(s) ?? intl.formatMessage(summary ? messages.syncNotReportedNote : messages.syncUnavailable),
+          note: wipedOnlyLine(s, intl) ?? intl.formatMessage(summary ? messages.syncNotReportedNote : messages.syncUnavailable),
           tone: 'muted',
         };
       }
@@ -892,7 +895,7 @@ function RecentActivity({
     body = (
       <ActivityList aria-label={intl.formatMessage(messages.activityListLabel)}>
         {rows.map((a) => {
-          const v = eventView(a.ev, a.device, appNames);
+          const v = eventView(a.ev, a.device, appNames, intl);
           return (
             <ActivityRow
               key={a.key}

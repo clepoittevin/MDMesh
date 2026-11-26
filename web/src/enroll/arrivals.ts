@@ -2,6 +2,8 @@
 // come online instead of being told to look under Devices.
 
 import { useCallback, useEffect, useState } from 'react';
+import { defineMessages, type IntlShape, type MessageDescriptor } from 'react-intl';
+import { EN_INTL, untyped } from '../data/configIntl';
 import { ApiError } from '../api/client';
 import { listEnrolledSince, type EnrolledDevice } from '../api/enroll';
 import { isOnline, ONLINE_WINDOW_MS } from '../data/presence';
@@ -136,20 +138,55 @@ export function arrivalChanges(prev: readonly Arrival[], next: readonly Arrival[
   return next.filter((a) => before.get(a.number) !== a.state);
 }
 
-/** What the page says of a device in each state: its pill, and the announcement of one device. */
-export const ARRIVAL_LABEL: Record<ArrivalState, string> = {
-  settingUp: 'Enrolled, getting its configuration…',
-  online: 'Online',
-  silent: 'Enrolled, hasn’t checked in yet',
-  offline: `Enrolled, but not heard from in the last ${ONLINE_WINDOW_MS / 60_000} minutes`,
+const MINUTES = ONLINE_WINDOW_MS / 60_000;
+
+const arrivalMessages = untyped(defineMessages({
+  settingUp: { id: 'enroll.arrivals.stateSettingUp', defaultMessage: 'Enrolled, getting its configuration…' },
+  online: { id: 'enroll.arrivals.stateOnline', defaultMessage: 'Online' },
+  silent: { id: 'enroll.arrivals.stateSilent', defaultMessage: 'Enrolled, hasn’t checked in yet' },
+  offline: { id: 'enroll.arrivals.stateOffline', defaultMessage: 'Enrolled, but not heard from in the last {minutes} minutes' },
+  one: { id: 'enroll.arrivals.newsOne', defaultMessage: '{name}: {state}.' },
+  enrolled: { id: 'enroll.arrivals.newsEnrolled', defaultMessage: '{count, plural, one {# device enrolled.} other {# devices enrolled.}}' },
+  manySettingUp: {
+    id: 'enroll.arrivals.newsSettingUp',
+    defaultMessage: '{count, plural, one {# device is getting its configuration.} other {# devices are getting their configuration.}}',
+  },
+  manyOnline: { id: 'enroll.arrivals.newsOnline', defaultMessage: '{count, plural, one {# device is online.} other {# devices are online.}}' },
+  manySilent: {
+    id: 'enroll.arrivals.newsSilent',
+    defaultMessage: '{count, plural, one {# device hasn’t checked in yet.} other {# devices haven’t checked in yet.}}',
+  },
+  manyOffline: {
+    id: 'enroll.arrivals.newsOffline',
+    defaultMessage:
+      '{count, plural, one {# device hasn’t been heard from in the last {minutes} minutes.} other {# devices haven’t been heard from in the last {minutes} minutes.}}',
+  },
+}));
+
+const STATE_MESSAGE: Record<ArrivalState, MessageDescriptor> = {
+  settingUp: arrivalMessages.settingUp,
+  online: arrivalMessages.online,
+  silent: arrivalMessages.silent,
+  offline: arrivalMessages.offline,
+};
+const PLURAL_MESSAGE: Record<ArrivalState, MessageDescriptor> = {
+  settingUp: arrivalMessages.manySettingUp,
+  online: arrivalMessages.manyOnline,
+  silent: arrivalMessages.manySilent,
+  offline: arrivalMessages.manyOffline,
 };
 
-/** The same, said of several devices at once ("2 devices are online."). */
-const ARRIVAL_PLURAL: Record<ArrivalState, string> = {
-  settingUp: 'are getting their configuration',
-  online: 'are online',
-  silent: 'haven’t checked in yet',
-  offline: `haven’t been heard from in the last ${ONLINE_WINDOW_MS / 60_000} minutes`,
+/** What the page says of a device in each state (its pill), in the console's language. */
+export function arrivalLabel(state: ArrivalState, intl: IntlShape = EN_INTL): string {
+  return intl.formatMessage(STATE_MESSAGE[state], { minutes: MINUTES });
+}
+
+/** What the page says of a device in each state: its pill, and the announcement of one device (English). */
+export const ARRIVAL_LABEL: Record<ArrivalState, string> = {
+  settingUp: arrivalLabel('settingUp'),
+  online: arrivalLabel('online'),
+  silent: arrivalLabel('silent'),
+  offline: arrivalLabel('offline'),
 };
 
 /**
@@ -157,19 +194,19 @@ const ARRIVAL_PLURAL: Record<ArrivalState, string> = {
  * bring dozens in one look, and a sentence each would bury the page). New devices first, then changes of state,
  * grouped by state in the order they come.
  */
-export function arrivalNews(prev: readonly Arrival[], next: readonly Arrival[]): string[] {
-  const one = (a: Arrival) => `${a.name}: ${ARRIVAL_LABEL[a.state]}.`;
+export function arrivalNews(prev: readonly Arrival[], next: readonly Arrival[], intl: IntlShape = EN_INTL): string[] {
+  const one = (a: Arrival) => intl.formatMessage(arrivalMessages.one, { name: a.name, state: arrivalLabel(a.state, intl) });
   const known = new Set(prev.map((a) => a.number));
   const changed = arrivalChanges(prev, next);
   const fresh = changed.filter((a) => !known.has(a.number));
   const moved = changed.filter((a) => known.has(a.number));
   const lines: string[] = [];
   if (fresh.length === 1) lines.push(one(fresh[0]));
-  else if (fresh.length > 1) lines.push(`${fresh.length} devices enrolled.`);
+  else if (fresh.length > 1) lines.push(intl.formatMessage(arrivalMessages.enrolled, { count: fresh.length }));
   const byState = new Map<ArrivalState, Arrival[]>();
   for (const a of moved) byState.set(a.state, [...(byState.get(a.state) ?? []), a]);
   for (const [state, list] of byState) {
-    lines.push(list.length === 1 ? one(list[0]) : `${list.length} devices ${ARRIVAL_PLURAL[state]}.`);
+    lines.push(list.length === 1 ? one(list[0]) : intl.formatMessage(PLURAL_MESSAGE[state], { count: list.length, minutes: MINUTES }));
   }
   return lines;
 }

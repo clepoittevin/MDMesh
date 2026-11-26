@@ -23,14 +23,14 @@ import {
   type ConfigurationSummary,
 } from '../api/configurations';
 import { bulkSetConfiguration, deleteDevicesBulk } from '../api/devices';
-import { EXIT_PIN_RULE, exitPinValid } from '../data/configurationRules';
+import { exitPinRule, exitPinValid } from '../data/configurationRules';
 import {
   buildKioskPayload,
   configuredKiosk,
   configuredKioskCommand,
   configuredKioskSummary,
-  EXIT_PIN_HELP,
-  EXIT_PIN_PLACEHOLDER,
+  exitPinHelp,
+  kioskMessages,
   kioskTheme,
   type ConfiguredKiosk,
   type KioskChoice,
@@ -707,8 +707,8 @@ export function RunActionModal({
                     count: g.ids.length,
                     detail: g.kiosk
                       ? g.kiosk.mainAppLeftOut
-                        ? intl.formatMessage(messages.groupKioskLeftOut, { summary: configuredKioskSummary(g.kiosk) })
-                        : configuredKioskSummary(g.kiosk)
+                        ? intl.formatMessage(messages.groupKioskLeftOut, { summary: configuredKioskSummary(g.kiosk, intl) })
+                        : configuredKioskSummary(g.kiosk, intl)
                       : intl.formatMessage(SKIP_MESSAGES[g.skip ?? 'noApps']),
                   }}
                 />
@@ -740,7 +740,7 @@ export function RunActionModal({
     );
   } else {
     // A custom kiosk's PIN is new: it follows the configurations' rule.
-    const pinError = exitPinValid(password) ? undefined : EXIT_PIN_RULE;
+    const pinError = exitPinValid(password) ? undefined : exitPinRule(intl);
     const canApply = pkgs.size > 0 && (mode === 'launcher' || pkgs.size === 1) && pinError == null;
     title = intl.formatMessage(messages.kioskTitle, { count: n });
     description = intl.formatMessage(messages.kioskDescription);
@@ -791,13 +791,13 @@ export function RunActionModal({
           help={pinLeft && pinError ? undefined : intl.formatMessage(messages.pinDigits)}
           error={pinLeft ? pinError : undefined}
         >
-          <Tooltip content={EXIT_PIN_HELP}>
+          <Tooltip content={exitPinHelp(intl)}>
             <PasswordInput
               value={password}
               autoComplete="new-password"
               inputMode="numeric"
               toggleLabel={intl.formatMessage(messages.showPin)}
-              placeholder={EXIT_PIN_PLACEHOLDER}
+              placeholder={intl.formatMessage(kioskMessages.exitPinPlaceholder)}
               onChange={(e) => setPassword(e.target.value)}
               onBlur={() => setPinLeft(true)}
             />

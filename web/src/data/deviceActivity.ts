@@ -83,11 +83,11 @@ export function commandDetail(c: CommandHistoryItem, intl: IntlShape = EN): stri
       try {
         const j = JSON.parse(d) as Record<string, unknown>;
         if (j.outcomes && typeof j.outcomes === 'object') {
-          const list = Object.entries(j.outcomes as Record<string, string>).map(([k, v]) => classifyOutcome(k, String(v)));
+          const list = Object.entries(j.outcomes as Record<string, string>).map(([k, v]) => classifyOutcome(k, String(v), intl));
           const bad = list.filter((o) => o.kind === 'failed');
           summary = bad.length
             ? bad.map((o) => (o.reason ? `${o.label}: ${o.reason}` : intl.formatMessage(detailMessages.outcomeFailed, { label: o.label }))).join('; ')
-            : outcomeSummary(list).replace(/\.$/, '');
+            : outcomeSummary(list, intl).replace(/\.$/, '');
         } else if (Array.isArray(j.apps)) {
           summary = intl.formatMessage(detailMessages.appsFound, { count: j.apps.length });
         } else if (Array.isArray(j.icons)) {

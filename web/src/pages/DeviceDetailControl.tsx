@@ -3,13 +3,14 @@ import { Link } from 'react-router';
 import { FormattedMessage, defineMessages, useIntl, type MessageDescriptor } from 'react-intl';
 import {
   ACTION_TEMPLATES,
+  formatActionTemplate,
   CLEAR_PIN_LOCKOUT_AGENT,
   type CommandHistoryItem,
   type CommandTemplateExt,
 } from '../api/commands';
 import { DEVICE_RESET_LABEL, SOME_DEFERRED_LABEL, staleCause, summarizeStatus, type ConfigStatus } from '../api/configSync';
 import type { DeviceEvent } from '../api/events';
-import { DO_NOT_TRACK_HINT } from '../api/locationTracking';
+import { doNotTrackHintMessage } from '../api/locationTracking';
 import { paths } from '../routes';
 import {
   Button,
@@ -291,11 +292,11 @@ export function ConfigPanel({
   const verdict = summarizeStatus(status);
   const parsed = parseOutcomes(status?.lastCommand?.detail);
   const outcomes = useMemo(() => Object.entries(parsed?.outcomes ?? {}).map(([k, v]) => {
-    const outcome = classifyOutcome(k, String(v));
+    const outcome = classifyOutcome(k, String(v), intl);
     return outcome.kind === 'unsupported'
-      ? { ...outcome, reason: unsupportedOutcomeReason(outcome.key, { androidSdkInt, isDeviceOwner }) }
+      ? { ...outcome, reason: unsupportedOutcomeReason(outcome.key, { androidSdkInt, isDeviceOwner }, intl) }
       : outcome;
-  }), [parsed, androidSdkInt, isDeviceOwner]);
+  }), [parsed, androidSdkInt, isDeviceOwner, intl]);
   const cfgId = status?.configurationId ?? null;
   const name = configName ?? intl.formatMessage(messages.itsConfiguration);
   const strongName = <strong>{name}</strong>;
@@ -407,7 +408,7 @@ export function ConfigPanel({
       outcomes.length && outcomes.some((o) => o.kind === 'applied') ? messages.partialTitle : messages.failedTitle,
     );
     text = outcomes.length ? (
-      <FormattedMessage {...messages.nameSummary} values={{ name: strongName, summary: outcomeSummary(outcomes) }} />
+      <FormattedMessage {...messages.nameSummary} values={{ name: strongName, summary: outcomeSummary(outcomes, intl) }} />
     ) : status.lastCommand?.detail ? (
       <FormattedMessage
         {...messages.failedToApplyDetail}
@@ -426,7 +427,7 @@ export function ConfigPanel({
     text = <FormattedMessage {...messages.notReportedText} values={{ name: strongName }} />;
   } else if (verdict.label === DEVICE_RESET_LABEL) {
     title = intl.formatMessage(messages.staleTitle);
-    const cause = staleCause(events, status);
+    const cause = staleCause(events, status, intl);
     text = cause ? (
       <FormattedMessage {...messages.staleWithCause} values={{ cause, name: strongName }} />
     ) : (
@@ -434,11 +435,11 @@ export function ConfigPanel({
     );
   } else if (verdict.label === SOME_DEFERRED_LABEL) {
     title = intl.formatMessage(messages.deferredTitle);
-    text = <FormattedMessage {...messages.deferredText} values={{ name: strongName, summary: outcomeSummary(outcomes) }} />;
+    text = <FormattedMessage {...messages.deferredText} values={{ name: strongName, summary: outcomeSummary(outcomes, intl) }} />;
   } else if (status.inSync && unsupported > 0) {
     tone = 'idle';
     title = intl.formatMessage(messages.unsupportedTitle);
-    text = <FormattedMessage {...messages.nameSummary} values={{ name: strongName, summary: outcomeSummary(outcomes) }} />;
+    text = <FormattedMessage {...messages.nameSummary} values={{ name: strongName, summary: outcomeSummary(outcomes, intl) }} />;
   }
 
   const retryable = status.supported && !status.inSync && (verdict.label === 'Apply failed' || verdict.label === 'Out of sync');
@@ -649,7 +650,7 @@ export function RemoteActions({
     key,
     label,
     icon,
-    tip: TEMPLATE[key].description,
+    tip: formatActionTemplate(intl, TEMPLATE[key]).description,
     run: () => onAction(TEMPLATE[key]),
   });
   const send = (key: string) => onAction(TEMPLATE[key]);
@@ -761,7 +762,7 @@ export function RemoteActions({
           </span>
           {doNotTrack ? (
             <p id={`${titleId}-lochint`} className="v2-device-actions__hint v2-device-actions__seghint">
-              {DO_NOT_TRACK_HINT}
+              {intl.formatMessage(doNotTrackHintMessage)}
             </p>
           ) : locationUnknown ? (
             <p id={`${titleId}-lochint`} className="v2-device-actions__hint v2-device-actions__seghint">
@@ -778,12 +779,12 @@ export function RemoteActions({
           sub={intl.formatMessage(messages.destructiveSub)}
         />
         <div className="v2-device-actions__tiles">
-          <Tooltip content={TEMPLATE['passcode-reset'].description}>
+          <Tooltip content={formatActionTemplate(intl, TEMPLATE['passcode-reset']).description}>
             <Button variant="danger" icon={<IconKey />} disabled={busy} onClick={() => send('passcode-reset')}>
               {intl.formatMessage(messages.resetPasscode)}
             </Button>
           </Tooltip>
-          <Tooltip content={TEMPLATE.wipe.description}>
+          <Tooltip content={formatActionTemplate(intl, TEMPLATE.wipe).description}>
             <Button variant="danger" icon={<IconFactoryReset />} disabled={busy} onClick={() => send('wipe')}>
               {intl.formatMessage(messages.factoryReset)}
             </Button>
@@ -834,6 +835,7 @@ export function ActionDialog({
   const formId = useId();
   const intl = useIntl();
   const t = template;
+  const text = formatActionTemplate(intl, t);
   const typeToConfirm = t.confirm === 'type-to-confirm';
   const canSend = typeToConfirm
     ? confirmText === 'WIPE'
@@ -849,8 +851,8 @@ export function ActionDialog({
       open={open}
       size="sm"
       role={t.danger ? 'alertdialog' : 'dialog'}
-      title={t.title ?? t.label}
-      description={t.description}
+      title={text.title}
+      description={text.description}
       onClose={onCancel}
       dismissOnBackdrop={!hasInputs}
       footer={
@@ -866,7 +868,7 @@ export function ActionDialog({
             form={hasInputs ? formId : undefined}
             type={hasInputs ? 'submit' : 'button'}
           >
-            {t.danger ? t.label : intl.formatMessage(messages.send)}
+            {t.danger ? text.label : intl.formatMessage(messages.send)}
           </Button>
         </>
       }
@@ -881,7 +883,7 @@ export function ActionDialog({
             submit();
           }}
         >
-          {t.params?.map((p) => (
+          {text.params.map((p) => (
             <Field key={p.key} label={p.label}>
               <Input
                 type={p.kind === 'password' ? 'password' : p.kind === 'number' ? 'number' : 'text'}

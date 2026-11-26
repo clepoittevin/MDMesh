@@ -11,7 +11,8 @@ import {
 import { getTelemetry, type TelemetrySnapshot } from '../api/telemetry';
 import { getConfigStatus, summarizeStatus, type ConfigStatus } from '../api/configSync';
 import {
-  commandErrorText,
+  formatActionTemplate,
+  formatCommandError,
   forceSync,
   retryConfigApply,
   getDeviceState,
@@ -35,7 +36,6 @@ import {
   Button,
   Callout,
   Card,
-  DEVICE_KIND_LABEL,
   DeviceTile,
   Skeleton,
   SkeletonFacts,
@@ -80,8 +80,9 @@ import {
   configuredKioskState,
   rememberConfiguredKiosk,
 } from '../data/kiosk';
-import { ISSUE_REASON, issueKind, presenceOf } from '../data/fleetHealth';
+import { ISSUE_REASON_MESSAGES, issueKind, presenceOf } from '../data/fleetHealth';
 import { notConnected } from '../data/presence';
+import { deviceKindMessages } from '../ui/DeviceCells';
 import {
   DASH,
   cleanFixes,
@@ -766,7 +767,7 @@ export function DeviceDetailPage() {
     try {
       const { connected } = await forceSync(number);
       refresh();
-      if (connected === false) toast.push('warn', ...notConnected(number, 'sync'));
+      if (connected === false) toast.push('warn', ...notConnected(number, 'sync', intl));
       else toast.push('ok', intl.formatMessage(messages.syncRequested), '');
     } catch (e) {
       toast.push('err', intl.formatMessage(messages.syncFailed), e instanceof Error ? e.message : '');
@@ -793,7 +794,7 @@ export function DeviceDetailPage() {
           intl.formatMessage(messages.notSent),
           intl.formatMessage(result === 'unsupported' ? messages.agentTooOld : messages.noConfiguration),
         );
-      } else if (connected === false) toast.push('warn', ...notConnected(number, 'command'));
+      } else if (connected === false) toast.push('warn', ...notConnected(number, 'command', intl));
       else {
         toast.push(
           'ok',
@@ -802,7 +803,7 @@ export function DeviceDetailPage() {
         );
       }
     } catch (e) {
-      toast.push('err', intl.formatMessage(messages.retryFailed), commandErrorText(e));
+      toast.push('err', intl.formatMessage(messages.retryFailed), formatCommandError(intl, e));
     } finally {
       setBusy(false);
     }
@@ -820,7 +821,7 @@ export function DeviceDetailPage() {
       );
       refresh();
     } catch (e) {
-      toast.push('err', intl.formatMessage(messages.installAppsFailed), commandErrorText(e));
+      toast.push('err', intl.formatMessage(messages.installAppsFailed), formatCommandError(intl, e));
     } finally {
       setBusy(false);
     }
@@ -847,11 +848,11 @@ export function DeviceDetailPage() {
         );
         onQueued?.(res?.id);
         const nudge = await forceSync(number).catch(() => undefined); // nudge the device
-        if (nudge?.connected === false) toast.push('warn', ...notConnected(number, 'command'));
+        if (nudge?.connected === false) toast.push('warn', ...notConnected(number, 'command', intl));
         refresh();
         return true;
       } catch (e) {
-        toast.push('err', intl.formatMessage(messages.commandFailed, { label }), commandErrorText(e));
+        toast.push('err', intl.formatMessage(messages.commandFailed, { label }), formatCommandError(intl, e));
         return false;
       }
     },
@@ -866,7 +867,7 @@ export function DeviceDetailPage() {
     setBusy(true);
     try {
       await queue(
-        t.label,
+        formatActionTemplate(intl, t).label,
         () => (t.build ? t.build(values) : t.request),
         () => {
           if (t.key === 'power-always' || t.key === 'power-adaptive') {
@@ -1038,7 +1039,7 @@ export function DeviceDetailPage() {
     void forceSync(number) // nudge the device
       .catch(() => undefined)
       .then((nudge) => {
-        if (nudge?.connected === false) toast.push('warn', ...notConnected(number, 'command'));
+        if (nudge?.connected === false) toast.push('warn', ...notConnected(number, 'command', intl));
         refresh();
       });
   }
@@ -1225,8 +1226,8 @@ export function DeviceDetailPage() {
     },
   ];
 
-  const subline = [DEVICE_KIND_LABEL[kind], makeModel(teleStr(hw.manufacturer), model)].filter(Boolean).join(' · ');
-  const reasonText = presence === 'attention' && issue ? ISSUE_REASON[issue] : undefined;
+  const subline = [intl.formatMessage(deviceKindMessages[kind]), makeModel(teleStr(hw.manufacturer), model)].filter(Boolean).join(' · ');
+  const reasonText = presence === 'attention' && issue ? intl.formatMessage(ISSUE_REASON_MESSAGES[issue]) : undefined;
   const lastAge = lastSeen ? fmtAge(lastSeen, now) : null;
   const lastIso = isoTime(lastSeen);
 
@@ -1365,7 +1366,7 @@ export function DeviceDetailPage() {
                 )}
               </span>
             </span>
-            <DeviceTile kind={kind} tile={40} title={DEVICE_KIND_LABEL[kind]} className="v2-device-id__tile" />
+            <DeviceTile kind={kind} tile={40} title={intl.formatMessage(deviceKindMessages[kind])} className="v2-device-id__tile" />
           </div>
           <div className="v2-device-id__name">
             <DeviceName
@@ -1395,7 +1396,7 @@ export function DeviceDetailPage() {
               >
                 {intl.formatMessage(messages.syncNow)}
               </Button>
-              <Tooltip content={TEMPLATE.lock.description}>
+              <Tooltip content={formatActionTemplate(intl, TEMPLATE.lock).description}>
                 <Button icon={<IconLock />} disabled={busy || wiped} onClick={() => runAction(TEMPLATE.lock)}>
                   {intl.formatMessage(messages.lock)}
                 </Button>

@@ -1,4 +1,5 @@
 import SparkMD5 from 'spark-md5';
+import { authMessages } from './authMessages';
 import { ApiError, apiClient } from './client';
 
 // Endpoints (see server: com.hmdm.rest.resource.AuthResource):
@@ -63,12 +64,13 @@ export function isTooManyAttempts(err: unknown): boolean {
   return err instanceof ApiError && (err.message === TOO_MANY_ATTEMPTS || err.httpStatus === 429);
 }
 
-export const TOO_MANY_MESSAGE = 'Too many failed sign-ins. Wait a few minutes, then try again.';
+/** English; the console shows authMessages.tooMany. */
+export const TOO_MANY_MESSAGE: string = authMessages.tooMany.defaultMessage as string;
 
 /** The server's answer to a password check in a session signed in as another account (error.password.impersonated). */
 export const IMPERSONATED = 'error.password.impersonated';
-export const IMPERSONATED_MESSAGE =
-  'You are signed in as another account, so this needs its owner. Sign in with your own account to do it.';
+/** English; the console shows authMessages.impersonated. */
+export const IMPERSONATED_MESSAGE: string = authMessages.impersonated.defaultMessage as string;
 
 export interface AuthOptions {
   signup: boolean;
