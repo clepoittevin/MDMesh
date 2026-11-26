@@ -8,7 +8,7 @@
   "src/data/fleetHealth.ts": 5,
   "src/data/kioskBackground.ts": 1,
   "src/data/kioskLauncherLayout.ts": 2,
-  "src/data/seededRoles.ts": 4,
+  "src/data/seededRoles.ts": 8,
   "src/data/useDevices.ts": 1,
   "src/data/useFleetSync.ts": 3,
   "src/ext/ExtensionBoundary.tsx": 1,

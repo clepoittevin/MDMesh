@@ -25,11 +25,22 @@ describe('seeded roles', () => {
 
   it('translates a seeded description, keeps one an admin wrote', () => {
     expect(roleDescription(en, { id: 4, name: 'Наблюдатель', description: 'Наблюдатель зорко наблюдает' })).toBe(
-      'Sees the devices without changing them',
+      'Read-only access to the control panel',
     );
     expect(roleDescription(en, { id: 2, name: 'Администратор', description: 'Responsables du club' })).toBe(
       'Responsables du club',
     );
     expect(roleDescription(en, { id: 9, name: 'Arbitres', description: 'Saisie des scores' })).toBe('Saisie des scores');
+  });
+});
+
+describe("the installers' English seed", () => {
+  it('shows it in the console language, and in English as the installer wrote it', () => {
+    expect(roleName(fr, { id: 100, name: 'Observer' })).toBe('Observateur');
+    expect(roleName(en, { id: 3, name: 'User' })).toBe('User');
+    expect(roleDescription(en, { id: 3, name: 'User', description: 'Limited access to the control panel' })).toBe(
+      'Limited access to the control panel',
+    );
+    expect(isSeededRole({ id: 3, name: 'User' })).toBe(false);
   });
 });

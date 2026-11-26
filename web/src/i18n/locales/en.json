@@ -5771,25 +5771,25 @@
     "defaultMessage": "Admin"
   },
   "roles.seeded.admin.description": {
-    "defaultMessage": "Administers one organization"
+    "defaultMessage": "Full access to the control panel"
   },
   "roles.seeded.observer": {
     "defaultMessage": "Observer"
   },
   "roles.seeded.observer.description": {
-    "defaultMessage": "Sees the devices without changing them"
+    "defaultMessage": "Read-only access to the control panel"
   },
   "roles.seeded.superAdmin": {
     "defaultMessage": "Super admin"
   },
   "roles.seeded.superAdmin.description": {
-    "defaultMessage": "Manages every organization on this server"
+    "defaultMessage": "Can sign in as any user. In shared mode, manages corporate accounts"
   },
   "roles.seeded.user": {
     "defaultMessage": "User"
   },
   "roles.seeded.user.description": {
-    "defaultMessage": "Manages the devices of one organization"
+    "defaultMessage": "Limited access to the control panel"
   },
   "rollout.action.cancel": {
     "defaultMessage": "Cancel rollout"

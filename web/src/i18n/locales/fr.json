@@ -5754,25 +5754,25 @@
     "defaultMessage": "Administrateur"
   },
   "roles.seeded.admin.description": {
-    "defaultMessage": "Administre une organisation"
+    "defaultMessage": "Accès complet à la console"
   },
   "roles.seeded.observer": {
     "defaultMessage": "Observateur"
   },
   "roles.seeded.observer.description": {
-    "defaultMessage": "Voit les appareils sans pouvoir les modifier"
+    "defaultMessage": "Accès en lecture seule à la console"
   },
   "roles.seeded.superAdmin": {
     "defaultMessage": "Super-administrateur"
   },
   "roles.seeded.superAdmin.description": {
-    "defaultMessage": "Gère toutes les organisations de ce serveur"
+    "defaultMessage": "Peut se connecter en tant que n’importe quel utilisateur. En mode partagé, gère les comptes des organisations"
   },
   "roles.seeded.user": {
     "defaultMessage": "Utilisateur"
   },
   "roles.seeded.user.description": {
-    "defaultMessage": "Gère les appareils d’une organisation"
+    "defaultMessage": "Accès limité à la console"
   },
   "rollout.action.cancel": {
     "defaultMessage": "Annuler le déploiement"

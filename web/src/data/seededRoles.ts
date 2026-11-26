@@ -1,7 +1,8 @@
-// The roles and their descriptions that Headwind's Liquibase seed writes in Russian (db.changelog.xml: userRoles 1–3,
-// and the Observer role added later). The database keeps those names: upstream migrations find roles by them
-// (`WHERE name IN ('Администратор', …)`), so renaming them would break a later update. The console shows them in the
-// console's language instead. A role an admin renamed, or created, shows as typed.
+// The seeded roles and their descriptions. Headwind's Liquibase seed writes them in Russian (db.changelog.xml:
+// userRoles 1–3, and the Observer role added later); the installers then rename them in English
+// (install/sql/hmdm_init.en.sql), but a database seeded another way keeps the Russian. Upstream migrations find roles by
+// those names (`WHERE name IN ('Администратор', …)`), so the console doesn't rename them: it shows either seed in the
+// console's language. A role an admin renamed, or created, shows as typed.
 import { defineMessages, type IntlShape, type MessageDescriptor } from 'react-intl';
 
 type Seeded = 'superAdmin' | 'admin' | 'user' | 'observer';
@@ -12,6 +13,11 @@ const SEED: Readonly<Record<string, { key: Seeded; description: string }>> = {
   'Администратор': { key: 'admin', description: 'Выполняет функции администратора для одной клиентской записи' },
   'Пользователь': { key: 'user', description: 'Пользователь для одной клиентской записи' },
   'Наблюдатель': { key: 'observer', description: 'Наблюдатель зорко наблюдает' },
+  // The installers' English seed (hmdm_init.en.sql).
+  'Super-Admin': { key: 'superAdmin', description: 'Can sign in as any user. In shared mode, manages corporate accounts' },
+  Admin: { key: 'admin', description: 'Full access to the control panel' },
+  User: { key: 'user', description: 'Limited access to the control panel' },
+  Observer: { key: 'observer', description: 'Read-only access to the control panel' },
 };
 
 /** The seeded ids, for a seeded role whose name no longer matches (an older seed, or a partial rename). */
@@ -25,10 +31,13 @@ const names = defineMessages<Seeded>({
 }) as Record<Seeded, MessageDescriptor>;
 
 const descriptions = defineMessages<Seeded>({
-  superAdmin: { id: 'roles.seeded.superAdmin.description', defaultMessage: 'Manages every organization on this server' },
-  admin: { id: 'roles.seeded.admin.description', defaultMessage: 'Administers one organization' },
-  user: { id: 'roles.seeded.user.description', defaultMessage: 'Manages the devices of one organization' },
-  observer: { id: 'roles.seeded.observer.description', defaultMessage: 'Sees the devices without changing them' },
+  superAdmin: {
+    id: 'roles.seeded.superAdmin.description',
+    defaultMessage: 'Can sign in as any user. In shared mode, manages corporate accounts',
+  },
+  admin: { id: 'roles.seeded.admin.description', defaultMessage: 'Full access to the control panel' },
+  user: { id: 'roles.seeded.user.description', defaultMessage: 'Limited access to the control panel' },
+  observer: { id: 'roles.seeded.observer.description', defaultMessage: 'Read-only access to the control panel' },
 }) as Record<Seeded, MessageDescriptor>;
 
 const CYRILLIC = /[Ѐ-ӿ]/;
@@ -48,8 +57,8 @@ function seededKey(role: RoleLike): Seeded | null {
   return null;
 }
 
-/** Whether the role still has a name from Headwind's Russian seed (shown translated). */
-export const isSeededRole = (role: RoleLike): boolean => seededKey(role) !== null;
+/** Whether the role still has a name from Headwind's Russian seed (shown translated, kept in the database). */
+export const isSeededRole = (role: RoleLike): boolean => seededKey(role) !== null && CYRILLIC.test(role.name ?? '');
 
 /** The role's name to show: a seeded one in the console's language, anything else as typed. */
 export function roleName(intl: IntlShape, role: RoleLike): string {
