@@ -32,6 +32,10 @@ Upgrading
   End it with `await settled()`, new in `@mdmesh/console/testing` ([EXTENDING.md](web/EXTENDING.md#testing)).
   `stubApi`'s answers now arrive a moment later: wait with `findBy…` or `settled()`, not `act(async () => {})`. The
   same goes for tests of your own in core ([UPGRADING.md](docs/UPGRADING.md#v060-for-forks-that-change-the-console)).
+- PostgreSQL and cloudflared now run exact images, pinned by digest: `postgres:14.25-trixie` (still PostgreSQL 14)
+  and cloudflared 2026.11.2. From source, `./setup.sh --update` restarts the database for a few seconds. Quick-start
+  installs keep the images they were set up with: update cloudflared with the step in UPGRADING at least once a year,
+  as Cloudflare supports releases up to a year old ([UPGRADING.md](docs/UPGRADING.md#unreleased)).
 
 Heads-up
 - Configurations carried over from Headwind with **Extra QR parameters**: the enrollment QR now uses the setup
@@ -79,6 +83,9 @@ New
   `onSelect` moves focus itself, so the menu leaves focus there rather than returning it to its trigger.
 
 Fixes
+- Password-recovery emails name the product MDMesh when no `rebranding.name` is set, and the API's own title says
+  MDMesh; both named the upstream product. `/rest/public/logo` answers 404 when no `rebranding.logo` is set, instead of
+  redirecting to an upstream logo.
 - Devices search finds IMEIs reported by current agents, in either SIM slot and by part of the number, also for devices
   that haven't checked in since the update. When a search matches more devices than one request returns (1,000 in the
   console), the best matches are now kept rather than the weakest; a reported IMEI counts like one set by an administrator.
@@ -96,6 +103,10 @@ Fixes
   that races the delete is answered as for an unknown device, not with a server error.
 - The API refuses to change the number of a device enrolled with the agent (`error.device.number.agent`): the agent
   signs in with that number and could not check in again. Other devices are renamed as before.
+- API: saving a configuration as `GET /configurations/{id}` answers it, or without `applications`, keeps its apps and
+  its main app. Before, it removed them. An empty list still removes them
+  ([UPGRADING.md](docs/UPGRADING.md#unreleased)). Duplicating a configuration keeps its "Enroll over mobile
+  data" setting.
 - Bulk delete deletes nothing when one of the devices is out of the user's reach. Otherwise each device is deleted on
   its own, and when some can't be, the console keeps those selected to delete again. Before, a failure partway left
   some deleted and still answered OK.
@@ -125,6 +136,8 @@ Fixes
   older ones it dropped.
 - Check-ins: a device whose reported Android release, agent version or power mode the server can't store (too long,
   or with a control character) no longer fails every check-in; the server ignores that value and logs it.
+- Agent: check-ins wait 30 seconds for a busy server's answer instead of 10. On Android 7 and 8, an app download from
+  an HTTPS address no longer follows a redirect to HTTP (Android 9 and later already refused it).
 - Enrollment and check-ins: a hardware id longer than 128 characters or with a control character is ignored, so the
   device enrolls and checks in without it. Before, one too long or holding a NUL failed the enrollment on every
   retry, and every check-in.
@@ -133,11 +146,15 @@ Fixes
   wipes the previous run's log, and when the clone is ahead of the install it says the install is unchanged and how to
   finish the update.
 - An organization whose settings had two-factor sign-in turned on (possible only in a database carried over from
-  Headwind MDM, or edited by hand) couldn't sign in at all, in the console or through the API. MDMesh has no second
+  the upstream project, or edited by hand) couldn't sign in at all, in the console or through the API. MDMesh has no second
   sign-in step yet, so the unused setting is removed. Those accounts now sign in with their password alone (no
   authenticator code is asked for) and get API tokens again, which v0.3.3 had stopped. Two-factor sign-in for each
   user is planned for a later release. The settings and user answers no longer include `twoFactor`; a request that
   still sends it is accepted, and the field ignored.
+- Agent: a device that lost its stored configuration (damaged storage) says so and is sent it again, kiosk included.
+  Before, it showed as in sync for good and no longer applied it after a restart.
+- Check-in: a device whose reported state the database refuses still gets its commands (the server logs why and keeps
+  the last state it could store). One whose check-in fails while storing it is no longer shown as Online.
 
 Under the hood
 - CI builds the agent's instrumented tests (they still run only by hand, on an emulator).
@@ -148,6 +165,8 @@ Under the hood
   for it. CI refuses a component under a licence outside `docs/licenses/allowed.txt`, or one offered under several
   with no recorded choice ([policy](https://github.com/MDMesh-app/MDMesh/blob/main/docs/licenses/policy.md)).
   The server no longer ships SpotBugs' annotations (LGPL-2.1), which nothing used at runtime.
+- Every file kept from the upstream project that MDMesh changed now says so, and CI checks it
+  ([policy](https://github.com/MDMesh-app/MDMesh/blob/main/docs/licenses/policy.md#files-kept-from-upstream)).
 - Console: the groundwork for translations. New console text is written as react-intl messages (English stays in
   the code), and a test fails on most new untranslated text in core files; existing text moves over area by area. No
   other language ships yet ([web/README.md](web/README.md#translatable-text)).
