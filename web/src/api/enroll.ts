@@ -12,6 +12,8 @@ export interface EnrollTokenResponse {
   createdAt?: number;
   /** How many devices the token enrolls; absent from a server that predates it, whose tokens are single-use. */
   maxUses?: number;
+  /** The name the enrolled device gets (numbered when the token enrolls several); absent from a server that predates it. */
+  deviceName?: string | null;
   [key: string]: unknown;
 }
 
@@ -24,13 +26,16 @@ export interface EnrollTokenLimits {
 export async function mintEnrollToken(
   configurationId?: number,
   limits: EnrollTokenLimits = {},
+  deviceName?: string,
 ): Promise<EnrollTokenResponse> {
   // configurationId binds the enrolled device to that configuration (server validates ownership);
-  // omitted -> the server's settings default applies.
+  // omitted -> the server's settings default applies. deviceName: blank or omitted -> the device stays unnamed.
+  const name = deviceName?.trim();
   return apiClient.post<EnrollTokenResponse>('/private/agent/v1/token', {
     ...(configurationId ? { configurationId } : {}),
     ...(limits.maxUses ? { maxUses: limits.maxUses } : {}),
     ...(limits.validHours ? { validHours: limits.validHours } : {}),
+    ...(name ? { deviceName: name } : {}),
   });
 }
 

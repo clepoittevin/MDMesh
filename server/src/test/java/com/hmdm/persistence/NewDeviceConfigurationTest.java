@@ -69,28 +69,28 @@ public class NewDeviceConfigurationTest {
     @Test
     public void tokenEnrollmentRefusesADefaultConfigurationOfAnotherCustomer() {
         FakeMapper<DeviceMapper> devices = devicesWithGroups();
-        assertNull(unsecureDAO(devices, OTHER_CONFIG).createNewDeviceForToken("new-device", CUSTOMER, null));
+        assertNull(unsecureDAO(devices, OTHER_CONFIG).createNewDeviceForToken("new-device", CUSTOMER, null, null));
         assertTrue(devices.calls.toString(), devices.callsTo("insertDevice").isEmpty());
     }
 
     @Test
     public void tokenEnrollmentRefusesABoundConfigurationOfAnotherCustomer() {
         FakeMapper<DeviceMapper> devices = devicesWithGroups();
-        assertNull(unsecureDAO(devices, OWN_CONFIG).createNewDeviceForToken("new-device", CUSTOMER, OTHER_CONFIG));
+        assertNull(unsecureDAO(devices, OWN_CONFIG).createNewDeviceForToken("new-device", CUSTOMER, OTHER_CONFIG, null));
         assertTrue(devices.calls.toString(), devices.callsTo("insertDevice").isEmpty());
     }
 
     @Test
     public void tokenEnrollmentStillUsesTheOwnDefaultConfiguration() {
         FakeMapper<DeviceMapper> devices = devicesWithGroups();
-        unsecureDAO(devices, OWN_CONFIG).createNewDeviceForToken("new-device", CUSTOMER, null);
+        unsecureDAO(devices, OWN_CONFIG).createNewDeviceForToken("new-device", CUSTOMER, null, null);
         assertTrue(devices.calls.toString(), devices.callsTo("insertDevice").size() == 1);
     }
 
     @Test
     public void tokenEnrollmentDoesNotPutTheDeviceIntoAnotherCustomersGroup() {
         FakeMapper<DeviceMapper> devices = devicesWithGroups();
-        unsecureDAO(devices, OWN_CONFIG, OTHER_GROUP).createNewDeviceForToken("new-device", CUSTOMER, null);
+        unsecureDAO(devices, OWN_CONFIG, OTHER_GROUP).createNewDeviceForToken("new-device", CUSTOMER, null, null);
         assertTrue(devices.calls.toString(), devices.callsTo("insertDevice").size() == 1);
         assertTrue(devices.calls.toString(), devices.callsTo("insertDeviceGroups").isEmpty());
     }
@@ -98,7 +98,7 @@ public class NewDeviceConfigurationTest {
     @Test
     public void tokenEnrollmentStillUsesTheOwnDefaultGroup() {
         FakeMapper<DeviceMapper> devices = devicesWithGroups();
-        unsecureDAO(devices, OWN_CONFIG, OWN_GROUP).createNewDeviceForToken("new-device", CUSTOMER, null);
+        unsecureDAO(devices, OWN_CONFIG, OWN_GROUP).createNewDeviceForToken("new-device", CUSTOMER, null, null);
         assertTrue(devices.calls.toString(), devices.callsTo("insertDeviceGroups").size() == 1);
     }
 

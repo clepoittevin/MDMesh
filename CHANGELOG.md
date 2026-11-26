@@ -9,6 +9,10 @@ Unreleased.
 
 ## Unreleased
 
+New
+- Enrollment codes can name the device they enroll (numbered "Name 1", "Name 2", … for a code for several devices),
+  and the Devices page filters can show only unnamed devices (#186).
+
 ## v0.6.0 — 2026-11-27
 
 Upgrading

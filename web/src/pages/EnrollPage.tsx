@@ -62,7 +62,12 @@ interface Minted {
   maxUses: number;
   /** The server applied the chosen devices and validity; false: it predates them, and made a single-use 24 h code. */
   limitsApplied: boolean;
+  /** The name the enrolled device gets, as the server says (absent: none, or a server that predates names). */
+  deviceName?: string;
 }
+
+/** As long as a device name can be (the same as renaming a device). */
+const DEVICE_NAME_MAX = 200;
 
 /**
  * How many devices one code enrolls: one, a code to send to a customer, or a batch set up together. A code for several
@@ -125,6 +130,8 @@ function tokenError(err: unknown): string {
       return "Your account can't enroll devices: it needs permission to edit devices.";
     if (err.message === 'error.agent.token.maxUses') return 'A code can enroll 1 to 1000 devices.';
     if (err.message === 'error.agent.token.validHours') return 'A code can be valid for 1 hour to 30 days.';
+    if (err.message === 'error.agent.token.deviceName')
+      return `A device name can be up to ${DEVICE_NAME_MAX} characters, without line breaks or tabs.`;
     return err.message || 'Couldn’t make a code.';
   }
   return 'Couldn’t make a code.';
@@ -166,6 +173,10 @@ function useNow(everyMs: number, at?: number): number {
 
 /** How long a configuration choice must settle before a token is minted for it (arrowing through the select). */
 const MINT_SETTLE_MS = 300;
+/** How long the device name must rest before it goes into a code by itself: one code per pause, not per keystroke. */
+const NAME_SETTLE_MS = 1500;
+/** Shown instead of the code while the name typed isn't in it yet. */
+const NAME_PENDING = 'Press Enter to put the name in the code.';
 
 function qrSteps(wifiInCode: boolean): ReactNode[] {
   return [
@@ -232,6 +243,21 @@ export function EnrollPage() {
   const [cfgId, setCfgId] = useState(defaultId);
   const [uses, setUses] = useState(1);
   const [validHours, setValidHours] = useState(24);
+  /** The name as typed, and as committed (trimmed: on leaving the field, Enter, or a pause): only the committed one mints. */
+  const [nameDraft, setNameDraft] = useState('');
+  const [deviceName, setDeviceName] = useState('');
+  const commitName = () => {
+    const name = nameDraft.trim();
+    setNameDraft(name);
+    setDeviceName(name);
+  };
+  /** The shown code doesn't carry the name in the field yet: no code is shown until it does. */
+  const namePending = nameDraft.trim() !== deviceName;
+  useEffect(() => {
+    if (!namePending) return;
+    const t = setTimeout(() => setDeviceName(nameDraft.trim()), NAME_SETTLE_MS);
+    return () => clearTimeout(t);
+  }, [nameDraft, namePending]);
   /** null while loading. */
   const [configs, setConfigs] = useState<Configuration[] | null>(null);
   const [configsFailed, setConfigsFailed] = useState(false);
@@ -336,10 +362,11 @@ export function EnrollPage() {
 
   /**
    * Mint a token for `maxUses` devices, valid `hours`, bound to configuration `id` ('' = none: the server's setting
-   * for new devices). The latest call wins. `keep` leaves the current code up while a new one for the SAME choices is
-   * minted ("New code"); changing a choice clears it, so a code never carries a token for other choices.
+   * for new devices), naming the device `name` ('' = unnamed). The latest call wins. `keep` leaves the current code up
+   * while a new one for the SAME choices is minted ("New code"); changing a choice clears it, so a code never carries a
+   * token for other choices.
    */
-  const generate = useCallback(async (id: string, keep: boolean, maxUses: number, hours: number) => {
+  const generate = useCallback(async (id: string, keep: boolean, maxUses: number, hours: number, name: string) => {
     const seq = ++mintSeq.current;
     const n = Number(id);
     // A new code doesn't stop the one it replaces. For a batch that one keeps working for anyone who has it: say so,
@@ -356,13 +383,14 @@ export function EnrollPage() {
     setTokError(null);
     if (!keep) setToken(null);
     try {
-      const res = await mintEnrollToken(Number.isFinite(n) && n > 0 ? n : undefined, { maxUses, validHours: hours });
+      const res = await mintEnrollToken(Number.isFinite(n) && n > 0 ? n : undefined, { maxUses, validHours: hours }, name);
       if (seq !== mintSeq.current) return;
       const applied = typeof res.maxUses === 'number';
       const devices = typeof res.maxUses === 'number' ? res.maxUses : 1;
       if (res.token) {
         const createdAt = typeof res.createdAt === 'number' ? res.createdAt : undefined;
-        const next = { value: res.token, expiresAt: res.expiresAt, createdAt, maxUses: devices, limitsApplied: applied };
+        const deviceName = typeof res.deviceName === 'string' && res.deviceName ? res.deviceName : undefined;
+        const next = { value: res.token, expiresAt: res.expiresAt, createdAt, maxUses: devices, limitsApplied: applied, deviceName };
         shown.current = next;
         setToken(next);
         if (createdAt != null) setSince((s) => s ?? createdAt);
@@ -388,14 +416,14 @@ export function EnrollPage() {
     const t = setTimeout(
       () => {
         minted.current = true;
-        void generate(cfgId, false, uses, validHours);
+        void generate(cfgId, false, uses, validHours, deviceName);
       },
       minted.current ? MINT_SETTLE_MS : 0,
     );
     return () => clearTimeout(t);
-  }, [cfgId, uses, validHours, generate, mintReady]);
+  }, [cfgId, uses, validHours, deviceName, generate, mintReady]);
 
-  const newCode = () => void generate(cfgId, true, uses, validHours);
+  const newCode = () => void generate(cfgId, true, uses, validHours, deviceName);
 
   /** Stop every code that still works, then make a new one for the current choices (the shown one stopped too). */
   const stopAll = async () => {
@@ -412,7 +440,7 @@ export function EnrollPage() {
         'Codes stopped',
         n === null ? 'Every enrollment code stopped working. A new code is ready.' : `${n} code${n === 1 ? '' : 's'} stopped working. A new code is ready.`,
       );
-      void generate(cfgId, false, uses, validHours);
+      void generate(cfgId, false, uses, validHours, deviceName);
     } catch (err) {
       setStopError(revokeError(err));
     } finally {
@@ -479,6 +507,7 @@ export function EnrollPage() {
     ...(withWifi && wifiOn
       ? [{ key: 'wifi', label: 'Joins Wi-Fi', value: wifiIssue ? 'Not in the code (see Wi-Fi above)' : ssid || 'No network name yet' }]
       : []),
+    ...(token?.deviceName ? [{ key: 'name', label: 'Device name', value: token.deviceName }] : []),
     { key: 'use', label: 'Use', value: usesText(token?.maxUses ?? uses) },
     { key: 'expires', label: 'Expires', value: expiresValue },
   ];
@@ -540,6 +569,29 @@ export function EnrollPage() {
           </Select>
         </Field>
       </div>
+
+      <Field
+        label="Device name"
+        help={
+          uses === 1
+            ? 'Optional: the device gets this name. Leave it empty to name it later.'
+            : `Optional: each device gets this name, numbered in the order they enroll: “${nameDraft.trim() || 'Name'} 1”, “${nameDraft.trim() || 'Name'} 2”, …`
+        }
+      >
+        <Input
+          value={nameDraft}
+          maxLength={DEVICE_NAME_MAX}
+          autoComplete="off"
+          onChange={(e) => setNameDraft(e.target.value)}
+          onBlur={commitName}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              commitName();
+            }
+          }}
+        />
+      </Field>
 
       <div className="v2-enroll__wifi">
         <div className="v2-enroll__wifirow">
@@ -621,6 +673,12 @@ export function EnrollPage() {
     <div className="v2-qr">
       <div className="v2-qr__frame v2-enroll__qrwait" role="status">
         No QR code: there is no agent to install yet.
+      </div>
+    </div>
+  ) : namePending ? (
+    <div className="v2-qr">
+      <div className="v2-qr__frame v2-enroll__qrwait" role="status">
+        {NAME_PENDING}
       </div>
     </div>
   ) : payload && !expired ? (
@@ -726,7 +784,11 @@ export function EnrollPage() {
           </div>
         ) : (
           <div className="v2-enroll__token">
-            {token && !expired ? (
+            {namePending ? (
+              <span className="v2-enroll__tokenwait" role="status">
+                {NAME_PENDING}
+              </span>
+            ) : token && !expired ? (
               <Field label="Enrollment token">
                 <CopyField
                   value={token.value}

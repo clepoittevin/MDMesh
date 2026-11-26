@@ -66,10 +66,10 @@ public class AgentEnrollmentTransactionTest {
 
     /** Inserts the device row (what UnsecureDAO.createNewDeviceForToken does, minus settings). */
     public interface TestDeviceMapper {
-        @Insert({"INSERT INTO devices (number, customerId, configurationId, lastUpdate) " +
-                "VALUES (#{number}, #{customerId}, #{configurationId}, 0)"})
+        @Insert({"INSERT INTO devices (number, customerId, configurationId, lastUpdate, description) " +
+                "VALUES (#{number}, #{customerId}, #{configurationId}, 0, #{description})"})
         void insert(@Param("number") String number, @Param("customerId") int customerId,
-                    @Param("configurationId") Integer configurationId);
+                    @Param("configurationId") Integer configurationId, @Param("description") String description);
 
         /** The lock DeviceMapper.lockCustomerDevices takes for console and on-demand device creation. */
         @org.apache.ibatis.annotations.Select({CustomerDeviceLimit.LOCK_SQL})
@@ -97,7 +97,7 @@ public class AgentEnrollmentTransactionTest {
                     () -> mapper.count(customerId))) {
                 return false;
             }
-            mapper.insert(number, customerId, null);
+            mapper.insert(number, customerId, null, null);
             return true;
         }
     }
@@ -126,9 +126,9 @@ public class AgentEnrollmentTransactionTest {
         }
 
         @Override
-        public Device create(String number, int customerId, Integer configurationId) {
+        public Device create(String number, int customerId, Integer configurationId, String description) {
             if (Hooks.refuse) return null;
-            mapper.insert(number, customerId, configurationId);
+            mapper.insert(number, customerId, configurationId, description);
             CountDownLatch inside = Hooks.inside;
             if (inside != null) {
                 inside.countDown();
@@ -167,7 +167,7 @@ public class AgentEnrollmentTransactionTest {
                 "CREATE TABLE " + schema + ".agentEnrollmentToken (id serial PRIMARY KEY, token VARCHAR(64), "
                         + "customerId INT NOT NULL, used BOOLEAN NOT NULL DEFAULT false, createdAt BIGINT, "
                         + "expiresAt BIGINT, configurationId INT, maxUses INT NOT NULL DEFAULT 1, "
-                        + "useCount INT NOT NULL DEFAULT 0, revokedAt BIGINT)",
+                        + "useCount INT NOT NULL DEFAULT 0, revokedAt BIGINT, deviceName TEXT)",
                 "CREATE TABLE " + schema + ".customers (id INT PRIMARY KEY, name VARCHAR(50), "
                         + "deviceLimit INT NOT NULL DEFAULT 3, master BOOLEAN NOT NULL DEFAULT false, "
                         + "lastLoginTime BIGINT)",
@@ -281,6 +281,16 @@ public class AgentEnrollmentTransactionTest {
         return count("SELECT count(*) FROM " + schema + ".devices");
     }
 
+    /** The devices' descriptions, in order. */
+    private List<String> descriptions() throws Exception {
+        List<String> names = new ArrayList<>();
+        try (Connection c = connect(); Statement s = c.createStatement(); ResultSet r = s.executeQuery(
+                "SELECT description FROM " + schema + ".devices ORDER BY description")) {
+            while (r.next()) names.add(r.getString(1));
+        }
+        return names;
+    }
+
     private long uses(int tokenId) throws Exception {
         return count("SELECT useCount FROM " + schema + ".agentEnrollmentToken WHERE id = " + tokenId);
     }
@@ -368,6 +378,53 @@ public class AgentEnrollmentTransactionTest {
         assertEquals(2, devices());
         assertEquals(2, uses(tokenId));
         assertEquals(1, count("SELECT count(*) FROM " + schema + ".agentEnrollmentToken WHERE used"));
+    }
+
+    @Test
+    public void a_named_batch_code_numbers_its_devices_without_a_gap_or_a_repeat_when_more_enroll_at_once()
+            throws Exception {
+        int tokenId = token(3);
+        sql("UPDATE " + schema + ".agentEnrollmentToken SET deviceName = 'Target' WHERE id = " + tokenId);
+        List<Future<AgentEnrollmentDAO.Outcome>> all = new ArrayList<>();
+        CountDownLatch start = new CountDownLatch(1);
+        for (int i = 0; i < 6; i++) {
+            String attempt = "attempt-" + i + "-0123456789abcdef";
+            all.add(pool.submit(() -> {
+                start.await();
+                return enroll(tokenId, attempt);
+            }));
+        }
+        start.countDown();
+        for (Future<AgentEnrollmentDAO.Outcome> f : all) {
+            f.get(30, TimeUnit.SECONDS);
+        }
+        assertEquals(java.util.Arrays.asList("Target 1", "Target 2", "Target 3"), descriptions());
+    }
+
+    @Test
+    public void a_retry_of_a_named_enrollment_takes_no_number_and_a_refused_one_gives_its_number_back()
+            throws Exception {
+        int tokenId = token(3);
+        sql("UPDATE " + schema + ".agentEnrollmentToken SET deviceName = 'Target' WHERE id = " + tokenId);
+        AgentEnrollmentDAO.Outcome first = enroll(tokenId, "attempt-0123456789abcdef");
+        assertEquals(AgentEnrollmentDAO.Outcome.Kind.RESUMED, enroll(tokenId, "attempt-0123456789abcdef").kind);
+        assertEquals(AgentEnrollmentDAO.Outcome.Kind.RESUMED, resumeOnly(enrollments, tokenId,
+                "attempt-0123456789abcdef").kind);
+        Hooks.refuse = true;
+        try {
+            enroll(tokenId, null);
+            fail("expected CreationRefusedException");
+        } catch (AgentEnrollmentDAO.CreationRefusedException expected) {
+            // rolled back, its number too
+        }
+        Hooks.refuse = false;
+        AgentEnrollmentDAO.Outcome second = enroll(tokenId, "attempt-fedcba9876543210");
+        assertEquals(java.util.Arrays.asList("Target 1", "Target 2"), descriptions());
+        assertEquals(2, uses(tokenId));
+        assertEquals(1, count("SELECT count(*) FROM " + schema + ".devices WHERE number = '" + first.deviceNumber
+                + "' AND description = 'Target 1'"));
+        assertEquals(1, count("SELECT count(*) FROM " + schema + ".devices WHERE number = '" + second.deviceNumber
+                + "' AND description = 'Target 2'"));
     }
 
     @Test

@@ -138,7 +138,9 @@ public class AgentAdminResource {
     @ApiOperation(value = "Mint enrollment token", notes = "Creates an enrollment token for the current customer. "
             + "An optional configurationId binds the enrolled devices to that configuration. An optional maxUses (1 to "
             + "1000, default 1: single use) lets one token enroll that many devices, and an optional validHours (1 to "
-            + "720, default 24) sets how long it is valid.")
+            + "720, default 24) sets how long it is valid. An optional deviceName (up to 200 characters, no control "
+            + "characters; trimmed, blank means none) names the enrolled device: as it is for a single-use token, "
+            + "numbered \"<deviceName> 1\", \"<deviceName> 2\", ... in enrollment order for a token for several devices.")
     @POST
     @Path("/token")
     @Consumes(MediaType.APPLICATION_JSON)
@@ -177,6 +179,13 @@ public class AgentAdminResource {
             return Response.ERROR(limitsProblem);
         }
 
+        // The name the enrolled device gets, if any.
+        String deviceName = EnrollmentTokenLimits.deviceName(body == null ? null : body.getDeviceName());
+        String deviceNameProblem = EnrollmentTokenLimits.deviceNameProblem(deviceName);
+        if (deviceNameProblem != null) {
+            return Response.ERROR(deviceNameProblem);
+        }
+
         long now = System.currentTimeMillis();
         AgentEnrollmentToken token = new AgentEnrollmentToken();
         token.setToken(UUID.randomUUID().toString());
@@ -187,6 +196,7 @@ public class AgentAdminResource {
         token.setUseCount(0);
         token.setCreatedAt(now);
         token.setExpiresAt(now + EnrollmentTokenLimits.validMillis(validHours));
+        token.setDeviceName(deviceName);
         tokenDAO.insert(token);
 
         logger.info("Agent enrollment token {} minted for customer {} (configuration {}, {} device(s))",

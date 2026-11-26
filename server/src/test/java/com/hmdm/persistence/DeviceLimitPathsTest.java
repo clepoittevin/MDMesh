@@ -84,8 +84,8 @@ public class DeviceLimitPathsTest {
         }
 
         @Override
-        public Device create(String number, int customerId, Integer configurationId) {
-            Device d = unsecureDAO.createNewDeviceForToken(number, customerId, configurationId);
+        public Device create(String number, int customerId, Integer configurationId, String description) {
+            Device d = unsecureDAO.createNewDeviceForToken(number, customerId, configurationId, description);
             CountDownLatch inside = Hold.inside;
             if (inside != null) {
                 inside.countDown();
@@ -368,5 +368,25 @@ public class DeviceLimitPathsTest {
         assertEquals(3, devices());
         assertNull(injector.getInstance(UnsecureDAO.class).getDeviceByNumber(customerName + "-fifth"));
         assertNotNull(injector.getInstance(UnsecureDAO.class).getDeviceByNumber(customerName + "-third"));
+    }
+
+    @Test
+    public void an_enrolled_device_gets_the_name_its_code_carries_on_the_real_schema() throws Exception {
+        // The mint's insert and the enrollment's SELECT * of the token, the device insert: the production statements
+        // over the changelog's column.
+        com.hmdm.persistence.domain.AgentEnrollmentToken t = new com.hmdm.persistence.domain.AgentEnrollmentToken();
+        t.setToken(UUID.randomUUID().toString());
+        t.setCustomerId(customerId);
+        t.setConfigurationId(otherConfigurationId);
+        t.setMaxUses(5);
+        t.setExpiresAt(System.currentTimeMillis() + 3_600_000L);
+        t.setDeviceName("Target");
+        injector.getInstance(AgentEnrollmentTokenDAO.class).insert(t);
+
+        AgentEnrollmentDAO.Outcome o = injector.getInstance(AgentEnrollmentDAO.class).enroll(t.getId(), customerId,
+                otherConfigurationId, customerName + "-named", "{}", null, null, false);
+        assertEquals(AgentEnrollmentDAO.Outcome.Kind.CREATED, o.kind);
+        assertEquals("Target 1", injector.getInstance(UnsecureDAO.class)
+                .getDeviceByNumber(customerName + "-named").getDescription());
     }
 }

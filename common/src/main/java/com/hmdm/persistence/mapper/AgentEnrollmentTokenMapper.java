@@ -24,9 +24,9 @@ public interface AgentEnrollmentTokenMapper {
             "AND (expiresAt IS NULL OR expiresAt > #{now}))";
 
     @Insert({"INSERT INTO agentEnrollmentToken (token, customerId, used, createdAt, expiresAt, configurationId, " +
-            "maxUses, useCount) " +
+            "maxUses, useCount, deviceName) " +
             "VALUES (#{token}, #{customerId}, #{used}, #{createdAt}, #{expiresAt}, #{configurationId}, " +
-            "#{maxUses}, #{useCount})"})
+            "#{maxUses}, #{useCount}, #{deviceName})"})
     @SelectKey(statement = "SELECT currval('agentenrollmenttoken_id_seq')", keyColumn = "id", keyProperty = "id",
             before = false, resultType = int.class)
     void insert(AgentEnrollmentToken token);
