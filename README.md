@@ -10,7 +10,7 @@
 
 **Self-hosted mobile device management (MDM) for Android: a server, a web console and a Device Owner agent.**
 
-[![Release](https://img.shields.io/github/v/release/MDMesh-app/MDMesh?sort=semver)](https://github.com/MDMesh-app/MDMesh/releases)
+[![Release](https://img.shields.io/github/v/release/clepoittevin/MDMesh?sort=semver)](https://github.com/clepoittevin/MDMesh/releases)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 ![Deploy](https://img.shields.io/badge/deploy-Docker%20%7C%20native-2496ed)
@@ -25,6 +25,13 @@
 </p>
 
 </div>
+
+> [!NOTE]
+> **This is the SSVA fork of [MDMesh](https://github.com/MDMesh-app/MDMesh)** (the archery club's Android scoring
+> phones). It follows the upstream releases and adds the enrollment QR setup settings (proposed upstream as
+> MDMesh-app/MDMesh#272). Its releases are signed with the fork's own keys: the agent cannot update a device enrolled
+> with the upstream agent, and a server installed from upstream does not take these releases. Bugs in upstream code
+> go [upstream](https://github.com/MDMesh-app/MDMesh/issues).
 
 You enroll an Android device by scanning a QR code during its setup, which makes the MDMesh agent its Device Owner.
 From the web console you then install apps on it, lock it into kiosk mode, see its location and send it remote
@@ -91,7 +98,7 @@ On an x86_64 Linux host with Docker, Docker Compose v2, `curl`, `openssl` 3.0+ (
 and 443 open:
 
 ```bash
-bash <(curl -fsSL https://github.com/MDMesh-app/MDMesh/releases/latest/download/quickstart.sh)
+bash <(curl -fsSL https://github.com/clepoittevin/MDMesh/releases/latest/download/quickstart.sh)
 ```
 
 To check `quickstart.sh` against the signed release before it runs, use the
@@ -102,7 +109,7 @@ The quick start pulls the released images and sets up updates from the console. 
 optional, to verify the release for the enrollment QR):
 
 ```bash
-git clone https://github.com/MDMesh-app/MDMesh.git && cd MDMesh
+git clone https://github.com/clepoittevin/MDMesh.git && cd MDMesh
 ./setup.sh --update      # checks out the newest signed release, then sets it up
 ```
 

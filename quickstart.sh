@@ -5,7 +5,7 @@
 # (a release asset); DEPLOY.md, Option A, checks that copy against the signed manifest before running it, and its
 # unchecked shortcut runs the copy at the latest release's tag:
 #
-#   bash <(curl -fsSL https://github.com/MDMesh-app/MDMesh/releases/latest/download/quickstart.sh)
+#   bash <(curl -fsSL https://github.com/clepoittevin/MDMesh/releases/latest/download/quickstart.sh)
 #
 # Each question can be answered in advance with an environment variable (MDMESH_MODE, MDMESH_HOST, …) or an answers
 # file (MDMESH_ANSWERS); MDMESH_NONINTERACTIVE=1 never asks, MDMESH_DRY_RUN=1 only checks the answers and prints the
@@ -19,8 +19,8 @@ set -euo pipefail
 # it for this script and its children.
 unset CDPATH
 
-REPO="MDMesh-app/MDMesh"
-IMAGE_OWNER_DEFAULT="mdmesh-app"
+REPO="clepoittevin/MDMesh"
+IMAGE_OWNER_DEFAULT="clepoittevin"
 
 say()  { printf '\033[1;36m%s\033[0m\n' "$*"; }
 warn() { printf '\033[1;33m%s\033[0m\n' "$*"; }
