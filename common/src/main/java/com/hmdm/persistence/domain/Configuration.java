@@ -131,6 +131,8 @@ public class Configuration implements CustomerData, Serializable {
     private Boolean wifiRadio;
     @ApiModelProperty("Location services: null = not managed, true = turn on, false = turn off (sent as policies.locationServices)")
     private Boolean locationServices;
+    @ApiModelProperty("Adding and removing accounts: null = not managed, true = allow, false = block (sent as policies.modifyAccounts)")
+    private Boolean modifyAccounts;
     /**
      * Console-only instruction for changing Location-services management. Not persisted: omitted saves keep the
      * stored policy so an older client cannot accidentally release it.
@@ -1041,6 +1043,14 @@ public class Configuration implements CustomerData, Serializable {
         this.locationServices = locationServices;
     }
 
+    public Boolean getModifyAccounts() {
+        return modifyAccounts;
+    }
+
+    public void setModifyAccounts(Boolean modifyAccounts) {
+        this.modifyAccounts = modifyAccounts;
+    }
+
     public String getLocationServicesAction() {
         return locationServicesAction;
     }
@@ -1162,6 +1172,7 @@ public class Configuration implements CustomerData, Serializable {
         copy.setKioskLockVolume(getKioskLockVolume());
         copy.setWifiRadio(getWifiRadio());
         copy.setLocationServices(getLocationServices());
+        copy.setModifyAccounts(getModifyAccounts());
         copy.setConnectivityMode(getConnectivityMode());
         copy.setExtensions(getExtensions() == null ? null : getExtensions().deepCopy());
 

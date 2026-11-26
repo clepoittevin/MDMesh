@@ -59,7 +59,7 @@ Most of these settings have three states:
 | Section | Settings |
 |---------|----------|
 | Network | **Wi-Fi settings**, **Wi-Fi radio** (agent 0.3.4), **Location services** (agent 0.5.0, Android 11 or later), **Bluetooth**, **Location reporting**, **Connectivity** (agent 0.4.0) |
-| Security | **Camera**, **USB storage**, **Screenshots**, **Factory reset**, **Safe Mode** |
+| Security | **Camera**, **USB storage**, **Screenshots**, **Factory reset**, **Safe Mode**, **Accounts** (agent 0.7.0) |
 
 **Not managed doesn't undo a block.** Switching a setting from Block to Not managed leaves the device as it is,
 blocked included. To lift a block, set the setting to **Allow**. The exceptions:

@@ -145,6 +145,7 @@ public interface ConfigurationMapper {
             "disableSafeBoot=#{disableSafeBoot}, " +
             "wifiRadio=#{wifiRadio}, " +
             "locationServices=#{locationServices}, " +
+            "modifyAccounts=#{modifyAccounts}, " +
             "kioskLockVolume=#{kioskLockVolume}, " +
             "connectivityMode=#{connectivityMode}, " +
             "backgroundImageFileId=#{backgroundImageFileId}, " +

@@ -312,6 +312,30 @@ public class DesiredConfigBuilderTest {
     }
 
     @Test
+    public void modify_accounts_is_sent_as_is_and_null_omits_the_key() {
+        // Same polarity as camera: true = allow, false = block; NULL (the upgrade value) leaves the key out.
+        Configuration blocked = policiesConfig(); blocked.setModifyAccounts(false);
+        assertEquals(Boolean.FALSE, build(blocked, Collections.emptyList()).getPolicies().get("modifyAccounts"));
+
+        Configuration allowed = policiesConfig(); allowed.setModifyAccounts(true);
+        assertEquals(Boolean.TRUE, build(allowed, Collections.emptyList()).getPolicies().get("modifyAccounts"));
+
+        assertFalse("null modifyAccounts = not managed",
+                build(policiesConfig(), Collections.emptyList()).getPolicies().containsKey("modifyAccounts"));
+    }
+
+    @Test
+    public void modify_accounts_changes_the_revision_and_unmanaged_keeps_the_old_one() {
+        Configuration unmanaged = policiesConfig();
+        Configuration blocked = policiesConfig(); blocked.setModifyAccounts(false);
+        Configuration allowed = policiesConfig(); allowed.setModifyAccounts(true);
+        String before = build(unmanaged, Collections.emptyList()).getRevision();
+        assertNotEquals(before, build(blocked, Collections.emptyList()).getRevision());
+        assertNotEquals(build(blocked, Collections.emptyList()).getRevision(),
+                build(allowed, Collections.emptyList()).getRevision());
+    }
+
+    @Test
     public void location_do_not_track_is_off_network_is_passive_gps_is_active() {
         Configuration c = policiesConfig();
         c.setRequestUpdates(RequestUpdatesType.DONOTTRACK);

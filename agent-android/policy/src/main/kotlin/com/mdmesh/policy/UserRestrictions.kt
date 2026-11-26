@@ -46,6 +46,10 @@ object UserRestrictions {
     const val DISALLOW_FACTORY_RESET = "no_factory_reset"
     const val DISALLOW_SAFE_BOOT = "no_safe_boot"
     const val DISALLOW_CONFIG_LOCATION = "no_config_location"
+    const val DISALLOW_MODIFY_ACCOUNTS = "no_modify_accounts"
+
+    /** API 18 (JELLY_BEAN_MR2): where `DISALLOW_MODIFY_ACCOUNTS` was added. */
+    private const val MODIFY_ACCOUNTS_MIN_SDK = 18
 
     /** API 33. Used by the `wifiRadio` policy (not by [forKey]: it is added only on "off"). */
     const val DISALLOW_CHANGE_WIFI_STATE = "no_change_wifi_state"
@@ -59,6 +63,7 @@ object UserRestrictions {
         "usbStorage" -> setOf(DISALLOW_USB_FILE_TRANSFER, DISALLOW_MOUNT_PHYSICAL_MEDIA)
         "factoryReset" -> setOf(DISALLOW_FACTORY_RESET)
         "safeBoot" -> setOf(DISALLOW_SAFE_BOOT)
+        "modifyAccounts" -> setOf(DISALLOW_MODIFY_ACCOUNTS)
         else -> null
     }
 
@@ -73,6 +78,8 @@ object UserRestrictions {
      *    sufficient. It is only *enforced* on a Device/Profile Owner.
      *  - `DISALLOW_SAFE_BOOT` was added in API 23 (M), below the module floor.
      *    It is device-wide, so only a Device Owner can set it.
+     *  - `DISALLOW_MODIFY_ACCOUNTS` exists from API 18, so the module floor is
+     *    sufficient.
      *
      * Plain `Int` literals (not `Build.VERSION_CODES`) so this stays a pure JVM
      * function, unit-testable without the Android `Build` stub. Returns `null`
@@ -83,6 +90,7 @@ object UserRestrictions {
         "usbStorage" -> 21
         "factoryReset" -> 21
         "safeBoot" -> 23
+        "modifyAccounts" -> MODIFY_ACCOUNTS_MIN_SDK
         else -> null
     }
 }

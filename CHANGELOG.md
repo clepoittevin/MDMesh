@@ -9,6 +9,11 @@ Unreleased.
 
 ## Unreleased
 
+New
+- Configuration → Security → **Accounts** blocks adding and removing accounts on Device Owner devices, such as a
+  second Google account that the first one's Play Store restrictions don't cover. Accounts already on the device
+  stay. Needs agent 0.7.0; the database adds `configurations.modifyAccounts` on start (#141).
+
 ## v0.6.0 — 2026-11-27
 
 Upgrading
