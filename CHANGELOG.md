@@ -56,6 +56,9 @@ Heads-up
   release's agent.
 
 New
+- Console in French. Settings → Appearance → Language picks Browser, English or Français; a browser set to French
+  gets it at once. Dates, times, sizes and numbers follow the language. The seeded roles (Headwind's Russian names,
+  or the installers' English ones) show in the console's language; the database keeps their names.
 - Install behind the nginx, Apache, Caddy or Traefik you already run: the quick start's third choice (or `--proxy`),
   with ready configurations for each. Thanks @lared3294, @detobel36.
 - The quick start asks one plain question, how your phones will reach MDMesh; `--tunnel`, `--domain` and `--proxy` answer it.
