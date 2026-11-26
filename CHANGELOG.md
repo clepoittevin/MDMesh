@@ -86,6 +86,9 @@ Fixes
 - Password-recovery emails name the product MDMesh when no `rebranding.name` is set, and the API's own title says
   MDMesh; both named the upstream product. `/rest/public/logo` answers 404 when no `rebranding.logo` is set, instead of
   redirecting to an upstream logo.
+- Console: on Settings and the configuration editor, the section menu no longer floats over the cards when the
+  window is wide but the page column is narrow (around 1024px with the sidebar open); it becomes the row of
+  sections shown on small screens.
 - Devices search finds IMEIs reported by current agents, in either SIM slot and by part of the number, also for devices
   that haven't checked in since the update. When a search matches more devices than one request returns (1,000 in the
   console), the best matches are now kept rather than the weakest; a reported IMEI counts like one set by an administrator.
