@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { FormattedMessage } from 'react-intl';
 
 type Encoder = Pick<typeof import('qrcode'), 'create'>;
 
@@ -67,7 +68,7 @@ export function QrCode({ text }: { text: string }) {
   if (loadFailed || code === 'failed') {
     return (
       <p role="alert" className="v2-qr__error">
-        Couldn&rsquo;t draw the QR code. Reload the page and try again.
+        <FormattedMessage id="ui.qrCode.failed" defaultMessage="Couldn’t draw the QR code. Reload the page and try again." />
       </p>
     );
   }

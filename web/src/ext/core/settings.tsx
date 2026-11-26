@@ -2,6 +2,7 @@
 // so the page builds them and hands them down in a page-private context; the contributions here only pick theirs
 // out. Core and extension sections then share one host: ordering, `requires`, the boundary and the section nav.
 import { createContext, useContext, type ReactNode } from 'react';
+import { defineMessages, type MessageDescriptor } from 'react-intl';
 import { coreComponent, type SettingsSectionContribution } from '../types';
 import { CORE_ACTION_ACCESS } from './access';
 import { ORDER } from './order';
@@ -18,6 +19,17 @@ export const CORE_SETTINGS = {
 } as const;
 
 type CoreSection = keyof typeof CORE_SETTINGS;
+
+/** The section titles as messages, by section id (as coreConfigMessages): the page shows these for core's sections. */
+export const coreSettingsMessages: Readonly<Record<string, MessageDescriptor>> = defineMessages({
+  account: { id: 'ext.settingsSection.account', defaultMessage: 'Account' },
+  users: { id: 'ext.settingsSection.users', defaultMessage: 'Users & roles' },
+  server: { id: 'ext.settingsSection.server', defaultMessage: 'Server' },
+  updates: { id: 'ext.settingsSection.updates', defaultMessage: 'Updates' },
+  'agent-rollout': { id: 'ext.settingsSection.agentRollout', defaultMessage: 'Agent rollout' },
+  enrollment: { id: 'ext.settingsSection.enrollment', defaultMessage: 'Enrollment' },
+  appearance: { id: 'ext.settingsSection.appearance', defaultMessage: 'Appearance' },
+});
 
 const CoreSettingsParts = createContext<Partial<Record<CoreSection, ReactNode>> | null>(null);
 

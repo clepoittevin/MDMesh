@@ -1,10 +1,17 @@
 import { useEffect, useRef } from 'react';
+import { defineMessages, useIntl } from 'react-intl';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { cx } from './cx';
 import './LocationMap.css';
 import type { LocationFix } from '../api/deviceLocations';
 import { fmtDateTime } from './format';
+
+const messages = defineMessages({
+  attribution: { id: 'ui.map.attribution', defaultMessage: '© OpenStreetMap contributors' },
+  zoomIn: { id: 'ui.map.zoomIn', defaultMessage: 'Zoom in' },
+  zoomOut: { id: 'ui.map.zoomOut', defaultMessage: 'Zoom out' },
+});
 
 /** A token's computed value on the element (so the trail follows the theme), with a fallback. */
 function token(el: HTMLElement, name: string, fallback: string): string {
@@ -29,15 +36,25 @@ export function LocationMap({ fixes, label, className }: { fixes: LocationFix[];
   const elRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const layerRef = useRef<L.LayerGroup | null>(null);
+  const intl = useIntl();
+  // Read when the map is made (once): Leaflet's zoom buttons and the attribution in the console's language.
+  const labels = {
+    attribution: intl.formatMessage(messages.attribution),
+    zoomIn: intl.formatMessage(messages.zoomIn),
+    zoomOut: intl.formatMessage(messages.zoomOut),
+  };
+  const text = useRef(labels);
+  text.current = labels;
 
   useEffect(() => {
     const el = elRef.current;
     if (!el) return;
     if (!mapRef.current) {
-      mapRef.current = L.map(el, { worldCopyJump: true });
+      mapRef.current = L.map(el, { worldCopyJump: true, zoomControl: false });
+      L.control.zoom({ zoomInTitle: text.current.zoomIn, zoomOutTitle: text.current.zoomOut }).addTo(mapRef.current);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
-        attribution: '© OpenStreetMap contributors',
+        attribution: text.current.attribution,
         // The edge sends Referrer-Policy: same-origin, so tiles would go without a Referer, which OpenStreetMap's
         // tile policy requires. Send the origin only (never the console path), as browsers do by default.
         referrerPolicy: 'strict-origin-when-cross-origin',

@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type Key, type MouseEvent, type ReactNode } from 'react';
+import { defineMessages, useIntl, type IntlShape } from 'react-intl';
+import { EN_INTL, untyped } from '../data/configIntl';
 import { Checkbox } from './Input';
 import { cx } from './cx';
 import './Table.css';
@@ -77,15 +79,23 @@ export function useScrollStop(wrap: { current: HTMLDivElement | null }): boolean
   return stop;
 }
 
+const messages = untyped(
+  defineMessages({
+    scrollableNamed: { id: 'ui.table.scrollableNamed', defaultMessage: 'Scrollable: {name}' },
+    scrollable: { id: 'ui.table.scrollable', defaultMessage: 'Scrollable table' },
+    selectAll: { id: 'ui.table.selectAll', defaultMessage: 'Select all on this page' },
+  }),
+);
+
 /**
  * The wrapper's attributes while it is a scroll stop: a named region in the Tab order, named after the table: its
  * `aria-label` ("Scrollable: Devices"), else the element its `aria-labelledby` points at, else "Scrollable table".
  */
-export function scrollStopProps(stop: boolean, name?: string, labelledBy?: string) {
+export function scrollStopProps(stop: boolean, name?: string, labelledBy?: string, intl: IntlShape = EN_INTL) {
   if (!stop) return {};
-  if (name) return { tabIndex: 0, role: 'region', 'aria-label': `Scrollable: ${name}` };
+  if (name) return { tabIndex: 0, role: 'region', 'aria-label': intl.formatMessage(messages.scrollableNamed, { name }) };
   if (labelledBy) return { tabIndex: 0, role: 'region', 'aria-labelledby': labelledBy };
-  return { tabIndex: 0, role: 'region', 'aria-label': 'Scrollable table' };
+  return { tabIndex: 0, role: 'region', 'aria-label': intl.formatMessage(messages.scrollable) };
 }
 
 /** Stops the text selection a Shift+press starts (Shift+click selects a range of rows instead). */
@@ -158,6 +168,7 @@ export function Table<Row>({
   className,
   ...aria
 }: TableProps<Row>) {
+  const intl = useIntl();
   const keys = rows.map(rowKey);
   const selectedCount = selection ? keys.filter((k) => selection.selected.has(k)).length : 0;
   const all = selection && rows.length > 0 && selectedCount === rows.length;
@@ -171,7 +182,7 @@ export function Table<Row>({
     <div
       ref={wrapRef}
       className={cx('v2-tablewrap', className)}
-      {...scrollStopProps(scrollStop, name, labelledBy)}
+      {...scrollStopProps(scrollStop, name, labelledBy, intl)}
     >
       <table
         className={cx('v2-table', edge === 0 && 'v2-table--edge0', rowPad === 10 && 'v2-table--compact', onRowClick && 'v2-table--rowclick')}
@@ -184,7 +195,7 @@ export function Table<Row>({
               {selection ? (
                 <th scope="col" className="v2-table__shrink">
                   <Checkbox
-                    aria-label={selection.allLabel ?? 'Select all on this page'}
+                    aria-label={selection.allLabel ?? intl.formatMessage(messages.selectAll)}
                     checked={!!all}
                     indeterminate={!!some}
                     onChange={() => selection.onToggleAll(!all)}

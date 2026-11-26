@@ -2,13 +2,15 @@
 // from the registry (core's included, ext/core/lists.tsx), each behind `requires` and its own boundary, and the
 // helpers their actions get.
 import { isValidElement, useCallback, useMemo, useState, type ReactNode } from 'react';
-import { BULK_FORBIDDEN_TEXT, bulkQueueCommand, commandErrorText, forceSync, isBulkForbidden, queueCommand } from '../../api/commands';
+import { defineMessages, useIntl } from 'react-intl';
+import { bulkQueueCommand, commandErrorMessages, forceSync, formatCommandError, isBulkForbidden, queueCommand } from '../../api/commands';
 import type { DeviceView } from '../../api/devices';
-import { notConnected } from '../../data/presence';
+import { untyped } from '../../data/configIntl';
 import { Button } from '../../ui/Button';
 import type { MenuEntry, MenuItem } from '../../ui/Menu';
 import type { Column, SortDir } from '../../ui/Table';
 import { useToast } from '../../ui/toast';
+import { coreBulkActionMessages, coreCommandMessage, coreRowActionMessages } from '../core/lists';
 import { ORDER } from '../core/order';
 import { ExtensionBoundary } from '../ExtensionBoundary';
 import type { SlotEntry } from '../registry';
@@ -127,6 +129,19 @@ export function useListColumns<L extends ListId>(list: L): ListColumns<ListRows[
   );
 }
 
+const messages = untyped(
+  defineMessages({
+    queued: { id: 'ext.lists.commandQueued', defaultMessage: '{label} queued' },
+    failed: { id: 'ext.lists.commandFailed', defaultMessage: '{label} failed' },
+    queuedFor: {
+      id: 'ext.lists.queuedFor',
+      defaultMessage: 'Queued for {count, plural, one {# device} other {# devices}}{skipped, plural, =0 {} other { (# skipped)}}.',
+    },
+    notConnectedTitle: { id: 'ext.lists.notConnectedTitle', defaultMessage: '{number} isn’t connected right now' },
+    notConnectedBody: { id: 'ext.lists.notConnectedBody', defaultMessage: 'It gets the command at its next check-in.' },
+  }),
+);
+
 /** The menu item an action returned, checked: anything else would break the menu, which renders outside any boundary. */
 function checkedItem(entry: SlotEntry, value: unknown): MenuItem | null {
   if (typeof value !== 'object' || value === null) return null;
@@ -169,19 +184,24 @@ export interface RowMenu<Row> {
 /** A row's "More actions" menu. An item that throws, or is not a menu item, is left out. */
 export function useRowMenu<L extends ListId>(list: L, helpers: ListHelpers[L]): RowMenu<ListRows[L]> {
   const entries = useListEntries('list.rowAction', list);
+  const intl = useIntl();
   const items = useCallback(
     (row: ListRows[L]) => {
       const groups: MenuItem[][] = ROW_MENU_GROUPS[list].map(() => []).concat([[]]);
       for (const entry of entries) {
         const c = entry.contribution as unknown as RowActionOf<L>;
-        const item = checkedItem(entry, safeCall(c.item, [row, helpers], null, `${entry.key}.item`));
-        if (!item) continue;
+        const checked = checkedItem(entry, safeCall(c.item, [row, helpers], null, `${entry.key}.item`));
+        if (!checked) continue;
+        // Core's commands (Lock, Ring) show in the console's language; an extension's item as it gives it.
+        const core = entry.extension.core ? coreRowActionMessages[entry.contribution.id] : undefined;
+        const label = core ? intl.formatMessage(core) : undefined;
+        const item = label ? { ...checked, label, textValue: label } : checked;
         const group = ROW_MENU_GROUPS[list].filter((start) => c.order >= start).length;
         groups[group].push(item);
       }
       return groups.filter((g) => g.length).flatMap((g, i): MenuEntry[] => (i ? ['separator', ...g] : g));
     },
-    [entries, list, helpers],
+    [entries, list, helpers, intl],
   );
   return { available: entries.length > 0, items };
 }
@@ -202,7 +222,11 @@ function BulkButton({
   helpers: DeviceActionHelpers;
 }) {
   const [running, setRunning] = useState(false);
-  const { label, icon, danger, run } = entry.contribution;
+  const intl = useIntl();
+  const { icon, danger, run } = entry.contribution;
+  // Core's buttons in the console's language; an extension's as it gives it.
+  const core = entry.extension.core ? coreBulkActionMessages[entry.contribution.id] : undefined;
+  const label = core ? intl.formatMessage(core) : entry.contribution.label;
   const click = () => {
     const result = safeCall(run, [rows, helpers], undefined, `${entry.key}.run`);
     if (!(result instanceof Promise)) return;
@@ -242,45 +266,60 @@ export function BulkActions({
   return actions.map((entry) => <BulkButton key={entry.key} entry={entry} rows={rows} helpers={helpers} />);
 }
 
-const plural = (n: number) => `${n} device${n === 1 ? '' : 's'}`;
-
 /** The Devices list's helpers: `refresh` reloads the list, `sendCommand` queues and toasts. */
 export function useDeviceActionHelpers(refresh: () => void): DeviceActionHelpers {
   const toast = useToast();
+  const intl = useIntl();
   return useMemo(() => {
     async function sendCommand(devices: readonly DeviceView[], command: DeviceCommand, values: Record<string, string> = {}) {
       if (!devices.length) return false;
-      const { label } = command;
+      // Core's own commands (Lock, Ring) are named in the console's language; an extension's as it names them.
+      const core = coreCommandMessage(command);
+      const label = core ? intl.formatMessage(core) : command.label;
       try {
         const request = commandRequest(command, values);
         // The bulk endpoint refuses these; one device would go through the single-device one, which does not.
         // Core sends them only from the device page, behind its confirmation.
         if (isBulkForbidden(request.type)) {
-          toast.push('err', `${label} failed`, BULK_FORBIDDEN_TEXT);
+          toast.push(
+            'err',
+            intl.formatMessage(messages.failed, { label }),
+            intl.formatMessage(commandErrorMessages['error.agent.command.bulkForbidden']),
+          );
           return false;
         }
         if (devices.length === 1) {
           const [device] = devices;
           await queueCommand(device.number, request);
-          toast.push('ok', `${label} queued`, device.number);
+          toast.push('ok', intl.formatMessage(messages.queued, { label }), device.number);
           const nudge = await forceSync(device.number).catch(() => undefined); // nudge, as on the device page
-          if (nudge?.connected === false) toast.push('warn', ...notConnected(device.number, 'command'));
+          if (nudge?.connected === false) {
+            toast.push(
+              'warn',
+              intl.formatMessage(messages.notConnectedTitle, { number: device.number }),
+              intl.formatMessage(messages.notConnectedBody),
+            );
+          }
         } else {
           const res = await bulkQueueCommand(
             devices.map((d) => d.id),
             request,
           );
           const skipped = res.skipped?.length ?? 0;
-          toast.push('ok', `${label} queued`, `Queued for ${plural(res.queued)}` + (skipped ? ` (${skipped} skipped)` : '') + '.');
+          toast.push(
+            'ok',
+            intl.formatMessage(messages.queued, { label }),
+            intl.formatMessage(messages.queuedFor, { count: res.queued, skipped }),
+          );
         }
         return true;
       } catch (e) {
-        toast.push('err', `${label} failed`, commandErrorText(e));
+        toast.push('err', intl.formatMessage(messages.failed, { label }), formatCommandError(intl, e));
         return false;
       }
     }
     return { toast, refresh, sendCommand };
-  }, [toast, refresh]);
+  }, [toast, refresh, intl]);
 }
 
 /** The Apps library's helpers. */

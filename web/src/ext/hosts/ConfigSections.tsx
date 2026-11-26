@@ -13,12 +13,15 @@ import {
   type ReactNode,
   type SetStateAction,
 } from 'react';
+import { defineMessages, useIntl, type IntlShape } from 'react-intl';
 import type { Configuration, ExtensionError } from '../../api/configurations';
+import { untyped } from '../../data/configIntl';
 import { Callout, Card, CardHeader } from '../../ui/Card';
 import { IconWarning } from '../../ui/icons';
 import type { SectionNavItem } from '../../ui/SectionNav';
 import { useToast } from '../../ui/toast';
 import { CORE_ACTION_ACCESS } from '../core/access';
+import { coreConfigMessages } from '../core/config';
 import { ExtensionBoundary } from '../ExtensionBoundary';
 import { deepFreeze } from '../freeze';
 import { usePermission } from '../permissions';
@@ -110,7 +113,33 @@ function sectionState(entry: Entry, namespace: string, baseline: Configuration, 
   return { entry, namespace, anchor, stored, value, unreadable, dirty, count: dirty ? changesCount(entry, stored, value) : 0 };
 }
 
-const problems = (n: number) => (n === 1 ? '1 problem' : `${n} problems`);
+const messages = untyped(
+  defineMessages({
+    problems: { id: 'ext.configSections.problems', defaultMessage: '{count, plural, one {# problem} other {# problems}}' },
+    changed: { id: 'ext.configSections.changed', defaultMessage: '{count, plural, one {# changed} other {# changed}}' },
+    droppedTitle: { id: 'ext.configSections.droppedTitle', defaultMessage: 'Changes dropped' },
+    droppedBody: {
+      id: 'ext.configSections.droppedBody',
+      defaultMessage: '“{title}” is no longer available to you, so its changes won’t be saved.',
+    },
+    unreadableTemplate: {
+      id: 'ext.configSections.unreadableTemplate',
+      defaultMessage:
+        'The template’s “{title}” settings can’t be read here, and the server won’t create a configuration with them. {canCopy, select, true {Duplicate the template instead.} other {Someone whose role may duplicate configurations can duplicate the template instead.}}',
+    },
+    unreadableSaved: {
+      id: 'ext.configSections.unreadableSaved',
+      defaultMessage: 'The saved “{title}” settings can’t be read here, so saving keeps them as they are.',
+    },
+    crashNote: { id: 'ext.configSections.crashNote', defaultMessage: 'Changes made here aren’t saved.' },
+  }),
+);
+
+/** A section's title in the console's language: core's from its message, an extension's as it gives it. */
+function titleOf(intl: IntlShape, entry: Entry): string {
+  const core = entry.extension.core ? coreConfigMessages[entry.contribution.id] : undefined;
+  return core ? intl.formatMessage(core) : entry.contribution.title;
+}
 
 export interface ConfigSectionsHost {
   /** The section nav: core's entries with the editor's meta, extensions' with their changes or problems. */
@@ -155,6 +184,7 @@ export function useConfigSections({
 }): ConfigSectionsHost {
   const entries = useContributions('config.section') as readonly Entry[];
   const toast = useToast();
+  const intl = useIntl();
   // Duplicate (PUT /configurations/copy) needs copy_config, so only a role with it is told to use it.
   const canCopy = usePermission(CORE_ACTION_ACCESS.copyConfig);
   const [errors, setErrors] = useState<Readonly<Record<string, readonly string[]>>>({});
@@ -232,7 +262,11 @@ export function useConfigSections({
     }
     for (const [key, { namespace, entry }] of pending.current) {
       if (shown.has(key)) continue;
-      toast.push('err', 'Changes dropped', `“${entry.contribution.title}” is no longer available to you, so its changes won’t be saved.`);
+      toast.push(
+        'err',
+        intl.formatMessage(messages.droppedTitle),
+        intl.formatMessage(messages.droppedBody, { title: titleOf(intl, entry) }),
+      );
       drop(namespace);
     }
     pending.current = new Map(saved.map((s) => [s.entry.key, s]));
@@ -244,14 +278,18 @@ export function useConfigSections({
     const state = stateOf(entry);
     if (!state) {
       const { label, ...meta } = coreMeta[entry.contribution.id] ?? {};
-      return { id: anchor, label: label ?? entry.contribution.title, ...meta };
+      return { id: anchor, label: label ?? titleOf(intl, entry), ...meta };
     }
     const shown = errors[state.namespace]?.length ?? 0;
     const count = readOnly ? 0 : state.count;
     return {
       id: anchor,
-      label: entry.contribution.title,
-      meta: shown ? problems(shown) : count ? `${count} changed` : '',
+      label: titleOf(intl, entry),
+      meta: shown
+        ? intl.formatMessage(messages.problems, { count: shown })
+        : count
+          ? intl.formatMessage(messages.changed, { count })
+          : '',
       metaTone: shown ? 'alert' : 'default',
     };
   });
@@ -262,7 +300,7 @@ export function useConfigSections({
     const headingId = `${idBase}-${anchor}-h`;
     const card = (body: ReactNode, subtitle?: string) => (
       <Card key={entry.key} as="section" id={anchor} padding="rows" aria-labelledby={headingId}>
-        <CardHeader titleId={headingId} title={entry.contribution.title} subtitle={subtitle} spacing={12} />
+        <CardHeader titleId={headingId} title={titleOf(intl, entry)} subtitle={subtitle} spacing={12} />
         {body}
       </Card>
     );
@@ -282,10 +320,8 @@ export function useConfigSections({
       return card(
         <Callout tone="alert" role="alert" icon={<IconWarning size={16} />}>
           {baseline.id == null
-            ? `The template’s “${entry.contribution.title}” settings can’t be read here, and the server won’t create a configuration with them. ${
-                canCopy ? 'Duplicate the template instead.' : 'Someone whose role may duplicate configurations can duplicate the template instead.'
-              }`
-            : `The saved “${entry.contribution.title}” settings can’t be read here, so saving keeps them as they are.`}
+            ? intl.formatMessage(messages.unreadableTemplate, { title: entry.contribution.title, canCopy: String(canCopy) })
+            : intl.formatMessage(messages.unreadableSaved, { title: entry.contribution.title })}
         </Callout>,
         subtitle,
       );
@@ -302,7 +338,7 @@ export function useConfigSections({
     return card(
       <ExtensionBoundary
         entry={entry}
-        crashNote="Changes made here aren’t saved."
+        crashNote={intl.formatMessage(messages.crashNote)}
         onCrash={(isCrashed) => onCrash(entry.key, isCrashed)}
       >
         {createElement(entry.contribution.component, props)}
