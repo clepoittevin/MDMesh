@@ -12,15 +12,14 @@ import {
   cachedIcon,
   configuredKioskCommand,
   configuredKioskSummary,
-  EXIT_PIN_HELP,
-  EXIT_PIN_PLACEHOLDER,
+  exitPinHelp,
+  kioskMessages,
   kioskTheme,
-  NO_PIN_MEANS,
   versionAtLeast,
   type ConfiguredKiosk,
   type KioskTheme,
 } from '../data/kiosk';
-import { EXIT_PIN_RULE, exitPinValid } from '../data/configurationRules';
+import { exitPinRule, exitPinValid } from '../data/configurationRules';
 import { paths } from '../routes';
 import { fmtDateTime } from '../ui/format';
 import {
@@ -378,7 +377,7 @@ export function DeviceKioskDialog({
   }
 
   // The configuration's PIN rule: a custom kiosk's PIN is new, so it must follow it.
-  const pinError = exitPinValid(password) ? undefined : EXIT_PIN_RULE;
+  const pinError = exitPinValid(password) ? undefined : exitPinRule(intl);
   const canApply =
     !themeLoading && selected.size > 0 && (mode === 'launcher' || selected.size === 1) && pinError == null;
 
@@ -585,7 +584,7 @@ export function DeviceKioskDialog({
             help={pinLeft && pinError ? undefined : intl.formatMessage(messages.exitPinHelp)}
             error={pinLeft ? pinError : undefined}
           >
-            <Tooltip content={EXIT_PIN_HELP}>
+            <Tooltip content={exitPinHelp(intl)}>
               <Input
                 type="password"
                 autoComplete="new-password"
@@ -593,7 +592,7 @@ export function DeviceKioskDialog({
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 onBlur={() => setPinLeft(true)}
-                placeholder={EXIT_PIN_PLACEHOLDER}
+                placeholder={intl.formatMessage(kioskMessages.exitPinPlaceholder)}
               />
             </Tooltip>
           </Field>
@@ -719,7 +718,7 @@ export function ConfiguredKioskDialog({
       <KeyValueList
         variant="facts"
         items={[
-          { key: 'kiosk', label: intl.formatMessage(messages.factKiosk), value: configuredKioskSummary(kiosk) },
+          { key: 'kiosk', label: intl.formatMessage(messages.factKiosk), value: configuredKioskSummary(kiosk, intl) },
           ...(p.mode === 'launcher' ? [{ key: 'apps', label: intl.formatMessage(messages.factApps), value: appNames }] : []),
           {
             key: 'exit',
@@ -731,7 +730,7 @@ export function ConfiguredKioskDialog({
             label: intl.formatMessage(messages.factExitPin),
             value: p.password
               ? intl.formatMessage(messages.pinConfigured)
-              : intl.formatMessage(messages.pinNone, { meaning: NO_PIN_MEANS }),
+              : intl.formatMessage(messages.pinNone, { meaning: intl.formatMessage(kioskMessages.noPinMeans) }),
           },
         ]}
       />

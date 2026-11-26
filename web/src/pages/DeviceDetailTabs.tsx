@@ -4,7 +4,7 @@ import type { CommandHistoryItem } from '../api/commands';
 import type { DeviceEvent } from '../api/events';
 import type { LocationFix } from '../api/deviceLocations';
 import type { TelemetrySnapshot } from '../api/telemetry';
-import { DO_NOT_TRACK_HINT } from '../api/locationTracking';
+import { doNotTrackHintMessage } from '../api/locationTracking';
 import { fmtDateTime } from '../ui/format';
 import {
   ActivityList,
@@ -647,7 +647,7 @@ export function LocationTab({
       {error ? <ErrorState thing={intl.formatMessage(locationMessages.thing)} detail={error} onRetry={onRefresh} retrying={refreshing} /> : null}
       {doNotTrack ? (
         <Callout tone="info" icon={<IconInfo />}>
-          {DO_NOT_TRACK_HINT}
+          {intl.formatMessage(doNotTrackHintMessage)}
           {fixes && fixes.length > 0 ? (
             <>
               {' '}

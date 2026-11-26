@@ -109,7 +109,7 @@ export function useAppScan(number: string | undefined, history: readonly Command
     setTimedOut(false);
   }, [number]);
 
-  const progress = queued ? scanProgress(history, queued) : null;
+  const progress = queued ? scanProgress(history, queued, intl) : null;
   const waiting = progress?.state === 'pending';
   useEffect(() => {
     if (!waiting) return;

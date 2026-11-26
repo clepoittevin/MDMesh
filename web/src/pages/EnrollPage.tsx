@@ -5,7 +5,7 @@ import { mintEnrollToken, revokeAllEnrollTokens } from '../api/enroll';
 import { getUpdateStatus, type UpdateStatus } from '../api/updates';
 import { Link } from 'react-router';
 import { defineMessage, defineMessages, FormattedMessage, useIntl, type IntlShape, type MessageDescriptor } from 'react-intl';
-import { ARRIVAL_LABEL, arrivalNews, useArrivals, type Arrival } from '../enroll/arrivals';
+import { arrivalLabel, arrivalNews, useArrivals, type Arrival } from '../enroll/arrivals';
 import { addressProblem, wifiProblem } from '../enroll/checks';
 import {
   agentApkUrl,
@@ -436,7 +436,7 @@ function useArrivalNews(arrivals: Arrival[], active: boolean, watching: boolean)
   const wasWatching = useRef(watching);
   useEffect(() => {
     if (!active) return;
-    const lines = arrivalNews(seen.current, arrivals);
+    const lines = arrivalNews(seen.current, arrivals, intl);
     seen.current = arrivals;
     if (wasWatching.current && !watching) lines.push(intl.formatMessage(E.stoppedLooking));
     wasWatching.current = watching;
@@ -1152,7 +1152,7 @@ export function EnrollPage() {
           {arrivals.map((a) => (
             <li key={a.number}>
               <Link to={paths.device(a.number)}>{a.name}</Link>
-              <span className={`v2-enroll__arrival v2-enroll__arrival--${a.state}`}>{ARRIVAL_LABEL[a.state]}</span>
+              <span className={`v2-enroll__arrival v2-enroll__arrival--${a.state}`}>{arrivalLabel(a.state, intl)}</span>
             </li>
           ))}
         </ul>

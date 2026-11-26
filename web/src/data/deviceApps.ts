@@ -1,6 +1,8 @@
 // A device's installed apps, from its apps.scan results in command history (the agent lists the apps with a
 // launcher icon). Device-supplied JSON, so every field is checked before the page reads it.
+import { defineMessage, type IntlShape } from 'react-intl';
 import type { CommandHistoryItem } from '../api/commands';
+import { EN_INTL } from './configIntl';
 import type { AppInfo } from '../api/deviceApps';
 
 export interface AppScan {
@@ -59,13 +61,16 @@ const FAILED = new Set(['failed', 'unsupported', 'expired']);
  * Where a queued scan is, from the history: pending until the device answers (also while the history doesn't list
  * it yet), done, or failed with the device's or server's reason.
  */
+const deviceReturned = defineMessage<{ status: string }>({ id: 'deviceDetail.apps.scanDeviceReturned', defaultMessage: 'Device returned {status}' });
+
 export function scanProgress(
   history: readonly CommandHistoryItem[],
   id: string,
+  intl: IntlShape = EN_INTL,
 ): { state: 'pending' } | { state: 'done' } | { state: 'failed'; reason: string } {
   const c = history.find((h) => String(h.id) === id);
   if (c?.status === 'done') return { state: 'done' };
-  if (c && FAILED.has(c.status)) return { state: 'failed', reason: c.detail || `Device returned ${c.status}` };
+  if (c && FAILED.has(c.status)) return { state: 'failed', reason: c.detail || intl.formatMessage(deviceReturned, { status: c.status }) };
   return { state: 'pending' };
 }
 

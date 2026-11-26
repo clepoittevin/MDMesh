@@ -4,7 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router';
 import { forceSync, formatCommandError } from '../api/commands';
 import { listConfigurations, type ConfigurationSummary } from '../api/configurations';
 import type { DeviceView } from '../api/devices';
-import { LOAD_DEVICES_FAILED, useDevices } from '../data/useDevices';
+import { LOAD_DEVICES_FAILED, loadErrorText, useDevices } from '../data/useDevices';
 import { CORE_ACTION_ACCESS } from '../ext/core/access';
 import { withCoreDevicesParts } from '../ext/core/lists';
 import { ORDER } from '../ext/core/order';
@@ -682,7 +682,7 @@ export function DevicesPage() {
     setSyncing((s) => new Set(s).add(d.id));
     try {
       const { connected } = await forceSync(d.number);
-      if (connected === false) toast.push('warn', ...notConnected(d.number, 'sync'));
+      if (connected === false) toast.push('warn', ...notConnected(d.number, 'sync', intl));
       else toast.push('ok', intl.formatMessage(messages.syncRequested), d.number);
       refresh(d);
     } catch (e) {
@@ -1096,7 +1096,7 @@ export function DevicesPage() {
         }
       />
 
-      {error ? <ErrorState thing={intl.formatMessage(messages.loadFailedThing)} detail={error === LOAD_DEVICES_FAILED ? undefined : error} onRetry={() => void refreshList()} /> : null}
+      {error ? <ErrorState thing={intl.formatMessage(messages.loadFailedThing)} detail={error === LOAD_DEVICES_FAILED ? undefined : loadErrorText(error, intl)} onRetry={() => void refreshList()} /> : null}
 
       {total > devices.length && !loading ? (
         <Callout tone="info">
