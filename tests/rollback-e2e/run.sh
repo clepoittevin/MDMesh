@@ -9,8 +9,8 @@
 #           working 0.4.0, and (b) the update to 0.5.1, then Roll back (POST /update/rollback with the recovery token,
 #           as /recovery sends it) is back on a working 0.4.0.
 #   040     v0.4.0 quick start (its published images, its supervisor) updated to this branch (0.5.1) by v0.4.0's own
-#           apply.sh. v0.4.0's rollback.sh fails over the new schema (configurations_pr_key: a 0.5.0 table refers to
-#           configurations) and must change nothing; then the supervisor is updated as UPGRADING says and the rollback
+#           apply.sh. v0.4.0's rollback.sh fails over the new schema (it can't drop a constraint that newer tables
+#           depend on, such as configurations_pr_key or devices_number_unique) and must change nothing; then the supervisor is updated as UPGRADING says and the rollback
 #           finishes: the 0.4.0 console, sign-in, the devices and an enrollment code made before the update all work,
 #           what was written after the update is gone. Then the same database is updated again (no leftovers), and the
 #           docs' Docker restores (OPERATIONS "Backups and restore", UPGRADING "Restoring by hand") are run as written;
@@ -72,6 +72,7 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 
 in_dind() { docker exec -i "$DIND" "$@"; }
+in_dind_reg() { docker exec -i -e SSL_CERT_FILE=/etc/docker/certs.d/ghcr.io/ca.crt "$DIND" "$@"; }
 in_dir()  { local d=$1; shift; docker exec -i -w "$d" "$DIND" "$@"; }
 dc()      { local d=$1; shift; in_dir "$d" docker compose "$@"; }
 q()       { dc "$1" exec -T postgres psql -X -U mdmesh -d mdmesh -tAc "$2" 2>>"$LOG" | tr -d '\r'; }
@@ -121,7 +122,9 @@ wait_healthy() {  # wait_healthy DIR: /rest/public/name answers 200 through cadd
   return 1
 }
 
-# push VERSION SRC_IMAGE_PREFIX SRC_TAG [relabel]: ghcr.io/$OWNER/mdmesh-<name>:VERSION in the registry; records REF_<v>_<name>.
+# push VERSION SRC_IMAGE_PREFIX SRC_TAG [relabel]: ghcr.io/$OWNER/mdmesh-<name>:VERSION in the registry, as an image
+# index holding the one image (as release.yml publishes them, one image per platform); records REF_<v>_<name>, the
+# index's digest, which apply.sh pins and checks against the pulled image's RepoDigests.
 push() {
   local v=$1 src=$2 tag=$3 relabel=${4:-} n img ref var
   for n in server web supervisor; do
@@ -139,6 +142,11 @@ push() {
     in_dind docker push -q "$img" >>"$LOG" 2>&1 || { echo "push of $img failed"; return 1; }
     ref="$(in_dind docker image inspect -f '{{range .RepoDigests}}{{println .}}{{end}}' "$img" | grep -m1 "^ghcr.io/$OWNER/mdmesh-$n@sha256:")"
     [ -n "$ref" ] || return 1
+    # buildx resolves the registry itself: it trusts the system's CAs, not the daemon's certs.d.
+    in_dind_reg docker buildx imagetools create --tag "$img" "$ref" >>"$LOG" 2>&1 || { echo "index for $img failed"; return 1; }
+    ref="ghcr.io/$OWNER/mdmesh-$n@$(in_dind_reg docker buildx imagetools inspect --format '{{json .Manifest}}' "$img" 2>>"$LOG" \
+      | grep -m1 -oE '"digest": *"sha256:[0-9a-f]{64}"' | grep -oE 'sha256:[0-9a-f]{64}')"
+    [[ "$ref" == *@sha256:* ]] || { echo "no index digest for $img"; return 1; }
     var="REF_${v//./_}_$n"; printf -v "$var" '%s' "$ref"
     in_dind docker rmi "$img" >>"$LOG" 2>&1
     echo "    $v $n: $ref"
@@ -238,12 +246,16 @@ setup_dind() {
     docker:28.5.2-dind dockerd --host=unix:///var/run/docker.sock >>"$LOG" || return 1
   for _ in $(seq 1 30); do in_dind docker info >>"$LOG" 2>&1 && break; sleep 2; done
   echo "-- loading images"
-  local imgs=() n t
+  local imgs=() n t img
   for n in server web supervisor; do
     for t in "$NEW_TAG" "$OLD_TAG"; do imgs+=("ghcr.io/local/mdmesh-$n:$t"); done
     imgs+=("ghcr.io/mdmesh-app/mdmesh-$n:0.4.0")
   done
   imgs+=(postgres:14)
+  # Each one here first (a clean host has pulled none of the public ones yet).
+  for img in "${imgs[@]}"; do
+    docker image inspect "$img" >>"$LOG" 2>&1 || docker pull -q "$img" >>"$LOG" 2>&1 || { echo "could not pull $img"; return 1; }
+  done
   docker save "${imgs[@]}" | docker exec -i "$DIND" docker load >>"$LOG" 2>&1 || return 1
   echo "-- releases in the registry"
   push 0.4.0 ghcr.io/mdmesh-app/mdmesh 0.4.0 || return 1
@@ -354,7 +366,11 @@ phase_040() {
   check "v0.4.0's rollback.sh fails (does not report OK)" bash -c "! grep -q '^OK ' '$WORK/040-rb-old.out'"
   stamp="$(dc "$d" exec -T supervisor cat /backups/latest | tr -d '\r')"
   dc "$d" exec -T supervisor cat "/backups/$stamp.restore.log" > "$WORK/040-rb-old.log" 2>>"$LOG"
-  check "root cause: $(grep -m1 ERROR "$WORK/040-rb-old.log" | cut -c1-150)" grep -q 'cannot drop constraint configurations_pr_key' "$WORK/040-rb-old.log"
+  # Which constraint it trips over first depends on the newer schema (configurations_pr_key until #235's links to
+  # devices(number) made it devices_number_unique); what matters is why: the old restore can't drop an object that the
+  # newer schema's tables depend on.
+  check "root cause: $(grep -m1 ERROR "$WORK/040-rb-old.log" | cut -c1-150)" \
+    grep -Eq 'cannot drop constraint [a-z_]+ on table public\.[a-z_]+ because other objects depend on it' "$WORK/040-rb-old.log"
   f2="$(fingerprint "$d")"
   check "the failed old restore left the database exactly as it was ($f1)" test "$f1" = "$f2"
   check "the server is left stopped" server_stopped "$d"

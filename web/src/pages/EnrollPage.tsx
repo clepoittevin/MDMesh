@@ -3,6 +3,7 @@ import { ApiError } from '../api/client';
 import { getConfigurations, type Configuration } from '../api/configurations';
 import { mintEnrollToken, revokeAllEnrollTokens } from '../api/enroll';
 import { getUpdateStatus, type UpdateStatus } from '../api/updates';
+import { agentUnavailable } from '../data/updateStatus';
 import { Link } from 'react-router';
 import { defineMessage, defineMessages, useIntl } from '../i18n/plain';
 import { ARRIVAL_LABEL, arrivalNews, useArrivals, type Arrival } from '../enroll/arrivals';
@@ -601,8 +602,7 @@ export function EnrollPage() {
 
   const agentVersion = RELEASE_BUILD && update?.apk?.available ? update.apk.version : null;
   // No agent to download: a QR code would fail on the device, so the page says why instead of showing one.
-  // deploy-0.5.1: no agentUnavailable on 0.5.1, so the newer no-agent notice stays off.
-  const noAgent = false;
+  const noAgent = RELEASE_BUILD && agentUnavailable(update);
 
   const configHelp = configsFailed ? (
     <>

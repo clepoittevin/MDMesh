@@ -2,7 +2,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { chooseOption } from '../../test/select';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppRoutes } from '../../App';
-import { ROLES, renderInConsole, stubApi } from '../../test/console';
+import { ROLES, renderInConsole, settled, stubApi } from '../../test/console';
 import type { AuthUser } from '../../api/auth';
 import type { ManagedUser, UserRole } from '../../api/users';
 
@@ -123,6 +123,7 @@ describe('Users & roles administration', () => {
   it('keeps Settings available without exposing administration to roles without settings', async () => {
     const fetch = open({ user: ROLES.observer });
     await screen.findByRole('heading', { name: 'Account' });
+    await settled();
     await waitFor(() => expect(screen.queryByRole('heading', { name: 'Users & roles' })).toBeNull());
     expect(fetch.mock.calls.some(([p]) => String(p).endsWith('/users/all'))).toBe(false);
     expect(
@@ -136,6 +137,7 @@ describe('Users & roles administration', () => {
   it('hides the section and its anchor when the server denies administration', async () => {
     const fetch = open({ manageUsers: false });
     await screen.findByRole('heading', { name: 'Account' });
+    await settled();
     await waitFor(() => expect(screen.queryByRole('heading', { name: 'Users & roles' })).toBeNull());
     expect(fetch.mock.calls.some(([p]) => String(p).endsWith('/users/all'))).toBe(false);
     expect(
@@ -193,6 +195,7 @@ describe('Users & roles administration', () => {
       }),
     );
     expect(await screen.findByText('User saved')).toBeTruthy();
+    await settled();
   });
 
   it('preserves restricted access on an edit and never forwards account secrets or a reset flag', async () => {
@@ -218,6 +221,7 @@ describe('Users & roles administration', () => {
         configurations: [{ id: 4 }],
       }),
     );
+    await settled();
   });
 
   it('refuses mismatching passwords without sending a write', async () => {
@@ -331,6 +335,7 @@ describe('Users & roles administration', () => {
     fireEvent.submit(form);
     await waitFor(() => expect(body(fetch, '/private/users')?.oldPassword).toBe(MY_SECRET_MD5));
     expect(await screen.findByText('User saved')).toBeTruthy();
+    await settled();
   });
 
   it('asks for the caller’s own password to change another account’s email or password', async () => {
@@ -352,6 +357,7 @@ describe('Users & roles administration', () => {
       expect(body(fetch, '/private/users')).toMatchObject({ newPassword: PASSWORD_MD5, oldPassword: MY_SECRET_MD5 }),
     );
     expect(await screen.findByText('User saved')).toBeTruthy();
+    await settled();
   });
 
   it('says plainly when the caller’s own password is wrong or the change is beyond their access', async () => {
@@ -399,6 +405,7 @@ describe('Users & roles administration', () => {
       expect(body(fetch, '/private/users/other/8', 'DELETE')).toEqual({ oldPassword: MY_SECRET_MD5 }),
     );
     expect(await screen.findByText('User deleted')).toBeTruthy();
+    await settled();
   });
 
   it('keeps a delete refused over the caller’s password open, with the reason', async () => {
@@ -450,6 +457,7 @@ describe('Users & roles administration', () => {
         permissions: [{ id: 10 }, { id: 11 }],
       }),
     );
+    await settled();
   });
 
   it('keeps a refused role deletion open and explains that the role is still assigned', async () => {
@@ -478,5 +486,98 @@ describe('Users & roles administration', () => {
     );
     // The page behind the open dialog is hidden from assistive tech (aria-hidden), so look past that.
     expect(screen.getByRole('table', { name: 'Roles', hidden: true }).textContent).toContain('Operators');
+  });
+
+  it('after deleting a user, focus moves to the next row, not to the page', async () => {
+    const packer: ManagedUser = { ...account, id: 21, login: 'packer', name: 'Packer' };
+    const others = [account, packer];
+    const fetch = open({ others });
+    const base = fetch.getMockImplementation()!;
+    fetch.mockImplementation(async (input, init) => {
+      // The server forgets the account: the reload after the delete no longer lists it.
+      if (init?.method === 'DELETE') others.splice(0, 1);
+      return base(input, init);
+    });
+    await screen.findByRole('button', { name: 'More actions for operator' }, { timeout: 10_000 });
+    await settled();
+    await rowAction('operator', 'Delete');
+    const dialog = within(await screen.findByRole('alertdialog'));
+    fireEvent.change(dialog.getByLabelText('Your current password'), { target: { value: MY_SECRET } });
+    fireEvent.click(dialog.getByRole('button', { name: 'Delete user' }));
+    expect(await screen.findByText('User deleted')).toBeTruthy();
+    const row = (await screen.findByRole('button', { name: 'More actions for packer' })).closest('tr')!;
+    expect(screen.queryByRole('button', { name: 'More actions for operator' })).toBeNull();
+    await waitFor(() => expect(row.contains(document.activeElement)).toBe(true));
+    await settled();
+  });
+
+  it('after a delete refused over the caller’s password and then retried, focus still moves to the next row', async () => {
+    const packer: ManagedUser = { ...account, id: 21, login: 'packer', name: 'Packer' };
+    const others = [account, packer];
+    const fetch = open({ others });
+    const base = fetch.getMockImplementation()!;
+    fetch.mockImplementation(async (input, init) => {
+      if (init?.method === 'DELETE') {
+        if (JSON.parse(String(init.body)).oldPassword !== MY_SECRET_MD5)
+          return new Response(JSON.stringify({ status: 'ERROR', message: 'error.password.wrong', data: null }));
+        others.splice(0, 1);
+      }
+      return base(input, init);
+    });
+    await screen.findByRole('button', { name: 'More actions for operator' }, { timeout: 10_000 });
+    await settled();
+    await rowAction('operator', 'Delete');
+    const dialog = within(await screen.findByRole('alertdialog'));
+    const password = dialog.getByLabelText('Your current password');
+    fireEvent.change(password, { target: { value: 'not-it' } });
+    fireEvent.click(dialog.getByRole('button', { name: 'Delete user' }));
+    expect(await dialog.findByRole('alert')).toHaveProperty('textContent', 'Your current password is not correct.');
+    fireEvent.change(password, { target: { value: MY_SECRET } });
+    fireEvent.click(dialog.getByRole('button', { name: 'Delete user' }));
+    expect(await screen.findByText('User deleted')).toBeTruthy();
+    const row = (await screen.findByRole('button', { name: 'More actions for packer' })).closest('tr')!;
+    await waitFor(() => expect(row.contains(document.activeElement)).toBe(true));
+    await settled();
+  });
+
+  it('a cancelled delete clears the caller’s password, and focus returns to the row’s "…"', async () => {
+    open();
+    await screen.findByRole('button', { name: 'More actions for operator' }, { timeout: 10_000 });
+    await settled();
+    await rowAction('operator', 'Delete');
+    let dialog = within(await screen.findByRole('alertdialog'));
+    fireEvent.change(dialog.getByLabelText('Your current password'), { target: { value: MY_SECRET } });
+    fireEvent.click(dialog.getByRole('button', { name: 'Cancel' }));
+    const more = screen.getByRole('button', { name: 'More actions for operator' });
+    await waitFor(() => expect(document.activeElement).toBe(more));
+    await rowAction('operator', 'Delete');
+    dialog = within(await screen.findByRole('alertdialog'));
+    expect(dialog.getByLabelText('Your current password')).toHaveProperty('value', '');
+    expect(dialog.getByRole('button', { name: 'Delete user' })).toHaveProperty('disabled', true);
+    await settled();
+  });
+
+  it('a deleted user leaves the list at once, even when the reload after it fails', async () => {
+    const packer: ManagedUser = { ...account, id: 21, login: 'packer', name: 'Packer' };
+    const fetch = open({ others: [account, packer] });
+    const base = fetch.getMockImplementation()!;
+    let deleted = false;
+    fetch.mockImplementation(async (input, init) => {
+      if (init?.method === 'DELETE') deleted = true;
+      else if (deleted && String(input).includes('/users/all')) return new Response('', { status: 500 });
+      return base(input, init);
+    });
+    await screen.findByRole('button', { name: 'More actions for operator' }, { timeout: 10_000 });
+    await settled();
+    await rowAction('operator', 'Delete');
+    const dialog = within(await screen.findByRole('alertdialog'));
+    fireEvent.change(dialog.getByLabelText('Your current password'), { target: { value: MY_SECRET } });
+    fireEvent.click(dialog.getByRole('button', { name: 'Delete user' }));
+    expect(await screen.findByText('User deleted')).toBeTruthy();
+    await settled();
+    expect(screen.getByText(/Couldn.t load users and roles/)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'More actions for operator' })).toBeNull();
+    const row = screen.getByRole('button', { name: 'More actions for packer' }).closest('tr')!;
+    await waitFor(() => expect(row.contains(document.activeElement)).toBe(true));
   });
 });

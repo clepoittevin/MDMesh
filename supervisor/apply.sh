@@ -39,13 +39,31 @@ BACKUP_DIR="${BACKUP_DIR:-/backups}"
 DB_USER="${DB_USER:-mdmesh}"
 DB_NAME="${DB_NAME:-mdmesh}"
 HEALTH_URL="${HEALTH_URL:-http://server:8080/rest/public/name}"
-HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-180}"
 
 phase() { echo "PHASE $1"; }
 errln() { echo "ERR $1" >&2; }
 dc()    { docker compose "$@"; }
 
 cd "$PROJECT_DIR" || { errln "cannot cd $PROJECT_DIR"; phase failed; exit 1; }
+# mode_problem, and _mode_env (a .env value as compose reads it)
+# shellcheck source=supervisor/mode-guard.sh
+. "${BASH_SOURCE[0]%/*}/mode-guard.sh"
+
+# How long the server gets to answer after a recreate, in whole seconds: HEALTH_TIMEOUT in the project .env (read here,
+# so an edit there counts without recreating the supervisor), else the supervisor's environment, else 180. A large
+# database update on the first start can need more (docs/UPGRADING.md). At least 30: a smaller value (0 included, which
+# is not "no limit") would fail every update at once. HEALTH_TIMEOUT_MIN lowers that floor for the tests only.
+health_timeout() {
+  local v min="${HEALTH_TIMEOUT_MIN:-30}" file
+  file="$(ENV_FILE=$ENV_FILE _mode_env HEALTH_TIMEOUT)"
+  for v in "${file//[[:space:]]/}" "${HEALTH_TIMEOUT:-}"; do
+    [ -z "$v" ] && continue
+    if [[ "$v" =~ ^[0-9]{1,6}$ ]] && [ "$((10#$v))" -ge "$min" ]; then echo "$((10#$v))"; return; fi
+    echo "HEALTH_TIMEOUT=$v is not a whole number of seconds, at least $min; ignored" >&2
+  done
+  echo 180
+}
+HEALTH_TIMEOUT="$(health_timeout)"
 
 # --- .env helpers (the file is the bind-mounted host .env) ---
 get_env() { grep -E "^$1=" "$ENV_FILE" 2>/dev/null | head -1 | cut -d= -f2-; }
@@ -58,15 +76,9 @@ set_env() {
   fi
 }
 
-# --- health: poll the server's unauthenticated /public/name until 200 or timeout ---
-healthy() {
-  local deadline=$(( $(date +%s) + HEALTH_TIMEOUT ))
-  while [ "$(date +%s)" -lt "$deadline" ]; do
-    if curl -fsS -m 5 "$HEALTH_URL" >/dev/null 2>&1; then return 0; fi
-    sleep 5
-  done
-  return 1
-}
+# --- health: the server answers its unauthenticated /public/name, and the edge stays up (supervisor/health.sh) ---
+# shellcheck source=supervisor/health.sh
+. "${BASH_SOURCE[0]%/*}/health.sh"
 
 # --- restore_db <dump> <log>: put the database back to the pre-update dump. Returns non-zero after ERR lines. ---
 # The dump is plain SQL from `pg_dump` of the database before the update. So:
@@ -144,6 +156,9 @@ _why="$(pin_problem server "$SERVER_REF")"
 [ -n "$_why" ] || _why="$(pin_problem web "$WEB_REF")"
 [ -n "$_why" ] || _why="$(pin_problem supervisor "$SUPERVISOR_REF")"
 if [ -n "$_why" ]; then errln "$_why Nothing was changed."; phase failed; exit 1; fi
+# The install's hosting mode allows this version (supervisor/mode-guard.sh).
+_why="$(mode_problem "$VERSION")"
+if [ -n "$_why" ]; then errln "$_why"; phase failed; exit 1; fi
 SERVER_PIN="${VERSION}@${SERVER_REF#*@}"   # SERVER_VERSION / WEB_VERSION / SUPERVISOR_VERSION values: <version>@sha256:…
 WEB_PIN="${VERSION}@${WEB_REF#*@}"
 SUPERVISOR_PIN="${VERSION}@${SUPERVISOR_REF#*@}"

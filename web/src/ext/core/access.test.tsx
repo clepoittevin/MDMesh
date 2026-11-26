@@ -4,7 +4,7 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest';
 import type { AuthUser } from '../../api/auth';
 import { AppRoutes } from '../../App';
-import { ROLES, renderInConsole, stubApi } from '../../test/console';
+import { ROLES, renderInConsole, settled, stubApi } from '../../test/console';
 
 const NOW = Date.now();
 const DEVICE = { id: 7, number: 'WH-1', description: 'Front desk', configurationId: 3, lastUpdate: NOW };
@@ -82,6 +82,7 @@ describe.each([
     open('/devices/WH-1', user);
     const panel = within(await screen.findByRole('tabpanel'));
     await panel.findByRole('button', { name: 'View all activity' });
+    await settled();
     expectShown(screen.queryAllByRole('toolbar', { name: 'Quick actions' }));
     expectShown(panel.queryAllByText('Remote actions'));
     expectShown(screen.queryAllByRole('button', { name: /Rename device/ }));
@@ -91,6 +92,7 @@ describe.each([
   it('the Devices list: Sync, the row menu, selection and Enroll, the list kept', async () => {
     open('/devices', user);
     await main().findByRole('link', { name: /Front desk/ });
+    await settled();
     expectShown(main().queryAllByRole('button', { name: 'Sync now: WH-1' }));
     expectShown(main().queryAllByRole('button', { name: 'More actions for WH-1' }));
     expectShown(main().queryAllByRole('checkbox', { name: 'Select WH-1' }));
@@ -120,6 +122,7 @@ describe.each([
   it('Apps: Deploy, and the checksum and remove entries (edit_application_versions, edit_applications), the library kept', async () => {
     open('/apps', user);
     await main().findByText('com.acme.scanner');
+    await settled();
     expectShown(main().queryAllByRole('button', { name: 'Deploy Scanner' }));
     const headers = within(main().getByRole('table', { name: 'Library' })).getAllByRole('columnheader');
     expect(headers.map((h) => h.textContent)).toEqual(['App', 'Version', 'Source', 'Checksum', 'Used in', ...(shown ? ['Actions'] : [])]);
@@ -207,6 +210,7 @@ describe('Settings → Updates follows a deploymentAdmin refresh', () => {
     await waitFor(() => expect(card.queryByRole('button', { name: /Update server and console/ })).toBeNull());
     expect(card.queryByRole('button', { name: 'Check now' })).toBeNull();
     expect(card.getByRole('switch').getAttribute('aria-disabled')).toBe('true');
+    await settled();
   });
 });
 
@@ -229,11 +233,13 @@ describe('Deploy offers only the modes the role may use', () => {
     fireEvent.click(await main().findByRole('button', { name: 'Deploy Scanner' }));
     const dialog = within(await screen.findByRole('dialog', { name: 'Deploy Scanner' }));
     expect(dialog.getAllByRole('tab').map((t) => t.textContent)).toEqual(modes);
+    await settled();
   });
 
   it('is not offered with neither', async () => {
     open('/apps', custom(['applications', 'configurations']));
     await main().findByText('com.acme.scanner');
+    await settled();
     expect(main().queryByRole('button', { name: 'Deploy Scanner' })).toBeNull();
   });
 
@@ -288,14 +294,22 @@ describe.each([
     await main().findByRole('link', { name: 'Warehouse' });
     // "New configuration" when there are templates to choose from (its chooser), else it creates directly.
     has(main().queryAllByRole('button', { name: /^New configuration(…)?$/ }), add);
-    fireEvent.click(main().getByRole('button', { name: 'More for Warehouse' }));
-    const items = within(await screen.findByRole('menu')).getAllByRole('menuitem').map((m) => m.textContent);
-    expect(items).toEqual(copy ? ['Edit', 'Duplicate', 'Delete'] : ['Edit']);
+    // Edit and Duplicate are the card's buttons; its "…" holds only Delete, and is gone without copy_config.
+    const card = within(main().getByRole('article', { name: 'Warehouse' }));
+    has(card.queryAllByRole('button', { name: 'Duplicate' }), copy);
+    has(card.queryAllByRole('button', { name: 'More for Warehouse' }), copy);
+    if (copy) {
+      fireEvent.click(card.getByRole('button', { name: 'More for Warehouse' }));
+      const items = within(await screen.findByRole('menu')).getAllByRole('menuitem').map((m) => m.textContent);
+      expect(items).toEqual(['Delete']);
+    }
+    await settled();
   });
 
   it('the editor: Duplicate and Delete', async () => {
     open('/configurations/3', user);
     await main().findByRole('heading', { name: 'Warehouse' });
+    await settled();
     has(main().queryAllByRole('button', { name: 'Duplicate' }), copy);
     has(main().queryAllByRole('button', { name: 'Delete' }), copy);
   });
@@ -310,6 +324,7 @@ describe.each([
       expect(await main().findByText('You don’t have access to this page')).toBeTruthy();
       expect(main().queryByRole('button', { name: 'Create configuration' })).toBeNull();
     }
+    await settled();
   });
 });
 
@@ -331,6 +346,7 @@ describe.each([
   it('Custom APK: the upload and Add to library', async () => {
     open('/apps?source=custom', user);
     await main().findByRole('heading', { name: 'Add your own app' });
+    await settled();
     has(main().queryAllByRole('button', { name: 'Choose a file' }), upload);
     has(main().queryAllByRole('button', { name: 'Add to library' }), add);
   });
@@ -356,6 +372,7 @@ describe.each([
     const current = tabs.includes(label) ? label : 'Library';
     expect(tabBar().getByRole('link', { current: 'page' }).textContent).toMatch(new RegExp(`^${current}`));
     if (current === 'Library') await main().findByText('com.acme.scanner');
+    await settled();
   });
 
   it('the empty library links only to the tabs shown', async () => {
@@ -388,6 +405,7 @@ describe('renaming follows edit_device_desc alone', () => {
   ])('%s', async (_, permissions, rename, actions) => {
     open('/devices/WH-1', custom(permissions));
     await within(await screen.findByRole('tabpanel')).findByRole('button', { name: 'View all activity' });
+    await settled();
     expect(screen.queryAllByRole('button', { name: /Rename device/ }).length > 0).toBe(rename);
     expect(screen.queryAllByRole('toolbar', { name: 'Quick actions' }).length > 0).toBe(actions);
   });

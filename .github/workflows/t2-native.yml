@@ -6,6 +6,9 @@
 #            upgrade checks in after it with its original secret; hash.secret / jwt.secretkey and the data unchanged)
 #   killed   the same upgrade SIGKILLed at each kill point, then re-run: it must converge
 #   update   the change installed, then `sudo ./setup.sh --update --native` over it without -y: it must ask nothing
+#   update-resumed  the same after an update that stopped halfway (clone already moved, "no" at the question): it must
+#            say the install is unchanged, then name the installed release as the one it updates from (Debian 12 only,
+#            unless a distro is chosen)
 # Every install is followed by the same check step: units active, initialized.txt OK, /rest/public/name 200, and that
 # version's scripts/agent-v1-e2e.sh with FAIL=0.
 #
@@ -19,6 +22,7 @@ on:
     paths:
       - install/**
       - setup.sh
+      - supervisor/mode-guard.sh
       - quickstart.sh
       - tests/native/**
       - .github/workflows/t2-native.yml
@@ -34,7 +38,7 @@ on:
       scenario:
         description: Scenario to run (all = the whole matrix)
         type: choice
-        options: [all, fresh, upgrade, killed, update]
+        options: [all, fresh, upgrade, killed, update, update-resumed]
         default: all
       from-ref:
         description: Release to upgrade from (empty = the latest GitHub release).
@@ -73,8 +77,19 @@ jobs:
           import json, os
           d, s = os.environ["IN_DISTRO"], os.environ["IN_SCENARIO"]
           distros = ["debian-12", "debian-13", "ubuntu-24.04"] if d == "all" else [d]
-          scenarios = ["fresh", "upgrade", "killed", "update"] if s == "all" else [s]
-          print("matrix=" + json.dumps({"include": [{"distro": x, "scenario": y} for x in distros for y in scenarios]}))
+          scenarios = ["fresh", "upgrade", "killed", "update", "update-resumed"] if s == "all" else [s]
+          # update-resumed adds only distro-independent steps to update (git, the installer's question and its text): one
+          # distro covers it, unless a run names its distro.
+          jobs = [{"distro": x, "scenario": y} for x in distros for y in scenarios
+                  if y != "update-resumed" or d != "all" or x == "debian-12"]
+          # One killed job keeps upgrading from v0.5.1, the last release without the installed-version record: only
+          # from such a release does it check the installer's early record write (tests/native/run.sh, killed).
+          # A run that names a from-ref or a distro uses what it names.
+          if not os.environ["IN_FROM"] and d == "all":
+              for j in jobs:
+                  if j["scenario"] == "killed" and j["distro"] == "debian-12":
+                      j["from-ref"] = "v0.5.1"
+          print("matrix=" + json.dumps({"include": jobs}))
           EOF
           echo "upgrading from $from"
 
@@ -91,9 +106,17 @@ jobs:
       fail-fast: false
       matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     env:
-      T2_FROM_REF: ${{ needs.plan.outputs.from-ref }}
+      # The Ubuntu guest's apt mirror (tests/native/Dockerfile): Azure's, next to the runner, as on an Azure VM. The public
+      # archive alone has been slow enough to run ubuntu-24.04's fresh/update/upgrade into the 45-minute timeout.
+      MDMESH_TEST_UBUNTU_MIRROR: http://azure.archive.ubuntu.com/ubuntu/
+      T2_FROM_REF: ${{ matrix.from-ref || needs.plan.outputs.from-ref }}
       DISTRO: ${{ matrix.distro }}
       SCENARIO: ${{ matrix.scenario }}
+      M2_BUILD: >-
+        ${{ (matrix.scenario == 'fresh' || matrix.scenario == 'update') && 'head'
+            || format('from-{0}', needs.plan.outputs.from-ref) }}
+      # The one cell that installs without the Maven cache (see "Restore the guest's Maven repository").
+      M2_COLD: ${{ github.event_name == 'schedule' && matrix.distro == 'debian-13' && matrix.scenario == 'fresh' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -102,10 +125,42 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
+      # The guest's Maven repository (T2_M2_REPO in tests/native/run.sh): Maven Central rate-limits the runners' shared
+      # IPs (HTTP 429) for longer than Maven's own back-off waits, so the rig seeds the guest from this cache and saves
+      # the guest's repository after a converged install. One entry per distro (their Maven versions differ) and build:
+      # fresh and update build the change only ("head"), upgrade and killed also build the release ("from-<release>").
+      # A new key (a pom change, a release) starts from the closest earlier entry, and is uploaded only when the rig
+      # saved (the marker <dir>.t2-saved). Pull requests start from main's entries, which the nightly run and manual
+      # runs on main write: after a pom change or a release, a manual run on main primes them. The nightly
+      # debian-13 / fresh cell installs cold, as a new VPS does, to catch a dependency gone from its repository.
+      - name: Restore the guest's Maven repository
+        id: m2
+        if: env.M2_COLD != 'true'
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: ${{ runner.temp }}/t2-m2
+          key: t2-m2-${{ matrix.distro }}-${{ env.M2_BUILD }}-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            t2-m2-${{ matrix.distro }}-${{ env.M2_BUILD }}-
+            t2-m2-${{ matrix.distro }}-
+
       - name: Run the rig
+        id: rig
         env:
           T2_OUT: ${{ runner.temp }}/t2-out
-        run: tests/native/run.sh "$DISTRO" "$SCENARIO"
+          T2_M2_REPO: ${{ env.M2_COLD != 'true' && format('{0}/t2-m2', runner.temp) || '' }}
+          # An exact hit holds what this build needs already: skip the copy-out.
+          T2_M2_SAVE: ${{ steps.m2.outputs.cache-hit == 'true' && '0' || '1' }}
+        run: |
+          tests/native/run.sh "$DISTRO" "$SCENARIO"
+          if [ -n "$T2_M2_REPO" ] && [ -e "$T2_M2_REPO.t2-saved" ]; then echo "m2-saved=true" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Save the guest's Maven repository
+        if: steps.rig.outputs.m2-saved == 'true' && steps.m2.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: ${{ runner.temp }}/t2-m2
+          key: ${{ steps.m2.outputs.cache-primary-key }}
 
       - name: Summary
         if: always()

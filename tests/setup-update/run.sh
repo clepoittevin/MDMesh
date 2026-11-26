@@ -66,6 +66,7 @@ minisign -G -W -p "$WORK/k.pub" -s "$WORK/k.key" >/dev/null
 minisign -G -W -p "$WORK/x.pub" -s "$WORK/x.key" >/dev/null
 O="$WORK/origin"
 mkdir -p "$O/release"
+mkdir -p "$O/supervisor"; cp -- "$REPO/supervisor/mode-guard.sh" "$O/supervisor/"
 cp -R -- "$REPO/setup.sh" "$REPO/quickstart.sh" "$REPO/install" "$REPO/docker-compose.release.yml" \
   "$REPO/docker-compose.domain.yml" "$O/"
 cp -- "$WORK/k.pub" "$O/release/minisign.pub"
@@ -284,15 +285,86 @@ upd capped ok
   || { fail "--update does not stop after the 5 newest tags"; show; }
 ok
 # From a detached release checkout with an install: forward to the newest, no git pull involved. The release's setup.sh
-# is told it runs an update, and from which release (MDMESH_UPDATING, MDMESH_UPDATE_FROM: the native installer then asks
-# nothing); a fresh clone's is not. (Seen in the environment of the docker stub, which that setup.sh runs.)
+# is told it runs an update (MDMESH_UPDATING: the native installer then asks nothing), but not from which release: that
+# is the install's own record, which the clone's tag can't tell (it may have moved before the run); a fresh clone's is
+# not told it is an update. (Seen in the environment of the docker stub, which that setup.sh runs.)
 clone detached v9.0.0; : > "$WORK/detached/.env"
 upd detached ok
 head_is detached "$c910" || { fail "--update from v9.0.0 (detached) did not move to v9.1.0"; show; }
 ok
-{ grep -qx 'MDMESH_UPDATING=1' "$WORK/env.log" && grep -qx 'MDMESH_UPDATE_FROM=9.0.0' "$WORK/env.log"; } \
-  || { fail "--update over an install does not tell the release's setup.sh it updates from 9.0.0"; show; }
+{ grep -qx 'MDMESH_UPDATING=1' "$WORK/env.log" && ! grep -q '^MDMESH_UPDATE_FROM=' "$WORK/env.log"; } \
+  || { fail "--update over an install does not tell the release's setup.sh it updates, or still names a release from the clone"; show; }
 ok
+# The release a native update says it leaves is the install's record (install/lib/envfile.sh mdm_installed_version, read
+# from a stand-in for /etc/mdmesh), never the clone's tag: the clone is on v9.1.0 now (as after an update stopped at the
+# installer's question, or a git pull), the install still on 9.0.0, so the title reads 9.0.0 → 9.1.0, not 9.1.0 → 9.1.0.
+# The installer's lines come from install/lib/version.sh (mdm_native_*), run here with what the libraries read. (The
+# installer itself can't run unprivileged; this checks only that it reads the record and passes it to the title.)
+! grep -rqF MDMESH_UPDATE_FROM "$REPO/setup.sh" "$REPO/install" || fail "MDMESH_UPDATE_FROM (the clone's tag) is still passed or read"
+# shellcheck disable=SC2016  # the installer's code, word for word
+if ! { grep -qF 'INSTALLED_VERSION=$(mdm_installed_version "$SUP_ENV_DIR")' "$REPO/install/install-native.sh" \
+       && grep -qF '$(mdm_native_title "$UPDATING" "$INSTALLED_VERSION" "$CLONE_VERSION")' "$REPO/install/install-native.sh"; }; then
+  fail "install-native.sh no longer titles an update with the install's record (mdm_installed_version)"
+fi
+ok
+# lib FUNCTION ARGS...: FUNCTION from install/lib/envfile.sh and version.sh, as the installer runs it.
+# shellcheck disable=SC2016  # the inner shell's variables
+lib() { bash -c '. "$1/envfile.sh"; . "$1/version.sh"; shift; "$@"' _ "$REPO/install/lib" "$@"; }
+# installed DIR: what mdm_installed_version prints for the stand-in DIR ("?" for nothing, as the title shows it).
+installed() { local v; v=$(lib mdm_installed_version "$1"); printf '%s' "${v:-?}"; }
+E="$WORK/etc-mdmesh"; mkdir -p "$E"
+printf 'SUPERVISOR_PORT=9000\nCURRENT_VERSION=9.0.0\nAPPLY_SUPPORTED=0\n' > "$E/supervisor.env"
+cv=$(cd "$WORK/detached" && lib mdm_repo_version .)
+title=$(lib mdm_native_title 1 "$(lib mdm_installed_version "$E")" "$cv")
+[ "$title" = "MDMesh · native update, 9.0.0 → 9.1.0" ] \
+  || fail "a native update over 9.0.0 from a clone on v9.1.0 is titled '$title', not '… 9.0.0 → 9.1.0'"
+ok
+# expect_lib WANT WHAT FUNCTION ARGS...: FUNCTION's output is WANT.
+expect_lib() { local want=$1 what=$2 got; shift 2; got=$(lib "$@"); [ "$got" = "$want" ] || fail "$what: got '$got', want '$want'"; ok; }
+expect_lib "MDMesh · native update, ? → ?" "the title with neither release known" mdm_native_title 1 '' ''
+expect_lib "MDMesh · native install" "the title of a run that is not an update" mdm_native_title 0 9.0.0 9.1.0
+# A run that isn't an update (an older setup.sh's --update, or a plain re-run) over a recorded install says what it is.
+expect_lib "This host runs v9.0.0; this clone is on v9.1.0." "the host line over 9.0.0" mdm_native_host_line 9.0.0 9.1.0
+expect_lib "This host runs v9.0.0; this clone is on no release tag." "the host line, untagged clone" mdm_native_host_line 9.0.0 ''
+expect_lib "" "the host line without a record" mdm_native_host_line '' 9.1.0
+# Answered no: --update is suggested only when the clone is newer than the install; nothing changed in every case.
+declined_newer=$'Aborted. The install is unchanged: this host still runs v9.0.0. This clone is on v9.1.0, newer than the install.\nTo update this host, run: sudo ./setup.sh --update --native'
+expect_lib "$declined_newer" "declining with the clone ahead" mdm_native_declined 9.0.0 9.1.0
+for c in "9.1.0 9.1.0" "9.1.0 9.0.0" "'' 9.1.0" "9.0.0 ''" "'' ''"; do
+  eval "set -- $c"
+  expect_lib "Aborted — nothing on this host was changed." "declining with install '$1', clone '$2'" mdm_native_declined "$1" "$2"
+done
+# The supervisor.env fallback is read once: over an install without the record, the installer writes what it read
+# (mdm_installed_version) as the record before its first change, so a run that then fails after rewriting CURRENT_VERSION
+# to the new release still leaves the old one as the release to update from. (The installer's own part is checked by
+# tests/native's killed scenario.)
+printf '%s\n' "$(lib mdm_installed_version "$E")" > "$E/installed-version"   # as the installer writes it
+printf 'CURRENT_VERSION=9.1.0\n' > "$E/supervisor.env"                     # the failed run's rewrite
+expect_lib 9.0.0 "the release to update from after a failed first run" mdm_installed_version "$E"
+rm -f -- "$E/installed-version"
+printf 'SUPERVISOR_PORT=9000\nCURRENT_VERSION=9.0.0\nAPPLY_SUPPORTED=0\n' > "$E/supervisor.env"
+# expect_installed WANT WHAT: mdm_installed_version of $E is WANT.
+expect_installed() { local got; got=$(installed "$E"); [ "$got" = "$1" ] || fail "mdm_installed_version: $2 gives '$got', want '$1'"; ok; }
+# The record a completed run writes wins over supervisor.env (written before a run ends), even when it is empty.
+printf '9.0.1\n' > "$E/installed-version"; expect_installed 9.0.1 "installed-version beside an older CURRENT_VERSION"
+: > "$E/installed-version"; expect_installed '?' "an empty installed-version (installed from an untagged clone)"
+printf '9.0.1' > "$E/installed-version"; expect_installed 9.0.1 "installed-version without a newline"
+printf '9.0.1\r\n' > "$E/installed-version"; expect_installed 9.0.1 "installed-version with a CRLF"
+printf 'v9.0.1\n' > "$E/installed-version"; expect_installed '?' "installed-version that is not release-shaped"
+rm -f -- "$E/installed-version"; mkdir "$E/installed-version"; expect_installed '?' "installed-version that is a directory"
+rmdir -- "$E/installed-version"; ln -s "$E/supervisor.env" "$E/installed-version"
+expect_installed '?' "installed-version that is a symbolic link"
+rm -f -- "$E/installed-version"
+# Without the record (installs from before it): CURRENT_VERSION, read as systemd reads the file.
+for c in "CURRENT_VERSION=9.0.0:9.0.0" "  CURRENT_VERSION = \"9.0.0-rc.1\" :9.0.0-rc.1" "CURRENT_VERSION='9.0.0'\r:9.0.0" \
+         "CURRENT_VERSION=0.0.0:?" "CURRENT_VERSION=:?" "#CURRENT_VERSION=9.0.0:?" "CURRENT_VERSION=9.0.0 junk:?" \
+         "CURRENT_VERSION=9.0.0\nCURRENT_VERSION=9.0.2:9.0.2" "X=\"open\nCURRENT_VERSION=9.0.0\nclose\":?" \
+         "X=a\\\\\nCURRENT_VERSION=9.0.0:?"; do
+  # shellcheck disable=SC2059  # the case's \n, \r and \\ are printf escapes
+  printf "${c%:*}\n" > "$E/supervisor.env"; expect_installed "${c##*:}" "supervisor.env '${c%:*}'"
+done
+printf 'X=1\nCURRENT_VERSION=9.0.3' > "$E/supervisor.env"; expect_installed 9.0.3 "supervisor.env whose last line has no newline"
+rm -f -- "$E/supervisor.env"; expect_installed '?' "no record at all (a fresh host, or supervisor.env from before v0.3.2)"
 clone fresh2
 upd fresh2 ok
 { head_is fresh2 "$c910" && grep -q '^PATH=' "$WORK/env.log" && ! grep -q '^MDMESH_UPDAT' "$WORK/env.log"; } \
@@ -335,5 +407,71 @@ for c in nosig:"has a published, signed manifest" otherkey:"is not signed by the
   expect_refused "bad-${c%%:*}" "${c%%:*}" "a release with ${c%%:*}" "${c#*:}"
 done
 
-if [ "$FAILS" != 0 ]; then echo "setup --update: $FAILS failure(s)" >&2; exit 1; fi
-echo "setup --update: all $CHECKS checks passed"
+# Behind your own proxy (0.6.0 on), never to a release before 0.6.0, --allow-downgrade or not, dry run or not: that
+# release's setup.sh and edge don't know the mode. An origin whose only release is v0.5.9; the same move without the
+# proxy overlay goes on (with --allow-downgrade), so the refusal is the mode's.
+"${G[@]}" clone -q "$O" "$WORK/origin4"
+for t in $("${G[@]}" -C "$WORK/origin4" tag -l 'v9*'); do "${G[@]}" -C "$WORK/origin4" tag -d "$t" > /dev/null; done
+"${G[@]}" -C "$WORK/origin4" tag -a -m old v0.5.9 "$c900"
+manifest "$R/old" v0.5.9 0.5.9 "$c900" "$WORK/k.key"
+for a in '' --allow-downgrade dry; do
+  clone "proxy$a" '' "$WORK/origin4"
+  "${G[@]}" -C "$WORK/proxy$a" tag -d v0.5.9 > "$WORK/tagd.out"   # so a fetch of the tag would show
+  printf '%s\n' 'COMPOSE_FILE=docker-compose.yml:docker-compose.proxy.yml' 'CURRENT_VERSION=0.6.0' > "$WORK/proxy$a/.env"
+  case "$a" in
+    dry) upd "proxy$a" old MDMESH_DRY_RUN=1 -- ;;
+    *) upd "proxy$a" old -- $a ;;
+  esac
+  { [ "$RC" != 0 ] && grep -qF "runs behind your own proxy (docker-compose.proxy.yml), which came in 0.6.0, so it can't go to 0.5.9" "$WORK/out" \
+    && head_is "proxy$a" "$cmain" && [ -z "$("${G[@]}" -C "$WORK/proxy$a" tag -l v0.5.9)" ]; } \
+    || { fail "--update ${a:-} to v0.5.9 behind your own proxy is not refused before fetching the tag"; show; }
+  ok
+done
+# Moved out of the proxy mode with TRUSTED_PROXIES="host" left: the same rule as the updater's, --allow-downgrade too.
+clone host059 '' "$WORK/origin4"
+printf '%s\n' 'COMPOSE_FILE=docker-compose.yml:docker-compose.domain.yml' 'TRUSTED_PROXIES="host"' 'CURRENT_VERSION=0.6.0' > "$WORK/host059/.env"
+upd host059 old -- --allow-downgrade
+{ [ "$RC" != 0 ] && grep -qF 'TRUSTED_PROXIES in .env still says host' "$WORK/out" && head_is host059 "$cmain"; } \
+  || { fail "--update --allow-downgrade to v0.5.9 with TRUSTED_PROXIES=host is not refused"; show; }
+ok
+clone domain059 '' "$WORK/origin4"
+printf '%s\n' 'COMPOSE_FILE=docker-compose.yml:docker-compose.domain.yml' 'CURRENT_VERSION=0.6.0' > "$WORK/domain059/.env"
+upd domain059 old -- --allow-downgrade
+{ head_is domain059 "$c900" && grep -q 'Checked out v0.5.9' "$WORK/out"; } || { fail "--update --allow-downgrade to v0.5.9 in domain mode is refused"; show; }
+ok
+
+# On your own domain, with a COMPOSE_FILE that leaves the domain overlay out: the release's setup.sh stops before any
+# container is touched (the clone has moved; install/lib/ports.sh). With the line it shows in .env, --update at the same
+# tag runs through to `up`, which gives the supervisor the new list. docker: a stub whose edge binds 443.
+mkdir -p "$WORK/stubs-ports"
+cat > "$WORK/stubs-ports/docker" <<'EOF'
+#!/bin/sh
+case "$*" in
+  "compose ps -a -q caddy") echo edge1 ;;
+  inspect*PortBindings*) echo '{"443/tcp":[{"HostIp":"","HostPort":"443"}]}' ;;
+  compose*" up "*) echo "up $* COMPOSE_FILE=$COMPOSE_FILE" >> "$WORK_ENV_LOG"; exit 99 ;;
+esac
+exit 0
+EOF
+chmod +x "$WORK/stubs-ports/docker"
+clone ports v9.0.0
+printf '%s\n' DB_PASSWORD=x HASH_SECRET=y BASE_URL=https://mdm.example.com IMAGE_OWNER=local \
+  COMPOSE_FILE=docker-compose.yml:mine.yml > "$WORK/ports/.env"
+upd ports ok PATH="$WORK/stubs-ports:$WORK/stubs:$PATH" --
+{ [ "$RC" = 1 ] && head_is ports "$c910" && grep -qF 'port 443 would close' "$WORK/out" && ! grep -q '^up ' "$WORK/env.log" \
+  && grep -qF "COMPOSE_FILE='docker-compose.yml:mine.yml:docker-compose.domain.yml'" "$WORK/out"; } \
+  || { fail "--update with a list that closes the edge's 443 does not stop, showing the line"; show; }
+ok
+grep -o "COMPOSE_FILE='.*'" "$WORK/out" >> "$WORK/ports/.env" || true
+upd ports ok PATH="$WORK/stubs-ports:$WORK/stubs:$PATH" --
+{ head_is ports "$c910" && grep -q '^up .* up -d --build COMPOSE_FILE=docker-compose.yml:mine.yml:docker-compose.domain.yml$' "$WORK/env.log"; } \
+  || { fail "--update at the same tag, with the line it showed in .env, does not go on with it"; show; }
+ok
+
+# Which tree ran, and a floor on how many checks did (a few depend on the host), so a section that silently ran
+# nothing can't pass.
+TREE=$(git -c safe.directory='*' -C "$REPO" describe --always --dirty 2>&1) || TREE='?'
+TREE="$REPO at $TREE"
+if [ "$FAILS" != 0 ]; then echo "setup --update: $FAILS failure(s) ($TREE)" >&2; exit 1; fi
+if [ "$CHECKS" -lt 80 ]; then echo "setup --update: only $CHECKS checks ran, expected at least 80 ($TREE)" >&2; exit 1; fi
+echo "setup --update: all $CHECKS checks passed ($TREE)"

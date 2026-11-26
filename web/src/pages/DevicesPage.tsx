@@ -302,7 +302,7 @@ export function DevicesPage() {
         if (type !== 'all' && kind(d) !== type) return false;
         if (dupOnly && dupOf(d) <= 1) return false;
         if (textFilter) {
-          const hay = [d.number, d.description, d.serial, d.imei, d.phone, configName(d), ...(d.groups ?? []).map((g) => g.name)]
+          const hay = [d.number, d.description, d.serial, d.imei, d.info?.imei, ...(d.reportedImeis ?? []), d.phone, configName(d), ...(d.groups ?? []).map((g) => g.name)]
             .filter(Boolean)
             .join(' ')
             .toLowerCase();
@@ -960,7 +960,7 @@ export function DevicesPage() {
         <SearchInput
           className="v2-devices-search"
           aria-label="Search devices"
-          placeholder="Search name, number, configuration"
+          placeholder="Search name, number, IMEI, configuration"
           value={q}
           onChange={setQ}
         />
@@ -1114,11 +1114,15 @@ export function DevicesPage() {
           ids={shown.ids}
           label={shown.label}
           onClose={() => setDialog(null)}
-          onDone={async () => {
+          onDone={async (remaining = []) => {
+            // The devices deleted leave the selection; any not deleted stay selected, to delete again.
+            const keep = new Set(remaining);
             setSelected((prev) => {
-              if (shown.fromSelection) return new Set();
-              const next = new Set(prev);
-              for (const id of shown.ids) next.delete(id);
+              const next = shown.fromSelection ? new Set<number>() : new Set(prev);
+              for (const id of shown.ids) {
+                if (keep.has(id)) next.add(id);
+                else next.delete(id);
+              }
               return next;
             });
             await refreshList();

@@ -9,7 +9,9 @@
 # routes against stub upstreams, plus `docker compose config` for every compose file/overlay/profile combination; then
 # it builds the web image (docker/web.Dockerfile), which nothing else builds before a release. When the installers change,
 # the edge entry also checks that quickstart.sh's inline BASE_URL check and answers functions are still install/lib's,
-# byte for byte, and that install/options.json (the installers' answers contract) matches the scripts.
+# byte for byte, and that install/options.json (the installers' answers contract) matches the scripts. The arm64 job
+# builds the three release images on GitHub's Arm runner when docker/**, .dockerignore or the server's JVM flags (and
+# their check) change, and on the kit's fail-closed paths (lockfiles such as web/package-lock.json, .github/**); not on other source changes.
 name: t0-fast
 
 on:
@@ -40,34 +42,49 @@ jobs:
           filters: |
             # CHANGELOG.md and proto/VERSIONING.md are read by AgentProtocolVersionTest: the advertised protocol version is
             # VERSIONING.md's highest row, and a held bump must still be under Unreleased (so a release PR runs it).
-            server: pom.xml, common/**, jwt/**, notification/**, plugins/**, server/**, CHANGELOG.md, proto/VERSIONING.md
+            # docker/Caddyfile is read by PublicRouteInventoryTest (the edge's @backend against the server's routes).
+            # LICENSE to inventory.py (server, web and agent): the licence policy each entry's inventory.py checks.
+            server: pom.xml, common/**, jwt/**, notification/**, plugins/**, server/**, CHANGELOG.md, proto/VERSIONING.md, docker/Caddyfile, LICENSE, NOTICE, docs/licenses/**, scripts/licenses/inventory.py
             # CHANGELOG.md is built into the console (What's new) and its tests read every release's section, checked
             # against release/changelog-section.sh, and its Security labels against release/security-releases.py.
-            web: web/**, CHANGELOG.md, release/changelog-section.sh, release/security-releases.py
+            web: web/**, CHANGELOG.md, release/changelog-section.sh, release/security-releases.py, LICENSE, NOTICE, docs/licenses/**, scripts/licenses/inventory.py
             # The console's browser accessibility sweep (scripts/shots/a11y.mjs) reads the built console and the
             # shots fixtures; CHANGELOG.md is built into the console.
             a11y: web/**, scripts/shots/**, CHANGELOG.md
-            agent: agent-android/**, proto/**
+            agent: agent-android/**, proto/**, LICENSE, NOTICE, docs/licenses/**, scripts/licenses/inventory.py
             supervisor: supervisor/**, docker/supervisor.Dockerfile, release/minisign.pub, scripts/supervisor-smoke.sh, .dockerignore
             # Listed explicitly: the kit's fail-closed **/Dockerfile* does not match docker/web.Dockerfile. web/**,
             # web-entrypoint.sh, edge-peers.sh, CHANGELOG.md and .dockerignore are the web image build's inputs.
-            edge: docker/Caddyfile, docker/web.Dockerfile, docker/web-entrypoint.sh, docker/edge-peers.sh, web/**, CHANGELOG.md, .dockerignore, docker-compose*.yml, docker/dev.env, scripts/edge-check.sh, supervisor/apply.sh
+            # DEPLOY.md: edge-check runs its site.d example; docs/proxies/**: it parses the ready proxy configurations;
+            # install/lib/ports.sh: it runs its reading of compose config.
+            edge: docker/Caddyfile, docker/web.Dockerfile, docker/web-entrypoint.sh, docker/edge-peers.sh, docker/edge-caddy.sh, web/**, CHANGELOG.md, .dockerignore, docker-compose*.yml, docker/dev.env, scripts/edge-check.sh, install/lib/ports.sh, supervisor/apply.sh, DEPLOY.md, docs/proxies/**
+            # The release images' Dockerfiles and entrypoints: where an Arm64-only break comes from (a base image, an Alpine
+            # package), with npm binaries via the fail-closed lockfiles, and the server's JVM flags and their check.
+            # Source changes alone don't trigger the arm64 job.
+            images: docker/**, .dockerignore, install/tomcat-setenv.sh, scripts/server-jvm-check.sh
             # The installer scripts, and the signed manifest they and the supervisor read. Only the edge entry's cheap
             # quickstart.sh checks run on these, not its image work. README.md and DEPLOY.md carry the install commands
-            # release-manifest-check.sh checks.
-            installers: README.md, DEPLOY.md, quickstart.sh, setup.sh, install/**, release/**, supervisor/lib.js, scripts/release-manifest-check.sh, tests/installer-answers/**, tests/setup-update/**, tests/apt-lock/**
+            # release-manifest-check.sh checks. setup.sh sources supervisor/mode-guard.sh (--update's version rule).
+            installers: README.md, DEPLOY.md, quickstart.sh, setup.sh, install/**, release/**, supervisor/lib.js, supervisor/mode-guard.sh, scripts/release-manifest-check.sh, tests/installer-answers/**, tests/setup-update/**, tests/apt-lock/**, tests/lib/**
+            # The T2 native rig's own helpers (the rig itself runs in t2-native.yml).
+            native: tests/native/**
 
   build:
     name: ${{ matrix.name }}
     needs: paths
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
-    timeout-minutes: 15
+    # edge: the installer suites in containers and the apt-lock cases install packages from the distributions'
+    # mirrors (2 to 8 minutes, by the mirrors' day), then edge-check builds a web image: 15 minutes was cut off.
+    timeout-minutes: ${{ matrix.name == 'edge' && 30 || 15 }}
     # The supervisor and edge entries' image tags, each defined once for its build step and its cleanup step. Per run:
     # on a daemon shared by several runners (vars.CI_RUNNER) a fixed tag lets concurrent runs retag each other's image,
     # so a run could smoke another PR's build.
     env:
       SUP_IMG: mdmesh-supervisor:ci-${{ github.run_id }}-${{ github.run_attempt }}
       WEB_IMG: mdmesh-web:ci-${{ github.run_id }}-${{ github.run_attempt }}
+      # The Ubuntu containers' apt mirror (tests/lib/ubuntu-mirror.sh): on a GitHub-hosted runner, Azure's, next to it.
+      # The public archive alone has been slow enough (30 kB/s) to run the edge entry's Ubuntu suites into the timeout.
+      MDMESH_TEST_UBUNTU_MIRROR: ${{ !vars.CI_RUNNER && 'http://azure.archive.ubuntu.com/ubuntu/' || '' }}
     strategy:
       fail-fast: false
       matrix:
@@ -118,6 +135,11 @@ jobs:
       - if: matrix.name == 'server' && (needs.paths.outputs.all == 'true' || fromJSON(needs.paths.outputs.matched).server)
         name: Build WAR
         run: mvn -B -DskipTests package
+      # The WAR's LICENSE, NOTICE and third-party list: every jar listed, each under an allowed licence (or a recorded
+      # choice), compared with docs/licenses/inventory/ (docs/licenses/policy.md). Differences there only warn.
+      - if: matrix.name == 'server' && (needs.paths.outputs.all == 'true' || fromJSON(needs.paths.outputs.matched).server)
+        name: Licences in the WAR
+        run: scripts/licenses/inventory.py --war server/target/launcher.war
       - if: matrix.name == 'server' && (needs.paths.outputs.all == 'true' || fromJSON(needs.paths.outputs.matched).server)
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
@@ -141,6 +163,10 @@ jobs:
       - if: matrix.name == 'web' && (needs.paths.outputs.all == 'true' || fromJSON(needs.paths.outputs.matched).web)
         working-directory: web
         run: npm run build
+      # As the server's: the console build's /licenses/ files (docs/licenses/policy.md).
+      - if: matrix.name == 'web' && (needs.paths.outputs.all == 'true' || fromJSON(needs.paths.outputs.matched).web)
+        name: Licences in the console build
+        run: scripts/licenses/inventory.py --web web/dist
 
       # --- agent (from agent.yml) ---
       - if: matrix.name == 'agent' && (needs.paths.outputs.all == 'true' || fromJSON(needs.paths.outputs.matched).agent)
@@ -173,7 +199,14 @@ jobs:
         # pre-existing findings are in agent-android/config/detekt/baseline.xml, new code must be clean.
         working-directory: agent-android
         # :proto is a plain JVM module, so testDebugUnitTest skips it; run its tests by name (release.yml does too).
-        run: ./gradlew --no-daemon detekt assembleDebug lintDebug testDebugUnitTest :proto:test
+        # assembleDebugAndroidTest builds every Android module's instrumented test APK (:proto has none): it compiles the
+        # tests and resolves their dependencies, so neither a change to the classes they use nor a test-only dependency
+        # conflict breaks them unseen. Running them needs an emulator (agent-android/README.md).
+        run: ./gradlew --no-daemon detekt assembleDebug lintDebug testDebugUnitTest assembleDebugAndroidTest :proto:test
+      # As the server's: the APK's assets/licenses/ (docs/licenses/policy.md).
+      - if: matrix.name == 'agent' && (needs.paths.outputs.all == 'true' || fromJSON(needs.paths.outputs.matched).agent)
+        name: Licences in the APK
+        run: scripts/licenses/inventory.py --apk agent-android/app/build/outputs/apk/debug/app-debug.apk
 
       # --- supervisor (#27): build the image, run its unit tests on the shipped Node, then run it the
       # way docker-compose runs it (working_dir /project + project mounted) and probe its routes. ---
@@ -190,28 +223,34 @@ jobs:
       # --- edge: the Cloudflare-mode Caddyfile break (empty ACME_EMAIL) shipped because nothing parsed it. Validates
       # docker/Caddyfile in every hosting mode with the caddy image web.Dockerfile builds FROM, and every compose combo;
       # then checks /healthz and /healthz/supervisor report their upstream's health (503, never the SPA's 200). ---
-      # quickstart.sh carries a verbatim copy of install/lib/url.sh's and install/lib/answers.sh's functions (the region
+      # quickstart.sh carries a verbatim copy of install/lib/url.sh's, answers.sh's, modes.sh's, stack.sh's and supervisor/mode-guard.sh's functions (the region
       # between each file's ">>> <name> functions" and "<<< <name> functions" markers): it runs from main but fetches
       # install/lib from the release it installs, which may predate them (see quickstart.sh). Fail when the copies differ.
       - if: matrix.name == 'edge' && (needs.paths.outputs.all == 'true' || fromJSON(needs.paths.outputs.matched).installers)
-        name: quickstart.sh's BASE_URL check and answers functions match install/lib
+        name: quickstart.sh's BASE_URL check, answers and hosting-mode functions match install/lib
         run: |
           rc=0
-          for n in url.sh answers.sh; do
+          for f in install/lib/url.sh install/lib/answers.sh install/lib/modes.sh install/lib/stack.sh supervisor/mode-guard.sh; do
+            n=${f##*/}
             fn() { sed -n "/^# >>> $n functions /,/^# <<< $n functions <<<\$/p" "$1"; }
-            lib=$(fn "install/lib/$n"); qs=$(fn quickstart.sh)
+            lib=$(fn "$f"); qs=$(fn quickstart.sh)
             if [ -z "$lib" ] || [ "$lib" != "$qs" ]; then
-              echo "::error file=quickstart.sh::the $n functions in quickstart.sh are not a verbatim copy of install/lib/$n's (or one is missing). Copy the region between the markers into quickstart.sh."
+              echo "::error file=quickstart.sh::the $n functions in quickstart.sh are not a verbatim copy of $f's (or one is missing). Copy the region between the markers into quickstart.sh."
               diff -u <(printf '%s\n' "$lib") <(printf '%s\n' "$qs") || true
               rc=1
             else
-              echo "quickstart.sh's $n functions are identical to install/lib/$n's"
+              echo "quickstart.sh's $n functions are identical to $f's"
             fi
           done
           exit "$rc"
       # install/options.json is the installers' answers contract, which the website's install wizard reads: every question
       # has an entry and every entry a question, with the same variable, rule, default and prompt text, and a full set of
       # answers runs without asking. Dry runs only (MDMESH_DRY_RUN=1), in a temporary copy: nothing is installed.
+      # minisign: the installer suites sign their own release fixtures (installer-answers, setup-update), and the
+      # manifest contract checks a signature.
+      - if: matrix.name == 'edge' && (needs.paths.outputs.all == 'true' || fromJSON(needs.paths.outputs.matched).installers)
+        name: Installer test tools (minisign)
+        run: command -v minisign >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq minisign; }
       - if: matrix.name == 'edge' && (needs.paths.outputs.all == 'true' || fromJSON(needs.paths.outputs.matched).installers)
         name: Installer answers contract (install/options.json)
         run: tests/installer-answers/run.sh
@@ -219,15 +258,18 @@ jobs:
       # (signature, image digests, file hashes) and supervisor/lib.js read it; its key copy matches release/minisign.pub.
       - if: matrix.name == 'edge' && (needs.paths.outputs.all == 'true' || fromJSON(needs.paths.outputs.matched).installers)
         name: Release manifest contract (build-manifest.sh, quickstart.sh, supervisor)
-        run: |
-          command -v minisign >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq minisign; }
-          scripts/release-manifest-check.sh
+        run: scripts/release-manifest-check.sh
       # `./setup.sh --update` (source and native installs move to the newest signed release tag) against a fixture
       # origin with releases signed by a throwaway key: unsigned, foreign-key, replayed, retargeted or dirty is refused.
-      # Clones in a temporary directory, curl and docker stubbed: nothing is installed. Needs minisign (step above).
+      # Clones in a temporary directory, curl and docker stubbed: nothing is installed. Needs minisign (installed above).
       - if: matrix.name == 'edge' && (needs.paths.outputs.all == 'true' || fromJSON(needs.paths.outputs.matched).installers)
         name: setup.sh --update (signed release tags)
         run: tests/setup-update/run.sh
+      # The T2 rig's Maven repository seed and save (tests/native/lib/host.sh) against a docker stub: a failed copy or
+      # cleanup leaves the cache and writes no marker (so CI uploads nothing), and never fails a passing run.
+      - if: matrix.name == 'edge' && (needs.paths.outputs.all == 'true' || fromJSON(needs.paths.outputs.matched).native)
+        name: T2 rig Maven cache helpers
+        run: tests/native/m2-cache-test.sh
       # Both installer suites again with the tools of the distributions the installers support, not the runner's: mawk
       # (Debian 12's 1.3.4-20200120 has no regex intervals), and busybox's awk. Throwaway containers (--rm), unprivileged,
       # the checkout mounted read-only.
@@ -257,6 +299,49 @@ jobs:
       - if: always() && matrix.name == 'edge'
         name: Remove the per-run web image
         run: docker rmi -f "$WEB_IMG" >/dev/null 2>&1 || true
+
+  # The release images on Arm64, built on GitHub's Arm runner as release.yml builds them: a base image, Alpine package
+  # or npm binary without an arm64 build would otherwise first fail in a release. The supervisor also runs its unit
+  # tests and smoke there, and the server starts on the dev stack's postgres, runs with -XX:-UseBASE64Intrinsics, and
+  # serves the API (dev-seed.sh: first boot, migrations, seed, and the console's Set Password call). (The x86_64 builds are the build job's supervisor
+  # and edge entries, and T1's server.)
+  arm64:
+    name: arm64 ${{ matrix.image }}
+    needs: paths
+    if: needs.paths.outputs.all == 'true' || fromJSON(needs.paths.outputs.matched).images
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 25
+    env:
+      IMG: mdmesh-${{ matrix.image }}:ci-arm64-${{ github.run_id }}-${{ github.run_attempt }}
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [server, web, supervisor]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - if: matrix.image != 'server'
+        name: Build the ${{ matrix.image }} image for linux/arm64
+        env:
+          IMAGE: ${{ matrix.image }}
+        run: docker build --platform linux/arm64 -f "docker/${IMAGE}.Dockerfile" -t "$IMG" .
+      - if: matrix.image == 'server'
+        name: Build the server image, start it on postgres, and check it serves
+        run: |
+          docker compose --env-file docker/dev.env up -d --build postgres server
+          docker compose --env-file docker/dev.env exec -T server uname -m | grep -qx aarch64
+          # -XX:-UseBASE64Intrinsics in effect on Arm64 too (install/tomcat-setenv.sh), as release.yml checks it there.
+          scripts/server-jvm-check.sh --container "$(docker compose --env-file docker/dev.env ps -q server)"
+          ADMIN_PW=$(openssl rand -hex 24)
+          echo "::add-mask::$ADMIN_PW"
+          DEV_ADMIN_PASSWORD=$ADMIN_PW scripts/dev-seed.sh
+      - if: failure() && matrix.image == 'server'
+        name: Server logs
+        run: docker compose --env-file docker/dev.env logs --no-color --tail 200 server postgres || true
+      - if: matrix.image == 'supervisor'
+        name: Supervisor unit tests + compose-shaped smoke on arm64
+        run: |
+          docker run --rm -w /app "$IMG" node --test test.js
+          scripts/supervisor-smoke.sh "$IMG"
 
   # The console's accessibility sweep in a real browser: axe (WCAG 2.0-2.2 A/AA) on every page and its key states
   # (dialogs, menus, errors, empty lists), plus horizontal scroll, page titles and text spacing, in the light theme
@@ -323,6 +408,5 @@ jobs:
             a11y-out/failures.txt
           if-no-files-found: ignore
 
-  # NOTE: an emulator-based instrumentation matrix (the "version-treadmill guard" — boot the agent
-  # across API levels so SDK_INT-gated breakage surfaces in CI) is deferred until real instrumented
-  # (androidTest) tests exist, per agent.yml. Nothing to migrate.
+  # NOTE: the agent entry above builds the instrumented (androidTest) tests but doesn't run them. Running them on an
+  # emulator is planned.

@@ -3,7 +3,13 @@
 # same image serves any deployment. JDK 17 is required — dependencies (e.g. activemq-broker) ship
 # Java-11+ bytecode, so Java 8 fails to both compile and run.
 
+# A Maven repository to start from, empty unless the build passes one (T1: --build-context m2=DIR, so that Maven Central's
+# 429 to a busy runner address doesn't fail it). Only the build stage uses it. COPY, not RUN --mount: setup.sh's Docker
+# may not have BuildKit.
+FROM scratch AS m2
+
 FROM maven:3.9-eclipse-temurin-17 AS build
+COPY --from=m2 / /root/.m2/repository/
 WORKDIR /src
 COPY pom.xml ./
 COPY common ./common
@@ -12,6 +18,9 @@ COPY notification ./notification
 COPY plugins ./plugins
 COPY server ./server
 COPY install ./install
+# The licence files the WAR carries in META-INF, and the allowlist its licence check reads (docs/licenses/policy.md).
+COPY LICENSE NOTICE ./
+COPY docs/licenses ./docs/licenses
 RUN cp server/build.properties.example server/build.properties || true
 RUN mvn -q -B -DskipTests package
 
@@ -22,6 +31,8 @@ RUN mvn -q -B -DskipTests package
 FROM tomcat:9.0.124-jdk17-temurin@sha256:3a78549294409e66975d1a02507be2dc42561877d52f8dbe62f0fca196d199d6
 RUN rm -rf /usr/local/tomcat/webapps/*
 COPY --from=build /src/server/target/launcher.war /usr/local/tomcat/webapps/ROOT.war
+# MDMesh's licence, NOTICE (with the source offer for the image's GPL software) and the WAR's third-party list.
+COPY --from=build /src/LICENSE /src/NOTICE /src/server/target/licenses/META-INF/THIRD-PARTY.txt /usr/share/doc/mdmesh/
 # App base directory (data, plugins, email templates). /opt/mdmesh should be a volume
 # so uploaded files + the hosted agent APK survive container recreation.
 RUN mkdir -p /opt/mdmesh/files /opt/mdmesh/plugins \
