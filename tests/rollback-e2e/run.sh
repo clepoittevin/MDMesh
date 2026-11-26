@@ -23,7 +23,7 @@
 # Everything runs in a privileged docker:dind container (its own daemon) next to a TLS registry that answers as ghcr.io,
 # on an internal network. Images (on this host): ghcr.io/local/mdmesh-{server,web,supervisor}:$E2E_NEW_TAG (this
 # branch, default rr-e2e) and :$E2E_OLD_TAG (origin/main, default rr-main), ghcr.io/mdmesh-app/mdmesh-*:0.4.0,
-# postgres:14, postgres:16, registry:3, docker:28.5.2-dind. Containers and networks are named $E2E_PREFIX-* (default
+# postgres:14, postgres:18, postgres:16, registry:3, docker:28.5.2-dind. Containers and networks are named $E2E_PREFIX-* (default
 # rr-e2e) and removed by name at the end. E2E_KEEP=1 keeps the work directory.
 set -uo pipefail
 umask 077
@@ -243,7 +243,7 @@ setup_dind() {
     for t in "$NEW_TAG" "$OLD_TAG"; do imgs+=("ghcr.io/local/mdmesh-$n:$t"); done
     imgs+=("ghcr.io/mdmesh-app/mdmesh-$n:0.4.0")
   done
-  imgs+=(postgres:14)
+  imgs+=(postgres:14 postgres:18)   # 14: v0.4.0's compose file; 18: this checkout's
   docker save "${imgs[@]}" | docker exec -i "$DIND" docker load >>"$LOG" 2>&1 || return 1
   echo "-- releases in the registry"
   push 0.4.0 ghcr.io/mdmesh-app/mdmesh 0.4.0 || return 1

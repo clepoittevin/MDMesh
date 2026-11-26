@@ -124,7 +124,7 @@ updates:
     # Scans docker-compose*.yml. Our own ghcr.io/.../mdmesh-* images use ${VAR:-latest} tags and are skipped;
     # cloudflared is :latest (nothing to bump).
     ignore:
-      # Postgres stays on 14.x: a new major cannot open an existing 14 data directory (dump/restore or
-      # pg_upgrade). Move it only in a planned database migration.
+      # Postgres stays on 18.x: a new major cannot open an older one's data directory (dump/restore or
+      # pg_upgrade). Move it only in a planned database migration, as 14 → 18 was (scripts/pg-upgrade-18.sh).
       - dependency-name: "postgres"
         update-types: ["version-update:semver-major"]
