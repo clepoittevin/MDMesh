@@ -41,6 +41,18 @@ describe('consoleLocale', () => {
     consoleIn('en', ['de-DE', 'de']);
     expect(consoleLocale()).toBeUndefined();
   });
+
+  it('stays the browser’s own when that browser lists English after its own language', () => {
+    consoleIn('en', ['de-DE', 'de', 'en-US', 'en']);
+    expect(consoleLocale()).toBeUndefined();
+    consoleIn('en', ['es-ES', 'es', 'en']);
+    expect(consoleLocale()).toBeUndefined();
+  });
+
+  it('takes the region of an English listed second once English is chosen', () => {
+    consoleIn('en', ['de-DE', 'de', 'en-GB', 'en'], 'en');
+    expect(consoleLocale()).toBe('en-GB');
+  });
 });
 
 describe('dates', () => {
@@ -54,6 +66,18 @@ describe('dates', () => {
     consoleIn('en', ['en-GB']);
     expect(fmtDate(NOV_26, { day: 'numeric', month: 'short', year: 'numeric' })).toBe('26 Nov 2026');
     expect(fmtDateTime(NOV_26)).toMatch(/^26 Nov 2026, 15:05$/);
+  });
+
+  it('stay as the browser writes them for English nobody chose, even with English further down its list', () => {
+    consoleIn('en', ['de-DE', 'de', 'en-US', 'en']);
+    expect(fmtDateTime(NOV_26)).toBe(new Date(NOV_26).toLocaleString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    }));
+    expect(consoleLocale()).toBeUndefined();
   });
 
   it('are French in the French console, whatever the browser', () => {

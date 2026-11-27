@@ -88,8 +88,9 @@ with the wording. Plurals and variables use ICU
 Two things to know:
 - The console's locale is a language (`en`, `fr`), not a region, so numbers formatted through react-intl come out in
   that language's default style. Dates go through `fmtDate` and `fmtDateTime` (`src/ui/format.ts`) instead of
-  `intl.formatDate`: they take the browser's region when the browser speaks the console's language (an en-GB browser
-  keeps "26 Nov 2026"), and English that nobody chose in Settings keeps the browser's own formats.
+  `intl.formatDate`: they take the browser's region when the browser lists the console's language (an en-GB browser
+  keeps "26 Nov 2026"). English that nobody chose in Settings, on a browser whose first language is another one,
+  keeps that browser's own formats, even if it lists English further down.
 - A language is a `src/i18n/locales/<code>.json` in the shape of `en.json`. The console picks it up for browsers in
   that language as soon as the file is there; Settings → Appearance offers it once it also has its name in
   `LANGUAGE_NAMES` (`src/i18n/locales.ts`). French text takes a no-break space before `: ; ! ? %` (`npm test` checks).
