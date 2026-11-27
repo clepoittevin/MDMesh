@@ -909,7 +909,7 @@
     "defaultMessage": "L’appareil a été effacé : il n’accepte plus de commandes."
   },
   "commands.param.lockscreenMessage.placeholder": {
-    "defaultMessage": "Propriété du club"
+    "defaultMessage": "Propriété du service informatique d’ACME"
   },
   "commands.param.message.label": {
     "defaultMessage": "Message"
@@ -921,7 +921,7 @@
     "defaultMessage": "Titre"
   },
   "commands.param.title.placeholder": {
-    "defaultMessage": "Message du club"
+    "defaultMessage": "Message du service informatique"
   },
   "configEditor.action.create": {
     "defaultMessage": "Créer la configuration"
