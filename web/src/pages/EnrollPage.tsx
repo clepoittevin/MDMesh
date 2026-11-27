@@ -557,6 +557,15 @@ const setupUnreadable = defineMessage<{ summary: string; error: string }>({
   id: 'enroll.setup.unreadable',
   defaultMessage: '{summary} (other Extra QR parameters left out: {error})',
 });
+// Why the other Extra QR parameters can't be read (provisioning.ts says which); {detail} is the JSON parser's own text.
+const setupInvalidJson = defineMessage<{ detail: string }>({
+  id: 'enroll.setup.unreadableWhy.invalidJson',
+  defaultMessage: 'invalid JSON ({detail})',
+});
+const setupNotMembers = defineMessage({
+  id: 'enroll.setup.unreadableWhy.notMembers',
+  defaultMessage: 'not JSON members ("key": value) or one JSON object',
+});
 
 export function EnrollPage() {
   const intl = useIntl();
@@ -881,7 +890,12 @@ export function EnrollPage() {
           value: qrExtras.error
             ? intl.formatMessage(setupUnreadable, {
                 summary: extrasText || intl.formatMessage(setupMessages.nothing),
-                error: qrExtras.error,
+                error:
+                  qrExtras.errorKind === 'invalidJson'
+                    ? intl.formatMessage(setupInvalidJson, { detail: qrExtras.errorDetail ?? '' })
+                    : qrExtras.errorKind === 'notMembers'
+                      ? intl.formatMessage(setupNotMembers)
+                      : qrExtras.error,
               })
             : qrExtras.ignored.length
               ? intl.formatMessage(setupProtectedLeftOut, {

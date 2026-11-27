@@ -44,6 +44,10 @@ describe('parseExtraQrParameters', () => {
     expect(r.entries).toEqual({});
     expect(r.error).toContain('valid JSON');
     expect(parseExtraQrParameters('[1, 2]').error).toContain('JSON members');
+    // Which of the two it is, and the parser's own text, for a page that words the reason in the reader's language.
+    expect(r.errorKind).toBe('invalidJson');
+    expect(r.error).toBe(`invalid JSON (${r.errorDetail})`);
+    expect(parseExtraQrParameters('[1, 2]').errorKind).toBe('notMembers');
   });
 
   it('leaves out the protected entries', () => {
@@ -147,6 +151,7 @@ describe('what a configuration adds to the enrollment QR', () => {
     const r = configurationQrExtras({ mobileEnrollment: true, qrParameters: '"broken' });
     expect(r.error).toMatch(/invalid JSON/);
     expect(r.entries).toEqual({ [MOBILE]: true });
+    expect(r.errorKind).toBe('invalidJson');
   });
 
   it('summarizes the known entries and counts the rest', () => {
