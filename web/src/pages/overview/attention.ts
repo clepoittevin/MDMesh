@@ -1,8 +1,21 @@
 // Overview wording on top of the shared fleet health rules (web/src/data/fleetHealth.ts): the attention row's text,
 // tone and action, and the subtitle's "mostly for …" phrase.
+import { defineMessages, type IntlShape, type MessageDescriptor } from 'react-intl';
+import { syncVerdictLabel } from '../../api/configSync';
 import type { DeviceView } from '../../api/devices';
-import { ISSUE_REASON, ISSUE_TONE, issueKind, presenceOf, type IssueKind, type Presence, type SyncVerdict } from '../../data/fleetHealth';
+import { EN_INTL, untyped } from '../../data/configIntl';
+import { ISSUE_REASON_MESSAGES, ISSUE_TONE, issueKind, presenceOf, type IssueKind, type Presence, type SyncVerdict } from '../../data/fleetHealth';
 import type { StatusTone } from '../../ui';
+
+const reasonMessages = untyped(defineMessages({
+  offline: { id: 'overview.reason.offline', defaultMessage: 'being offline' },
+  failed: { id: 'overview.reason.failed', defaultMessage: 'a configuration that failed to apply' },
+  outOfSync: { id: 'overview.reason.outOfSync', defaultMessage: 'a configuration out of sync' },
+  agentTooOld: { id: 'overview.reason.agentTooOld', defaultMessage: 'an out-of-date agent' },
+  deferred: { id: 'overview.reason.deferred', defaultMessage: 'deferred settings' },
+  reset: { id: 'overview.reason.reset', defaultMessage: 'a configuration out of date on the device' },
+  rowOffline: { id: 'overview.attention.offline', defaultMessage: 'Offline' },
+}));
 
 export type Bucket = Presence;
 
@@ -28,20 +41,26 @@ export interface AttentionReason {
   phrase: string;
 }
 
-const ROW: Record<IssueKind, { action: RowAction; phrase: string }> = {
-  failed: { action: 'open', phrase: 'a configuration that failed to apply' },
-  outOfSync: { action: 'sync', phrase: 'a configuration out of sync' },
-  agentTooOld: { action: 'agent', phrase: 'an out-of-date agent' },
-  deferred: { action: 'open', phrase: 'deferred settings' },
-  reset: { action: 'sync', phrase: 'a configuration out of date on the device' },
+const ROW: Record<IssueKind, { action: RowAction; phrase: MessageDescriptor }> = {
+  failed: { action: 'open', phrase: reasonMessages.failed },
+  outOfSync: { action: 'sync', phrase: reasonMessages.outOfSync },
+  agentTooOld: { action: 'agent', phrase: reasonMessages.agentTooOld },
+  deferred: { action: 'open', phrase: reasonMessages.deferred },
+  reset: { action: 'sync', phrase: reasonMessages.reset },
 };
 
 /** Row wording, tone and action for a configuration issue (summarizeStatus output) or offline. */
-export function reasonFor(issue: ConfigIssue | undefined): AttentionReason {
-  if (!issue) return { text: 'Offline', tone: 'idle', action: 'open', phrase: 'being offline' };
+export function reasonFor(issue: ConfigIssue | undefined, intl: IntlShape = EN_INTL): AttentionReason {
+  if (!issue) {
+    return { text: intl.formatMessage(reasonMessages.rowOffline), tone: 'idle', action: 'open', phrase: intl.formatMessage(reasonMessages.offline) };
+  }
   const k = issueKind(issue);
-  if (!k) return { text: issue.label, tone: issue.tone, action: 'open', phrase: issue.label.toLowerCase() };
-  return { text: ISSUE_REASON[k], tone: ISSUE_TONE[k], ...ROW[k] };
+  if (!k) {
+    const text = syncVerdictLabel(issue.label, intl);
+    return { text, tone: issue.tone, action: 'open', phrase: text.toLowerCase() };
+  }
+  const row = ROW[k];
+  return { text: intl.formatMessage(ISSUE_REASON_MESSAGES[k]), tone: ISSUE_TONE[k], action: row.action, phrase: intl.formatMessage(row.phrase) };
 }
 
 /** The most common reason among the attention devices, and whether it covers all of them or most (> half). */
@@ -49,13 +68,14 @@ export function topReason(
   devices: ReadonlyArray<DeviceView>,
   issues: Record<number, ConfigIssue>,
   now: number,
+  intl: IntlShape = EN_INTL,
 ): { phrase: string; share: 'all' | 'most' } | null {
   const tally = new Map<string, number>();
   let n = 0;
   for (const d of devices) {
     if (bucketOf(d, issues, now) !== 'attention') continue;
     n++;
-    const p = reasonFor(issues[d.id]).phrase;
+    const p = reasonFor(issues[d.id], intl).phrase;
     tally.set(p, (tally.get(p) ?? 0) + 1);
   }
   let best: [string, number] | null = null;

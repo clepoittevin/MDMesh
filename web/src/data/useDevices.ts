@@ -4,7 +4,9 @@ import {
   type DeviceView,
   type ConfigurationLookup,
 } from '../api/devices';
+import { defineMessages, type IntlShape } from 'react-intl';
 import { ApiError } from '../api/client';
+import { untyped } from './configIntl';
 
 export interface DevicesState {
   devices: DeviceView[];
@@ -21,14 +23,32 @@ export interface DevicesState {
 /** The generic load failure (no reason known): ErrorState says "Couldn't load …" without repeating it. */
 export const LOAD_DEVICES_FAILED = 'Failed to load devices.';
 
-function messageFor(err: unknown): string {
+const loadErrorMessages = untyped(defineMessages({
+  failed: { id: 'devices.load.failed', defaultMessage: 'Failed to load devices.' },
+  expired: { id: 'devices.load.sessionExpired', defaultMessage: 'Your session has expired. Sign in again.' },
+  unreachable: { id: 'deviceDetail.page.cannotReach', defaultMessage: 'Cannot reach the server.' },
+}));
+const SESSION_EXPIRED = loadErrorMessages.expired.defaultMessage as string;
+const UNREACHABLE = loadErrorMessages.unreachable.defaultMessage as string;
+
+/** The error a device list load reports (English, as useDevices and the Overview's data give it). */
+export function loadErrorOf(err: unknown): string {
   if (err instanceof ApiError) {
-    if (err.httpStatus === 401 || err.httpStatus === 403)
-      return 'Your session has expired. Sign in again.';
-    if (err.httpStatus === 0) return 'Cannot reach the server.';
+    if (err.httpStatus === 401 || err.httpStatus === 403) return SESSION_EXPIRED;
+    if (err.httpStatus === 0) return UNREACHABLE;
   }
   return LOAD_DEVICES_FAILED;
 }
+
+/** That error in the console's language; anything else (a server's own text) is shown as it came. */
+export function loadErrorText(error: string, intl: IntlShape): string {
+  if (error === LOAD_DEVICES_FAILED) return intl.formatMessage(loadErrorMessages.failed);
+  if (error === SESSION_EXPIRED) return intl.formatMessage(loadErrorMessages.expired);
+  if (error === UNREACHABLE) return intl.formatMessage(loadErrorMessages.unreachable);
+  return error;
+}
+
+const messageFor = loadErrorOf;
 
 export function useDevices(
   initialValue = '',

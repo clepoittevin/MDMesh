@@ -86,8 +86,14 @@ with the wording. Plurals and variables use ICU
   Reload the page after setting or removing it: the console reads it once, as it loads.
 
 Two things to know:
-- The console's locale is a language (`en`), not a region: an en-GB browser gets `en`, so dates and numbers formatted
-  through react-intl come out US-style. Passing the browser's full tag when its language matches is for later.
+- The console's locale is a language (`en`, `fr`), not a region, so numbers formatted through react-intl come out in
+  that language's default style. Dates go through `fmtDate` and `fmtDateTime` (`src/ui/format.ts`) instead of
+  `intl.formatDate`: they take the browser's region when the browser lists the console's language (an en-GB browser
+  keeps "26 Nov 2026"). English that nobody chose in Settings, on a browser whose first language is another one,
+  keeps that browser's own formats, even if it lists English further down.
+- A language is a `src/i18n/locales/<code>.json` in the shape of `en.json`. The console picks it up for browsers in
+  that language as soon as the file is there; Settings → Appearance offers it once it also has its name in
+  `LANGUAGE_NAMES` (`src/i18n/locales.ts`). French text takes a no-break space before `: ; ! ? %` (`npm test` checks).
 - `formatjs` (extract, compile, verify) is a native binary, published for Linux (x64 and arm64, glibc and musl),
   macOS and Windows, with no JavaScript fallback; `npm ci --omit=optional` leaves it out. The production build doesn't
   run it, only `npm test` and the `i18n:*` scripts do.

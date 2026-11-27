@@ -1,4 +1,6 @@
 import type { Key, ReactNode } from 'react';
+import { defineMessages, useIntl } from 'react-intl';
+import { untyped } from '../data/configIntl';
 import { StackedBar } from './Bars';
 import { IconCheckSmall } from './icons';
 import { cx } from './cx';
@@ -24,6 +26,15 @@ function StepMark({ n, state = 'plain' }: { n: number; state?: MarkState }) {
    Stepper ("✓ File — 2 Check details — 3 Add")
    ------------------------------------------------------------------------------------------------------------ */
 
+const messages = untyped(
+  defineMessages({
+    progress: { id: 'ui.steps.progress', defaultMessage: 'Progress' },
+    done: { id: 'ui.steps.donePrefix', defaultMessage: 'Done:' },
+    ofRest: { id: 'ui.steps.ofRest', defaultMessage: 'of the rest of the fleet' },
+    ofUpdated: { id: 'ui.steps.ofUpdated', defaultMessage: 'of {total} updated' },
+  }),
+);
+
 export interface StepperProps {
   steps: ReadonlyArray<ReactNode>;
   /** 0-based index of the current step; earlier steps show as done. */
@@ -33,7 +44,9 @@ export interface StepperProps {
 }
 
 /** Inline progress: a numbered mark and label per step, joined by a hairline; the current one has `aria-current="step"`. */
-export function Stepper({ steps, current, className, 'aria-label': ariaLabel = 'Progress' }: StepperProps) {
+export function Stepper({ steps, current, className, 'aria-label': ariaLabelProp }: StepperProps) {
+  const intl = useIntl();
+  const ariaLabel = ariaLabelProp ?? intl.formatMessage(messages.progress);
   return (
     <ol aria-label={ariaLabel} className={cx('v2-stepper', className)}>
       {steps.map((s, i) => {
@@ -42,7 +55,7 @@ export function Stepper({ steps, current, className, 'aria-label': ariaLabel = '
           <li key={i} aria-current={state === 'current' ? 'step' : undefined} className={cx('v2-stepper__step', `is-${state}`)}>
             <StepMark n={i + 1} state={state} />
             <span className="v2-stepper__label">
-              {state === 'done' ? <span className="v2-visually-hidden">Done: </span> : null}
+              {state === 'done' ? <span className="v2-visually-hidden">{intl.formatMessage(messages.done)} </span> : null}
               {s}
             </span>
           </li>
@@ -79,12 +92,13 @@ export interface RolloutStep {
 
 /** Grid of rollout step cards (auto-fit ≥ 260px). */
 export function RolloutSteps({ steps, className }: { steps: ReadonlyArray<RolloutStep>; className?: string }) {
+  const intl = useIntl();
   return (
     <ol className={cx('v2-rollout', className)}>
       {steps.map((s, i) => {
         const busy = s.busy ?? 0;
         const wait = s.total === null ? 1 : Math.max(0, s.total - s.done - busy);
-        const of = s.ofLabel ?? (s.total === null ? 'of the rest of the fleet' : `of ${s.total} updated`);
+        const of = s.ofLabel ?? (s.total === null ? intl.formatMessage(messages.ofRest) : intl.formatMessage(messages.ofUpdated, { total: s.total }));
         const mark: MarkState = s.stateTone === 'ok' ? 'done' : s.active ? 'current' : 'todo';
         return (
           <li key={s.key} className={cx('v2-rollout__step', s.active && 'is-active')}>

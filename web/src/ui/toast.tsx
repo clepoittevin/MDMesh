@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { FormattedMessage, useIntl } from 'react-intl';
 import { useMediaQuery } from './useMediaQuery';
 import './Toast.css';
 
@@ -58,6 +59,7 @@ const LEAVE_MS = 400;
  * schedule even out of view (it was announced; shown late it would be out of context). Only a hovering pointer holds.
  */
 export function ToastProvider({ children }: { children: ReactNode }) {
+  const intl = useIntl();
   const [toasts, setToasts] = useState<Toast[]>([]);
   const seq = useRef(0);
   const wrapRef = useRef<HTMLElement>(null);
@@ -150,7 +152,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     (kind: ToastKind, title: string, body: string) => {
       if (!mounted.current) return;
       const id = ++seq.current;
-      setSaid((a) => [...a.slice(-4), { id, kind, text: body ? `${title}. ${body}` : title }]);
+      setSaid((a) => [...a.slice(-4), { id, kind, text: body ? intl.formatMessage({ id: 'shell.toast.announce', defaultMessage: '{title}. {body}' }, { title, body }) : title }]);
       window.setTimeout(() => {
         if (mounted.current) setSaid((a) => a.filter((x) => x.id !== id));
       }, ANNOUNCE_MS);
@@ -165,7 +167,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         return [...t.filter((x) => x !== same), { id, kind, title, body, count: (same?.count ?? 0) + 1 }];
       });
     },
-    [],
+    [intl],
   );
   const api = useMemo(() => ({ push }), [push]);
 
@@ -254,7 +256,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           {t.count > 1 ? (
             <span className="t-count">
               <span aria-hidden="true"> ×{t.count}</span>
-              <span className="v2-visually-hidden"> ({t.count} times)</span>
+              <span className="v2-visually-hidden">
+                {' '}
+                <FormattedMessage id="shell.toast.times" defaultMessage="({count} times)" values={{ count: t.count }} />
+              </span>
             </span>
           ) : null}
         </div>
@@ -264,7 +269,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       <button
         type="button"
         className="t-close"
-        aria-label="Dismiss"
+        aria-label={intl.formatMessage({ id: 'shell.toast.dismiss', defaultMessage: 'Dismiss' })}
         aria-describedby={`toast-${t.id}`}
         onClick={(e) => dismiss([t.id], e.detail === 0)}
       >
@@ -279,7 +284,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       <section
         ref={wrapRef}
         className="toast-wrap"
-        aria-label="Notifications"
+        aria-label={intl.formatMessage({ id: 'shell.toast.notifications', defaultMessage: 'Notifications' })}
         onFocus={(e) => {
           const id = Number((e.target as HTMLElement).closest<HTMLElement>('[data-toast]')?.dataset.toast);
           setFocusedId(Number.isNaN(id) ? null : id);
@@ -298,9 +303,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       >
         {more > 0 ? (
           <div className="toast-more">
-            <span>{more} more</span>
+            <span>
+              <FormattedMessage id="shell.toast.more" defaultMessage="{count} more" values={{ count: more }} />
+            </span>
             <button type="button" className="t-all" onClick={(e) => dismiss(toasts.map((t) => t.id), e.detail === 0)}>
-              Dismiss all
+              <FormattedMessage id="shell.toast.dismissAll" defaultMessage="Dismiss all" />
             </button>
           </div>
         ) : null}

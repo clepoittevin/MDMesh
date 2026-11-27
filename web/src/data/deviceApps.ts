@@ -1,7 +1,10 @@
 // A device's installed apps, from its apps.scan results in command history (the agent lists the apps with a
 // launcher icon). Device-supplied JSON, so every field is checked before the page reads it.
+import { defineMessage, defineMessages, type IntlShape } from 'react-intl';
 import type { CommandHistoryItem } from '../api/commands';
-import type { AppInfo } from '../api/deviceApps';
+import { EN_INTL } from './configIntl';
+import { DeviceAppsError, type AppInfo } from '../api/deviceApps';
+import { apiErrorText } from '../api/apiErrorText';
 
 export interface AppScan {
   apps: AppInfo[];
@@ -59,13 +62,34 @@ const FAILED = new Set(['failed', 'unsupported', 'expired']);
  * Where a queued scan is, from the history: pending until the device answers (also while the history doesn't list
  * it yet), done, or failed with the device's or server's reason.
  */
+const deviceReturned = defineMessage<{ status: string }>({ id: 'deviceDetail.apps.scanDeviceReturned', defaultMessage: 'Device returned {status}' });
+
+const appsErrorMessages = defineMessages({
+  notQueued: { id: 'deviceApps.error.notQueued', defaultMessage: 'The command was not queued.' },
+  cancelled: { id: 'deviceApps.error.cancelled', defaultMessage: 'Cancelled.' },
+  timedOut: { id: 'deviceDetail.apps.scanTimedOut', defaultMessage: 'Timed out waiting for the device (is it online?)' },
+  badResult: { id: 'deviceApps.error.badResult', defaultMessage: 'The device sent a result that could not be read.' },
+  iconsTooSlow: { id: 'deviceApps.error.iconsTooSlow', defaultMessage: 'Fetching the icons took too long. Try again.' },
+});
+
+/**
+ * What a failed app scan or icon fetch (api/deviceApps) says, in the console's language: the device's own reason is
+ * shown as it sent it, a request failure as apiErrorText words it.
+ */
+export function deviceAppsErrorText(intl: IntlShape, e: unknown): string {
+  if (!(e instanceof DeviceAppsError)) return apiErrorText(intl, e);
+  if (e.code === 'deviceFailed') return e.detail || intl.formatMessage(deviceReturned, { status: e.commandStatus ?? '' });
+  return intl.formatMessage(appsErrorMessages[e.code]);
+}
+
 export function scanProgress(
   history: readonly CommandHistoryItem[],
   id: string,
+  intl: IntlShape = EN_INTL,
 ): { state: 'pending' } | { state: 'done' } | { state: 'failed'; reason: string } {
   const c = history.find((h) => String(h.id) === id);
   if (c?.status === 'done') return { state: 'done' };
-  if (c && FAILED.has(c.status)) return { state: 'failed', reason: c.detail || `Device returned ${c.status}` };
+  if (c && FAILED.has(c.status)) return { state: 'failed', reason: c.detail || intl.formatMessage(deviceReturned, { status: c.status }) };
   return { state: 'pending' };
 }
 

@@ -1,4 +1,5 @@
 import { useRef, type KeyboardEvent, type ReactNode } from 'react';
+import { defineMessages, useIntl } from 'react-intl';
 import { cx } from './cx';
 import { useOverflowFade } from './useOverflowFade';
 import './Segmented.css';
@@ -143,6 +144,12 @@ export interface PolicySegment {
   label: string;
 }
 
+const policyMessages = defineMessages({
+  notManaged: { id: 'ui.policy.notManaged', defaultMessage: 'Not managed' },
+  allow: { id: 'ui.policy.allow', defaultMessage: 'Allow' },
+  block: { id: 'ui.policy.block', defaultMessage: 'Block' },
+});
+
 /** Not managed / Allow / Block, true = allowed (configFields ALLOW_BLOCK). */
 export const ALLOW_BLOCK_SEGMENTS: ReadonlyArray<PolicySegment> = [
   { value: null, label: 'Not managed' },
@@ -165,8 +172,18 @@ export interface TriStateProps {
 }
 
 /** "Not managed / Allow / Block" (or any three boolean|null segments). */
-export function TriState({ segments = ALLOW_BLOCK_SEGMENTS, ...rest }: TriStateProps) {
-  return <Segmented<boolean | null> options={segments} {...rest} />;
+export function TriState({ segments, ...rest }: TriStateProps) {
+  const intl = useIntl();
+  // The default (English) segments show in the console's language.
+  const options =
+    !segments || segments === ALLOW_BLOCK_SEGMENTS
+      ? [
+          { value: null, label: intl.formatMessage(policyMessages.notManaged) },
+          { value: true, label: intl.formatMessage(policyMessages.allow) },
+          { value: false, label: intl.formatMessage(policyMessages.block) },
+        ]
+      : segments;
+  return <Segmented<boolean | null> options={options} {...rest} />;
 }
 
 export interface TwoStateProps {
@@ -187,7 +204,9 @@ export interface TwoStateProps {
 }
 
 /** Two-option variant for flag fields (Allow / Block, Show / Hide, …). */
-export function TwoState({ value, onChange, labels = ['Allow', 'Block'], falseFirst, ...rest }: TwoStateProps) {
+export function TwoState({ value, onChange, labels: labelsProp, falseFirst, ...rest }: TwoStateProps) {
+  const intl = useIntl();
+  const labels = labelsProp ?? [intl.formatMessage(policyMessages.allow), intl.formatMessage(policyMessages.block)];
   const on: SegmentOption<boolean> = { value: true, label: labels[0] };
   const off: SegmentOption<boolean> = { value: false, label: labels[1] };
   const shown = value === undefined ? undefined : value === true;

@@ -1,5 +1,8 @@
-import { useId, useMemo, useState } from 'react';
-import { applyUpdate, checkForUpdates, setAutoUpdate, type UpdateStatus } from '../../api/updates';
+import { useId, useMemo, useState, type ReactNode } from 'react';
+import { FormattedMessage, defineMessages, useIntl, type IntlShape } from 'react-intl';
+import { untyped } from '../../data/configIntl';
+import { applyUpdate, checkForUpdates, setAutoUpdate, type UpdateActionResult, type UpdateStatus } from '../../api/updates';
+import { apiErrorCodeText } from '../../api/apiErrorText';
 import { useMayManageDeployment } from '../../auth/useMayManageDeployment';
 import {
   Badge,
@@ -21,15 +24,16 @@ import {
   Toggle,
   Tooltip,
   cx,
-  formatRelative,
   LinkButton,
 } from '../../ui';
+import { fmtDate } from '../../ui/format';
 import { applyRunning, type SupervisorState } from '../../data/useSupervisor';
 import { entrySize, parseReleaseEntries, type ReleaseEntry } from '../../data/releaseNotes';
 import type { Block, NotesSection } from '../../whatsnew/changelog';
 import { InlineText, NotesList } from '../../whatsnew/NotesView';
 import {
   agentAfterServerUpdate,
+  agoText,
   applyPhaseLabel,
   blockedText,
   lastCheckError,
@@ -43,39 +47,172 @@ import {
 
 /** Apply phases in order (supervisor APPLY_PHASES before `done`). */
 const PHASES = ['authorizing', 'backup', 'pull', 'recreate', 'healthcheck'] as const;
-const PHASE_STEP: Record<(typeof PHASES)[number], string> = {
-  authorizing: 'Authorize',
-  backup: 'Back up',
-  pull: 'Download',
-  recreate: 'Restart',
-  healthcheck: 'Health check',
-};
-/** Why the automatic-updates switch is read-only for everyone but the admin who runs the install. */
-const AUTO_LOCKED_REASON = 'Only a super-admin, or the admin of a single-customer install, can change this.';
+
+const messages = untyped(defineMessages({
+  stepAuthorize: { id: 'updates.step.authorize', defaultMessage: 'Authorize' },
+  stepBackup: { id: 'updates.step.backup', defaultMessage: 'Back up' },
+  stepDownload: { id: 'updates.step.download', defaultMessage: 'Download' },
+  stepRestart: { id: 'updates.step.restart', defaultMessage: 'Restart' },
+  stepHealthcheck: { id: 'updates.step.healthcheck', defaultMessage: 'Health check' },
+  autoLocked: {
+    id: 'updates.auto.locked',
+    defaultMessage: 'Only a super-admin, or the admin of a single-customer install, can change this.',
+  },
+  manualDocker: { id: 'updates.manual.docker', defaultMessage: 'Docker, installed from source' },
+  manualNative: { id: 'updates.manual.native', defaultMessage: 'Native install' },
+  manualCommand: { id: 'updates.manual.commandLabel', defaultMessage: '{label} update command' },
+  // The release's channel as a label ("Stable channel").
+  channelLabel: {
+    id: 'updates.ready.channel',
+    defaultMessage: '{channel, select, stable {Stable channel} beta {Beta channel} other {{name} channel}}',
+  },
+  releasedOn: { id: 'updates.ready.releasedOn', defaultMessage: 'released {date}' },
+  notesVersion: { id: 'updates.notes.version', defaultMessage: 'Version {version}' },
+  notesTitle: { id: 'updates.notes.title', defaultMessage: 'Release notes' },
+  notesSecurity: { id: 'updates.notes.securityFixes', defaultMessage: 'Security fixes' },
+  notesShowLess: { id: 'updates.notes.showLess', defaultMessage: 'Show less' },
+  notesShowAll: { id: 'updates.notes.showAll', defaultMessage: 'Show all notes ({count})' },
+  checkFailed: { id: 'updates.check.failed', defaultMessage: 'Couldn’t check for updates. Try again in a minute.' },
+  applyNotStarted: { id: 'updates.apply.notStarted', defaultMessage: 'The update did not start.' },
+  applyNotStartedDetail: { id: 'updates.apply.notStartedDetail', defaultMessage: 'The update did not start: {error}' },
+  autoSaveFailedDetail: { id: 'updates.auto.saveFailedDetail', defaultMessage: 'Could not save: {error}' },
+  autoSaveFailed: { id: 'updates.auto.saveFailed', defaultMessage: 'Could not save.' },
+  title: { id: 'updates.card.title', defaultMessage: 'Updates' },
+  // Read before a relative time ("Checked 5 minutes ago"); keeps its trailing space.
+  checkedPrefix: { id: 'updates.check.checkedPrefix', defaultMessage: 'Checked ' },
+  notChecked: { id: 'updates.check.notChecked', defaultMessage: 'Not checked yet' },
+  checking: { id: 'updates.check.checking', defaultMessage: 'Checking…' },
+  checkNow: { id: 'updates.check.now', defaultMessage: 'Check now' },
+  retry: { id: 'updates.card.retry', defaultMessage: 'Retry' },
+  loading: { id: 'updates.card.loading', defaultMessage: 'Checking for updates' },
+  unreachable: {
+    id: 'updates.card.unreachable',
+    defaultMessage:
+      'The updater isn’t reachable, so this console can’t check for or install updates. It runs next to the server (the {service} service) and serves {path}.',
+  },
+  stale: {
+    id: 'updates.card.stale',
+    defaultMessage: 'Can’t reach the updater right now. Showing the last state it reported.',
+  },
+  lastCheckFailed: { id: 'updates.check.lastFailed', defaultMessage: 'The last check failed: {error}' },
+  applyDidntStart: { id: 'updates.apply.didntStart', defaultMessage: 'The update didn’t start: {error}' },
+  updatingTo: { id: 'updates.apply.updatingTo', defaultMessage: 'Updating to MDMesh {version}' },
+  startedAuto: { id: 'updates.apply.startedAutomatically', defaultMessage: 'Started automatically' },
+  progressLabel: { id: 'updates.apply.progressLabel', defaultMessage: 'Update progress' },
+  startedAgo: { id: 'updates.apply.startedAgo', defaultMessage: 'Started {ago}.' },
+  restartHelp: {
+    id: 'updates.apply.restartHelp',
+    defaultMessage:
+      'The console may stop answering for a minute while the server restarts. This page keeps checking and catches up on its own.',
+  },
+  rolledBackTitle: { id: 'updates.failed.rolledBackTitle', defaultMessage: 'The update to {version} was rolled back' },
+  failedTitle: { id: 'updates.failed.title', defaultMessage: 'The update to {version} failed' },
+  rolledBackHelp: {
+    id: 'updates.failed.rolledBackHelp',
+    defaultMessage: 'It didn’t pass its checks, so the server went back to {version} and its database backup.',
+  },
+  failedHelp: {
+    id: 'updates.failed.help',
+    defaultMessage: 'It stopped and could not roll back on its own. Recovery can roll back to the backup or retry.',
+  },
+  finishedAgo: { id: 'updates.failed.finishedAgo', defaultMessage: 'Finished {ago}.' },
+  openRecovery: { id: 'updates.failed.openRecovery', defaultMessage: 'Open recovery' },
+  doneText: {
+    id: 'updates.done.text',
+    defaultMessage: 'Updated to MDMesh {version} {ago}. Reload to use the new console.',
+  },
+  reload: { id: 'updates.done.reload', defaultMessage: 'Reload' },
+  missingSecurity: { id: 'updates.security.noticeTitle', defaultMessage: 'Missing security fixes' },
+  readyTitle: { id: 'updates.ready.title', defaultMessage: 'MDMesh {version} is ready' },
+  signatureVerified: { id: 'updates.ready.signatureVerified', defaultMessage: 'Signature verified' },
+  signatureNotVerified: { id: 'updates.ready.signatureNotVerified', defaultMessage: 'Signature not verified' },
+  updateButton: { id: 'updates.ready.updateButton', defaultMessage: 'Update server and console' },
+  fullNotes: { id: 'updates.ready.fullNotes', defaultMessage: 'Full release notes ↗' },
+  onlyAdmin: {
+    id: 'updates.ready.onlyAdmin',
+    defaultMessage: 'Only a super-admin, or the admin of a single-customer install, can update.',
+  },
+  takesAbout: {
+    id: 'updates.ready.takesAbout',
+    defaultMessage:
+      'Takes about 2 minutes. The database is backed up first, and devices keep working while the console restarts.',
+  },
+  cantInstall: {
+    id: 'updates.ready.unverifiedCantInstall',
+    defaultMessage: 'The release signature could not be verified, so it can’t be installed.',
+  },
+  manualHelp: {
+    id: 'updates.manual.help',
+    defaultMessage:
+      'This server can’t update itself: it was installed from source or with the native installer. Update it from the server’s shell, in the MDMesh folder:',
+  },
+  // {why}: the cause and what to do (updates.blocked.text.*).
+  blocked: { id: 'updates.blocked.title', defaultMessage: 'MDMesh {version} can’t be installed on this server. {why}' },
+  apkCarried: {
+    id: 'updates.ready.apkCarried',
+    defaultMessage: 'The release carries agent {version}. Once the server runs it, <link>roll it out to devices</link>.',
+  },
+  latest: {
+    id: 'updates.upToDate.latest',
+    defaultMessage: 'MDMesh {version} is the latest release{hasChannel, select, true { on the {channel} channel} other {}}.',
+  },
+  unverifiedFound: {
+    id: 'updates.upToDate.unverifiedFound',
+    defaultMessage:
+      'MDMesh {version} was found, but its signature couldn’t be verified, so it won’t be offered or installed.',
+  },
+  autoLabel: { id: 'updates.auto.label', defaultMessage: 'Install updates automatically' },
+  autoHelp: {
+    id: 'updates.auto.help',
+    defaultMessage: 'Verified releases install within a few hours of release. Unverified releases never install on their own.',
+  },
+  autoSkipped: {
+    id: 'updates.auto.skipped',
+    defaultMessage: 'Automatic updates won’t install {version} again, because its last update failed or was rolled back.',
+  },
+  autoSkippedManage: {
+    id: 'updates.auto.skippedManage',
+    defaultMessage: 'Update installs it by hand; a newer release installs on its own.',
+  },
+  autoSkippedOther: { id: 'updates.auto.skippedOther', defaultMessage: 'A newer release installs on its own.' },
+  confirmTitle: { id: 'updates.confirm.title', defaultMessage: 'Update to MDMesh {version}?' },
+  cancel: { id: 'updates.confirm.cancel', defaultMessage: 'Cancel' },
+  starting: { id: 'updates.confirm.starting', defaultMessage: 'Starting…' },
+  updateNow: { id: 'updates.confirm.updateNow', defaultMessage: 'Update now' },
+  confirmText: {
+    id: 'updates.confirm.text',
+    defaultMessage:
+      'The server and console restart, which takes about 2 minutes. The database is backed up first, and the update rolls back on its own if it fails. Devices keep working and reconnect when the server is back.',
+  },
+}));
+
+const PHASE_STEP = {
+  authorizing: messages.stepAuthorize,
+  backup: messages.stepBackup,
+  pull: messages.stepDownload,
+  recreate: messages.stepRestart,
+  healthcheck: messages.stepHealthcheck,
+} as const;
 /** Source installs (APPLY_SUPPORTED=0) update from the shell: the documented commands (README, classic Settings). */
 const MANUAL_STEPS = [
-  { label: 'Docker, installed from source', cmd: './setup.sh --update' },
-  { label: 'Native install', cmd: 'sudo ./setup.sh --update --native' },
+  { label: messages.manualDocker, cmd: './setup.sh --update' },
+  { label: messages.manualNative, cmd: 'sudo ./setup.sh --update --native' },
 ] as const;
 
 const DONE_NOTICE_MS = 24 * 60 * 60 * 1000;
+
+const SHORT_DATE = { day: 'numeric', month: 'short', year: 'numeric' } as const;
 
 function releasedOn(iso: string | null | undefined): string | null {
   if (!iso) return null;
   const t = Date.parse(iso);
   if (!Number.isFinite(t)) return null;
-  return new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+  return fmtDate(t, SHORT_DATE);
 }
 
-/** "3 minutes ago", "yesterday", or a date, for use mid-sentence. */
-function ago(ms: number): string {
-  const r = formatRelative(ms, Date.now(), 'long');
-  return r === 'Yesterday' ? 'yesterday' : r;
-}
-
-function channelLabel(ch: string | null | undefined): string | null {
+function channelLabel(ch: string | null | undefined, intl: IntlShape): string | null {
   if (!ch) return null;
-  return `${ch.charAt(0).toUpperCase()}${ch.slice(1)} channel`;
+  return intl.formatMessage(messages.channelLabel, { channel: ch, name: `${ch.charAt(0).toUpperCase()}${ch.slice(1)}` });
 }
 
 /** Up to this many items per group, and no Under the hood, while the notes are folded. */
@@ -87,7 +224,7 @@ const FOLD_OVER = 6;
 function noteDate(d: string | null): string | null {
   if (!d) return null;
   const t = Date.parse(/^\d{4}-\d{2}-\d{2}$/.test(d) ? `${d}T12:00:00` : d);
-  return Number.isFinite(t) ? new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : null;
+  return Number.isFinite(t) ? fmtDate(t, SHORT_DATE) : null;
 }
 
 const noNavigation = () => {};
@@ -118,6 +255,7 @@ const groupSize = (g: NotesSection) => g.blocks.reduce((n, b) => n + (b.kind ===
 /** One release: version and date, its one-line summary, then its items grouped under New, Fixes, Security and so on. */
 function ReleaseNotesEntry({ entry, folded }: { entry: ReleaseEntry; folded: boolean }) {
   const headId = useId();
+  const intl = useIntl();
   const date = noteDate(entry.date);
   const groups = folded ? entry.groups.filter((g) => g.kind !== 'underTheHood') : entry.groups;
   return (
@@ -125,17 +263,18 @@ function ReleaseNotesEntry({ entry, folded }: { entry: ReleaseEntry; folded: boo
       <header className="v2-relnotes__head">
         <h3 id={headId} className="v2-relnotes__version">
           {entry.version ? (
-            <>
-              Version <span className="v2-num">{entry.version}</span>
-            </>
+            <FormattedMessage
+              {...messages.notesVersion}
+              values={{ version: <span className="v2-num">{entry.version}</span> }}
+            />
           ) : (
-            'Release notes'
+            intl.formatMessage(messages.notesTitle)
           )}
         </h3>
         {date ? <span className="v2-relnotes__date">{date}</span> : null}
         {entry.security ? (
           <Badge tone="alert" size="sm">
-            Security fixes
+            {intl.formatMessage(messages.notesSecurity)}
           </Badge>
         ) : null}
       </header>
@@ -171,6 +310,7 @@ function ReleaseNotes({ status }: { status: UpdateStatus }) {
   const long = total > FOLD_OVER || entries.length > 1;
   const [open, setOpen] = useState(false);
   const id = useId();
+  const intl = useIntl();
   if (entries.length === 0) return null;
   const folded = long && !open;
   return (
@@ -182,7 +322,7 @@ function ReleaseNotes({ status }: { status: UpdateStatus }) {
       </div>
       {long ? (
         <LinkButton aria-expanded={open} aria-controls={id} onClick={() => setOpen((v) => !v)}>
-          {open ? 'Show less' : `Show all notes (${total})`}
+          {open ? intl.formatMessage(messages.notesShowLess) : intl.formatMessage(messages.notesShowAll, { count: total })}
         </LinkButton>
       ) : null}
     </div>
@@ -190,6 +330,13 @@ function ReleaseNotes({ status }: { status: UpdateStatus }) {
 }
 
 /** Settings → Updates: check, the ready release, apply with live progress, automatic updates. */
+/** Why an apply or auto toggle failed: the supervisor's own text as sent, else the status in the console's words. */
+function failureText(intl: IntlShape, r: UpdateActionResult): string {
+  if (r.error) return r.error;
+  if (r.httpStatus === undefined) return '';
+  return apiErrorCodeText(intl, r.httpStatus === 0 ? 'network' : 'http', r.httpStatus);
+}
+
 export function UpdatesSection({
   id,
   sup,
@@ -212,6 +359,12 @@ export function UpdatesSection({
   // (v0.3.8: a super-admin, or the org admin of a single-customer install; the server's deploymentAdmin). Anyone else
   // sees the status only.
   const canManage = useMayManageDeployment();
+  const intl = useIntl();
+  const m = messages;
+  const ago = (ms: number) => agoText(ms, intl);
+  const mono = (text: string) => <span className="v2-mono">{text}</span>;
+  const num = (text: string | null | undefined) => <span className="v2-num">{text}</span>;
+  const autoLockedReason = intl.formatMessage(m.autoLocked);
 
   const checkNow = async () => {
     setChecking(true);
@@ -219,7 +372,7 @@ export function UpdatesSection({
     const x = await checkForUpdates();
     setChecking(false);
     if (x) sup.setStatus(x);
-    else setCheckMsg('Couldn’t check for updates. Try again in a minute.');
+    else setCheckMsg(intl.formatMessage(m.checkFailed));
   };
 
   const applyNow = async () => {
@@ -228,7 +381,11 @@ export function UpdatesSection({
     const r = await applyUpdate();
     setStarting(false);
     setConfirming(false);
-    if (!r.ok) setApplyErr(r.error || 'The update did not start.');
+    if (!r.ok) {
+      // The supervisor's own reason is shown as it is (as before); a bare status gets the sentence around it.
+      const why = failureText(intl, r);
+      setApplyErr(r.error || (why ? intl.formatMessage(m.applyNotStartedDetail, { error: why }) : intl.formatMessage(m.applyNotStarted)));
+    }
     void sup.refresh(); // shows the progress at once and polls every 3 s while it runs
   };
 
@@ -238,7 +395,8 @@ export function UpdatesSection({
     const r = await setAutoUpdate(next);
     setAutoSaving(false);
     if (!r.ok) {
-      setAutoErr(r.error ? `Could not save: ${r.error}` : 'Could not save.');
+      const why = failureText(intl, r);
+      setAutoErr(why ? intl.formatMessage(m.autoSaveFailedDetail, { error: why }) : intl.formatMessage(m.autoSaveFailed));
       return;
     }
     sup.patch({ auto: next });
@@ -255,27 +413,31 @@ export function UpdatesSection({
   const offer = updateOffer(s);
   const nextAgent = agentAfterServerUpdate(s);
   const missed = offer?.missed ?? [];
-  const missedLink = missedSecurityLink(missed, s?.release?.url);
+  const missedLink = missedSecurityLink(missed, s?.release?.url, intl);
 
   const header = (
     <CardHeader
-      title="Updates"
+      title={intl.formatMessage(m.title)}
       titleId={`${id}-title`}
       actions={
         !loaded ? null : s ? (
           <>
             <span className="v2-settings-meta">
-              {s.checkedAt ? <RelativeTime value={s.checkedAt} style="long" prefix="Checked " /> : 'Not checked yet'}
+              {s.checkedAt ? (
+                <RelativeTime value={s.checkedAt} style="long" prefix={intl.formatMessage(m.checkedPrefix)} />
+              ) : (
+                intl.formatMessage(m.notChecked)
+              )}
             </span>
             {canManage ? (
               <Button size="sm" onClick={() => void checkNow()} disabled={checking || running}>
-                {checking ? 'Checking…' : 'Check now'}
+                {checking ? intl.formatMessage(m.checking) : intl.formatMessage(m.checkNow)}
               </Button>
             ) : null}
           </>
         ) : (
           <Button size="sm" onClick={() => void sup.refresh()}>
-            Retry
+            {intl.formatMessage(m.retry)}
           </Button>
         )
       }
@@ -288,7 +450,7 @@ export function UpdatesSection({
 
       {!loaded ? (
         <div className="v2-settings-skel" role="status">
-          <span className="v2-visually-hidden">Checking for updates</span>
+          <span className="v2-visually-hidden">{intl.formatMessage(m.loading)}</span>
           <Skeleton height="title" width="45%" />
           <Skeleton width="80%" />
         </div>
@@ -296,15 +458,13 @@ export function UpdatesSection({
 
       {loaded && !s ? (
         <Callout tone="info" icon={<IconInfo />}>
-          The updater isn&rsquo;t reachable, so this console can&rsquo;t check for or install updates. It runs next to
-          the server (the <span className="v2-mono">supervisor</span> service) and serves{' '}
-          <span className="v2-mono">/update</span>.
+          <FormattedMessage {...m.unreachable} values={{ service: mono('supervisor'), path: mono('/update') }} />
         </Callout>
       ) : null}
 
       {s && !reachable ? (
         <p className="v2-settings-muted" role="status">
-          Can&rsquo;t reach the updater right now. Showing the last state it reported.
+          {intl.formatMessage(m.stale)}
         </p>
       ) : null}
 
@@ -315,12 +475,12 @@ export function UpdatesSection({
       ) : null}
       {s && lastError && !checkMsg ? (
         <Callout tone="warn" icon={<IconAlert />}>
-          The last check failed: {lastError}
+          {intl.formatMessage(m.lastCheckFailed, { error: lastError })}
         </Callout>
       ) : null}
       {applyErr ? (
         <Callout tone="alert" role="alert" icon={<IconAlert />}>
-          The update didn&rsquo;t start: {applyErr}
+          {intl.formatMessage(m.applyDidntStart, { error: applyErr })}
         </Callout>
       ) : null}
 
@@ -329,25 +489,28 @@ export function UpdatesSection({
         <div className="v2-settings-upd v2-settings-upd--busy">
           <div className="v2-settings-upd__titleline">
             <span className="v2-settings-upd__title">
-              Updating to MDMesh <span className="v2-num">{apply.toVersion}</span>
+              <FormattedMessage {...m.updatingTo} values={{ version: num(apply.toVersion) }} />
             </span>
-            {apply.trigger === 'auto' ? <Badge tone="neutral" size="md">Started automatically</Badge> : null}
+            {apply.trigger === 'auto' ? (
+              <Badge tone="neutral" size="md">
+                {intl.formatMessage(m.startedAuto)}
+              </Badge>
+            ) : null}
           </div>
           {apply.phase === 'rollback' ? null : (
             <Stepper
-              aria-label="Update progress"
-              steps={PHASES.map((p) => PHASE_STEP[p])}
+              aria-label={intl.formatMessage(m.progressLabel)}
+              steps={PHASES.map((p) => intl.formatMessage(PHASE_STEP[p]))}
               current={Math.max(0, PHASES.indexOf(apply.phase as (typeof PHASES)[number]))}
             />
           )}
           <p className={cx('v2-settings-upd__line', apply.phase === 'rollback' && 'is-warn')} role="status" aria-live="polite">
-            {applyPhaseLabel(apply.phase)}
-            {apply.startedAt ? ` Started ${ago(apply.startedAt)}.` : null}
+            {applyPhaseLabel(apply.phase, intl)}
+            {apply.startedAt ? ` ${intl.formatMessage(m.startedAgo, { ago: ago(apply.startedAt) })}` : null}
           </p>
           {apply.error ? <p className="v2-settings-upd__line is-warn">{apply.error}</p> : null}
           <p className="v2-settings-upd__help">
-            The console may stop answering for a minute while the server restarts. This page keeps checking and
-            catches up on its own.
+            {intl.formatMessage(m.restartHelp)}
           </p>
         </div>
       ) : null}
@@ -356,24 +519,23 @@ export function UpdatesSection({
       {s && failed && apply ? (
         <div className="v2-settings-upd v2-settings-upd--alert" role="alert">
           <span className="v2-settings-upd__title">
-            The update to <span className="v2-num">{apply.toVersion}</span>
-            {apply.phase === 'rolled_back' ? ' was rolled back' : ' failed'}
+            <FormattedMessage
+              {...(apply.phase === 'rolled_back' ? m.rolledBackTitle : m.failedTitle)}
+              values={{ version: num(apply.toVersion) }}
+            />
           </span>
           <p className="v2-settings-upd__help">
             {apply.phase === 'rolled_back' ? (
-              <>
-                It didn&rsquo;t pass its checks, so the server went back to{' '}
-                <span className="v2-num">{apply.fromVersion}</span> and its database backup.
-              </>
+              <FormattedMessage {...m.rolledBackHelp} values={{ version: num(apply.fromVersion) }} />
             ) : (
-              <>It stopped and could not roll back on its own. Recovery can roll back to the backup or retry.</>
+              intl.formatMessage(m.failedHelp)
             )}
-            {apply.finishedAt ? <> Finished {ago(apply.finishedAt)}.</> : null}
+            {apply.finishedAt ? <> {intl.formatMessage(m.finishedAgo, { ago: ago(apply.finishedAt) })}</> : null}
           </p>
           {apply.error ? <p className="v2-settings-upd__error v2-mono">{apply.error}</p> : null}
           <div className="v2-settings-upd__actions">
             <ButtonAnchor href="/recovery" size="lg">
-              Open recovery
+              {intl.formatMessage(m.openRecovery)}
             </ButtonAnchor>
           </div>
         </div>
@@ -383,11 +545,13 @@ export function UpdatesSection({
         <Callout tone="ok" role="status" icon={<IconCheck />}>
           <span className="v2-settings-callout-row">
             <span>
-              Updated to MDMesh <span className="v2-num">{apply.toVersion}</span>{' '}
-              {ago(apply.finishedAt as number)}. Reload to use the new console.
+              <FormattedMessage
+                {...m.doneText}
+                values={{ version: num(apply.toVersion), ago: ago(apply.finishedAt as number) }}
+              />
             </span>
             <Button size="sm" onClick={() => window.location.reload()}>
-              Reload
+              {intl.formatMessage(m.reload)}
             </Button>
           </span>
         </Callout>
@@ -399,7 +563,7 @@ export function UpdatesSection({
         <Notice
           tone="warn"
           icon={<IconShield size={16} />}
-          title="Missing security fixes"
+          title={intl.formatMessage(m.missingSecurity)}
           className="v2-settings-secnotice"
           action={
             missedLink ? (
@@ -409,7 +573,7 @@ export function UpdatesSection({
             ) : undefined
           }
         >
-          <p>{missedSecurityText(missed, s.current, s.latest, offer?.kind === 'blocked')}</p>
+          <p>{missedSecurityText(missed, s.current, s.latest, offer?.kind === 'blocked', intl)}</p>
         </Notice>
       ) : null}
 
@@ -418,20 +582,24 @@ export function UpdatesSection({
         <div className="v2-settings-upd v2-settings-upd--ready">
           <div className="v2-settings-upd__titleline">
             <span className="v2-settings-upd__title">
-              MDMesh <span className="v2-num">{s.latest}</span> is ready
+              <FormattedMessage {...m.readyTitle} values={{ version: num(s.latest) }} />
             </span>
             {s.verified ? (
               <Badge tone="ok" size="md" icon={<IconCheck size={12} />}>
-                Signature verified
+                {intl.formatMessage(m.signatureVerified)}
               </Badge>
             ) : (
               <Badge tone="warn" size="md" icon={<IconAlert size={12} />}>
-                Signature not verified
+                {intl.formatMessage(m.signatureNotVerified)}
               </Badge>
             )}
-            {channelLabel(s.channel) || releasedOn(s.release?.publishedAt) ? (
+            {channelLabel(s.channel, intl) || releasedOn(s.release?.publishedAt) ? (
               <span className="v2-settings-meta">
-                {[channelLabel(s.channel), releasedOn(s.release?.publishedAt) && `released ${releasedOn(s.release?.publishedAt)}`]
+                {[
+                  channelLabel(s.channel, intl),
+                  releasedOn(s.release?.publishedAt) &&
+                    intl.formatMessage(m.releasedOn, { date: releasedOn(s.release?.publishedAt) }),
+                ]
                   .filter(Boolean)
                   .join(' · ')}
               </span>
@@ -451,42 +619,42 @@ export function UpdatesSection({
                   disabled={!s.verified || starting}
                   onClick={() => setConfirming(true)}
                 >
-                  Update server and console
+                  {intl.formatMessage(m.updateButton)}
                 </Button>
               ) : null}
               {releaseUrl ? (
                 <a className="v2-settings-link" href={releaseUrl} target="_blank" rel="noreferrer">
-                  Full release notes ↗
+                  {intl.formatMessage(m.fullNotes)}
                 </a>
               ) : null}
               {!canManage ? (
                 <span className="v2-settings-upd__help v2-settings-upd__sentence">
-                  Only a super-admin, or the admin of a single-customer install, can update.
+                  {intl.formatMessage(m.onlyAdmin)}
                 </span>
               ) : null}
               {canManage || !s.verified ? (
                 <span className={cx('v2-settings-upd__help', 'v2-settings-upd__sentence', !s.verified && 'is-alert')}>
-                  {s.verified
-                    ? 'Takes about 2 minutes. The database is backed up first, and devices keep working while the console restarts.'
-                    : 'The release signature could not be verified, so it can’t be installed.'}
+                  {s.verified ? intl.formatMessage(m.takesAbout) : intl.formatMessage(m.cantInstall)}
                 </span>
               ) : null}
             </div>
           ) : (
             <div className="v2-settings-manual">
               <p className="v2-settings-upd__help">
-                This server can&rsquo;t update itself: it was installed from source or with the native installer.
-                Update it from the server&rsquo;s shell, in the MDMesh folder:
+                {intl.formatMessage(m.manualHelp)}
               </p>
-              {MANUAL_STEPS.map((m) => (
-                <div key={m.label} className="v2-settings-manual__row">
-                  <span className="v2-settings-manual__label">{m.label}</span>
-                  <CopyField value={m.cmd} aria-label={`${m.label} update command`} />
-                </div>
-              ))}
+              {MANUAL_STEPS.map((step) => {
+                const label = intl.formatMessage(step.label);
+                return (
+                  <div key={step.cmd} className="v2-settings-manual__row">
+                    <span className="v2-settings-manual__label">{label}</span>
+                    <CopyField value={step.cmd} aria-label={intl.formatMessage(m.manualCommand, { label })} />
+                  </div>
+                );
+              })}
               {releaseUrl ? (
                 <a className="v2-settings-link" href={releaseUrl} target="_blank" rel="noreferrer">
-                  Full release notes ↗
+                  {intl.formatMessage(m.fullNotes)}
                 </a>
               ) : null}
             </div>
@@ -495,8 +663,13 @@ export function UpdatesSection({
               When the updater already offers it (the running release is unknown), Agent rollout offers it now. */}
           {nextAgent ? (
             <p className="v2-settings-upd__help">
-              The release carries agent <span className="v2-num">{nextAgent}</span>. Once the server runs it,{' '}
-              <a href={rolloutHref}>roll it out to devices</a>.
+              <FormattedMessage
+                {...m.apkCarried}
+                values={{
+                  version: num(nextAgent),
+                  link: (chunks: ReactNode[]) => <a href={rolloutHref}>{chunks}</a>,
+                }}
+              />
             </p>
           ) : null}
         </div>
@@ -506,7 +679,7 @@ export function UpdatesSection({
       {s && offer?.kind === 'blocked' && !running ? (
         // Quiet, as in the sidebar and on the Overview, unless it leaves security fixes missing (the notice above).
         <Callout tone={offer.missed.length > 0 ? 'warn' : 'info'} icon={offer.missed.length > 0 ? <IconAlert /> : <IconInfo />}>
-          MDMesh <span className="v2-num">{offer.latest}</span> can&rsquo;t be installed on this server. {blockedText(s)}
+          <FormattedMessage {...m.blocked} values={{ version: num(offer.latest), why: blockedText(s, intl) }} />
         </Callout>
       ) : null}
 
@@ -517,15 +690,20 @@ export function UpdatesSection({
             <IconCheck size={12} />
           </span>
           <span>
-            MDMesh <span className="v2-num">{s.current}</span> is the latest release
-            {channelLabel(s.channel) ? ` on the ${channelLabel(s.channel)?.toLowerCase()}` : ''}.
+            <FormattedMessage
+              {...m.latest}
+              values={{
+                version: num(s.current),
+                hasChannel: String(!!s.channel),
+                channel: (s.channel ?? '').toLowerCase(),
+              }}
+            />
           </span>
         </div>
       ) : null}
       {s && unverifiedRelease(s) ? (
         <Callout tone="warn" icon={<IconAlert />}>
-          MDMesh <span className="v2-num">{s.latest}</span> was found, but its signature couldn&rsquo;t be verified, so it
-          won&rsquo;t be offered or installed.
+          <FormattedMessage {...m.unverifiedFound} values={{ version: num(s.latest) }} />
         </Callout>
       ) : null}
 
@@ -534,15 +712,14 @@ export function UpdatesSection({
         <div className="v2-settings-auto">
           <div className="v2-settings-auto__text">
             <span id={`${id}-auto`} className="v2-settings-auto__label">
-              Install updates automatically
+              {intl.formatMessage(m.autoLabel)}
             </span>
             <span id={`${id}-auto-help`} className="v2-settings-auto__help">
-              Verified releases install within a few hours of release. Unverified releases never install on their
-              own.
+              {intl.formatMessage(m.autoHelp)}
             </span>
             {canManage ? null : (
               <span id={`${id}-auto-locked`} className="v2-visually-hidden">
-                {AUTO_LOCKED_REASON}
+                {autoLockedReason}
               </span>
             )}
           </div>
@@ -556,7 +733,7 @@ export function UpdatesSection({
             />
           ) : (
             // Read-only, not `disabled`: it stays focusable so keyboard users get the reason too (aria-disabled).
-            <Tooltip content={AUTO_LOCKED_REASON}>
+            <Tooltip content={autoLockedReason}>
               <Toggle
                 className="is-locked"
                 aria-labelledby={`${id}-auto`}
@@ -570,9 +747,8 @@ export function UpdatesSection({
           )}
           {s.auto && s.autoSkipped && s.autoSkipped === s.latest ? (
             <p className="v2-settings-auto__note">
-              Automatic updates won&rsquo;t install <span className="v2-num">{s.autoSkipped}</span> again, because its
-              last update failed or was rolled back.{' '}
-              {canManage ? 'Update installs it by hand; a newer release installs on its own.' : 'A newer release installs on its own.'}
+              <FormattedMessage {...m.autoSkipped} values={{ version: num(s.autoSkipped) }} />{' '}
+              {intl.formatMessage(canManage ? m.autoSkippedManage : m.autoSkippedOther)}
             </p>
           ) : null}
           {autoErr ? (
@@ -589,21 +765,20 @@ export function UpdatesSection({
         role="alertdialog"
         size="sm"
         dismissOnBackdrop={!starting}
-        title={`Update to MDMesh ${s?.latest ?? ''}?`}
+        title={intl.formatMessage(m.confirmTitle, { version: s?.latest ?? '' })}
         footer={
           <>
             <Button size="lg" onClick={() => setConfirming(false)} disabled={starting}>
-              Cancel
+              {intl.formatMessage(m.cancel)}
             </Button>
             <Button variant="primary" size="lg" onClick={() => void applyNow()} disabled={starting}>
-              {starting ? 'Starting…' : 'Update now'}
+              {starting ? intl.formatMessage(m.starting) : intl.formatMessage(m.updateNow)}
             </Button>
           </>
         }
       >
         <p className="v2-settings-modal-text">
-          The server and console restart, which takes about 2 minutes. The database is backed up first, and the update
-          rolls back on its own if it fails. Devices keep working and reconnect when the server is back.
+          {intl.formatMessage(m.confirmText)}
         </p>
       </Modal>
     </Card>

@@ -88,3 +88,12 @@ describe('the translation checks', () => {
     expect(verify(en, [write('ru.json', ru)])).toBe('');
   });
 });
+
+describe('the French catalog', () => {
+  it('has no plain space where French wants a no-break one (before : ; ! ? % », after «)', () => {
+    const loose = Object.entries(read(join(LOCALES, 'fr.json')))
+      .filter(([, m]) => / [:;!?%»]|« /.test(m.defaultMessage))
+      .map(([id]) => id);
+    expect(loose, 'use U+00A0 before : % » and after «, U+202F before ; ! ?').toEqual([]);
+  });
+});

@@ -3,6 +3,7 @@
 // image's cells come from a colour function of the position in image pixels.
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import axe from 'axe-core';
+import { createIntl } from 'react-intl';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { KioskBackgroundImageInfo } from '../../api/configurations';
 import { AppRoutes } from '../../App';
@@ -317,7 +318,7 @@ describe('KioskBackgroundPreview', () => {
     const list = screen.getByRole('list', { name: 'Screen shapes' });
     const buttons = within(list).getAllByRole('button');
     // The visible caption is the name: shape, readout and dim.
-    expect(buttons.map((b) => b.querySelector('.v2-kbg__shape-name')!.textContent)).toEqual(THUMBNAILS.map(viewLabel));
+    expect(buttons.map((b) => b.querySelector('.v2-kbg__shape-name')!.textContent)).toEqual(THUMBNAILS.map((t) => viewLabel(t)));
     await waitFor(() => expect(buttons[1].textContent).toMatch(/on plate/));
     expect(buttons[0].textContent).not.toMatch(/on plate/);
     expect(buttons[1].querySelector('.v2-kbg__caption')!.textContent).toMatch(/^Phone, landscape.*Text \d+\.\d:1 Pass \(on plate\)/);
@@ -544,6 +545,9 @@ describe('readout', () => {
       text: 'Text 4.6:1 Pass (on plate)', dim: 'Image dimmed 22%', pass: true,
     });
     expect(readout({ dim: 0, plates: {}, textRatio: 4.49, onPlate: false }).text).toBe('Text 4.4:1 Fail');
+    // The ratio's decimal mark follows the console's language.
+    const fr = createIntl({ locale: 'fr', onError: () => {} });
+    expect(readout({ dim: 0, plates: {}, textRatio: 4.49, onPlate: false }, fr).text).toBe('Text 4,4:1 Fail');
   });
 });
 

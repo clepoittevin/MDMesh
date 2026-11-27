@@ -1,6 +1,8 @@
 import { createElement, startTransition, useCallback, useEffect, useOptimistic } from 'react';
+import { useIntl } from 'react-intl';
 import { useLocation, useNavigate, useSearchParams, type Path } from 'react-router';
 import { TabPanel, Tabs } from '../../ui/Tabs';
+import { coreTabMessages } from '../core/device';
 import { ExtensionBoundary } from '../ExtensionBoundary';
 import type { SlotEntry } from '../registry';
 import { useRegistry } from '../RegistryContext';
@@ -95,8 +97,12 @@ function countOf(entry: SlotEntry<DeviceTabContribution>, device: DeviceContextV
 /** The tab strip and the open tab's body, in its own error boundary (reset per device and per tab). */
 export function DeviceTabs({ tabs, active, select, idBase }: DeviceTabsState & { idBase: string }) {
   const device = useDevice();
+  const intl = useIntl();
   const items = tabs.map((entry) => {
-    const { id, label, icon: Icon } = entry.contribution;
+    const { id, icon: Icon } = entry.contribution;
+    // Core's tab labels in the console's language; an extension's as it gives it.
+    const core = entry.extension.core ? coreTabMessages[id] : undefined;
+    const label = core ? intl.formatMessage(core) : entry.contribution.label;
     // The icon renders in the core tab strip: in its own boundary, so a bad one costs only the icon.
     const icon = Icon ? (
       <ExtensionBoundary entry={entry} fallback="none">
@@ -112,7 +118,7 @@ export function DeviceTabs({ tabs, active, select, idBase }: DeviceTabsState & {
         items={items}
         value={active ?? ''}
         onChange={(id, via) => select(id, { replace: via === 'keyboard' })}
-        aria-label="Device sections"
+        aria-label={intl.formatMessage({ id: 'ext.deviceTabs.label', defaultMessage: 'Device sections' })}
         idBase={idBase}
       />
       {open ? (

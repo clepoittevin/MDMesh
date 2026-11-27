@@ -1,5 +1,8 @@
-import { hashPassword, IMPERSONATED_MESSAGE, isTooManyAttempts, TOO_MANY_MESSAGE } from './auth';
+import { defineMessages, type IntlShape, type MessageDescriptor } from 'react-intl';
+import { hashPassword, isTooManyAttempts } from './auth';
+import { authMessages } from './authMessages';
 import { apiClient, deleteWithBody } from './client';
+import { apiErrorText } from './apiErrorText';
 
 export interface Permission {
   id: number;
@@ -76,27 +79,64 @@ export const saveRole = (role: UserRole) =>
   });
 export const deleteRole = (id: number) => apiClient.del<void>(`/private/roles/${id}`);
 
-const messages: Record<string, string> = {
-  'error.duplicate.login': 'That login is already in use.',
-  'error.duplicate.email': 'That email address is already in use.',
-  'error.duplicate.role': 'A role with that name already exists.',
-  'error.role.protected': 'Administrator roles cannot be changed or deleted.',
-  'error.role.in.use': 'This role is assigned to users. Assign them another role before deleting it.',
-  'error.role.permission': 'The selected permissions are not valid. Reload the page and try again.',
-  'error.role.name': 'Enter a role name of up to 50 characters.',
-  'error.role.save': 'Could not save the role. Reload and try again.',
-  'error.role.delete': 'Could not delete the role. It may still be assigned to users.',
-  'error.password.empty': 'Enter a password for the new account.',
-  'error.password.wrong': 'Your current password is not correct.',
-  'error.password.impersonated': IMPERSONATED_MESSAGE,
-  'error.permission.denied':
-    'Not allowed. You can give only the access you have, and change only accounts within your own access.',
-  'error.user.login': 'Enter a login.',
-  'error.user.not.found': 'This account no longer exists. Reload the page.',
-  "Can't remove self": 'You can’t delete your own account.',
+const errors = defineMessages({
+  duplicateLogin: { id: 'users.error.duplicateLogin', defaultMessage: 'That login is already in use.' },
+  duplicateEmail: { id: 'users.error.duplicateEmail', defaultMessage: 'That email address is already in use.' },
+  duplicateRole: { id: 'users.error.duplicateRole', defaultMessage: 'A role with that name already exists.' },
+  roleProtected: {
+    id: 'users.error.roleProtected',
+    defaultMessage: 'Administrator roles cannot be changed or deleted.',
+  },
+  roleInUse: {
+    id: 'users.error.roleInUse',
+    defaultMessage: 'This role is assigned to users. Assign them another role before deleting it.',
+  },
+  rolePermission: {
+    id: 'users.error.rolePermission',
+    defaultMessage: 'The selected permissions are not valid. Reload the page and try again.',
+  },
+  roleName: { id: 'users.error.roleName', defaultMessage: 'Enter a role name of up to 50 characters.' },
+  roleSave: { id: 'users.error.roleSave', defaultMessage: 'Could not save the role. Reload and try again.' },
+  roleDelete: {
+    id: 'users.error.roleDelete',
+    defaultMessage: 'Could not delete the role. It may still be assigned to users.',
+  },
+  passwordEmpty: { id: 'users.error.passwordEmpty', defaultMessage: 'Enter a password for the new account.' },
+  passwordWrong: { id: 'users.error.passwordWrong', defaultMessage: 'Your current password is not correct.' },
+  permissionDenied: {
+    id: 'users.error.permissionDenied',
+    defaultMessage:
+      'Not allowed. You can give only the access you have, and change only accounts within your own access.',
+  },
+  userLogin: { id: 'users.error.userLogin', defaultMessage: 'Enter a login.' },
+  userNotFound: { id: 'users.error.userNotFound', defaultMessage: 'This account no longer exists. Reload the page.' },
+  removeSelf: { id: 'users.error.removeSelf', defaultMessage: 'You can’t delete your own account.' },
+  generic: { id: 'users.error.generic', defaultMessage: 'Could not complete the operation.' },
+});
+
+/** The server's error codes, as the text the console shows for each. */
+const messages: Record<string, MessageDescriptor> = {
+  'error.duplicate.login': errors.duplicateLogin,
+  'error.duplicate.email': errors.duplicateEmail,
+  'error.duplicate.role': errors.duplicateRole,
+  'error.role.protected': errors.roleProtected,
+  'error.role.in.use': errors.roleInUse,
+  'error.role.permission': errors.rolePermission,
+  'error.role.name': errors.roleName,
+  'error.role.save': errors.roleSave,
+  'error.role.delete': errors.roleDelete,
+  'error.password.empty': errors.passwordEmpty,
+  'error.password.wrong': errors.passwordWrong,
+  'error.password.impersonated': authMessages.impersonated,
+  'error.permission.denied': errors.permissionDenied,
+  'error.user.login': errors.userLogin,
+  'error.user.not.found': errors.userNotFound,
+  "Can't remove self": errors.removeSelf,
 };
-export function managementError(error: unknown): string {
-  if (isTooManyAttempts(error)) return TOO_MANY_MESSAGE;
-  const message = error instanceof Error ? error.message : 'Could not complete the operation.';
-  return messages[message] ?? message;
+export function managementError(intl: IntlShape, error: unknown): string {
+  if (isTooManyAttempts(error)) return intl.formatMessage(authMessages.tooMany);
+  const message = error instanceof Error ? error.message : '';
+  if (!message) return intl.formatMessage(errors.generic);
+  const known = Object.prototype.hasOwnProperty.call(messages, message) ? messages[message] : undefined;
+  return known ? intl.formatMessage(known) : apiErrorText(intl, error);
 }

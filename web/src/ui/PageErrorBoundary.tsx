@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { defineMessages, useIntl } from 'react-intl';
 import { isChunkLoadError } from './AppErrorBoundary';
 import { Button } from './Button';
 import { Card } from './Card';
@@ -16,35 +17,48 @@ interface State {
   error: unknown;
 }
 
+const messages = defineMessages({
+  loadTitle: { id: 'shell.crash.loadTitle', defaultMessage: 'Couldn’t load this page' },
+  title: { id: 'shell.crash.title', defaultMessage: 'This page ran into a problem' },
+  reload: { id: 'shell.crash.reload', defaultMessage: 'Reload' },
+  retry: { id: 'shell.crash.retry', defaultMessage: 'Retry' },
+  stale: {
+    id: 'shell.crash.stale',
+    defaultMessage: 'The console was probably updated while this tab was open. Reload to get the current version.',
+  },
+  rest: { id: 'shell.crash.rest', defaultMessage: 'The rest of the console still works. Retry, or reload the page.' },
+});
+
 /**
  * What a crashed page shows in its place: a failed chunk (the console was updated while the tab was open) offers a
  * reload, anything else a retry. Shared by this boundary and the per-page ExtensionBoundary.
  */
 export function PageCrash({ error, onRetry }: { error: unknown; onRetry: () => void }) {
+  const intl = useIntl();
   const chunk = isChunkLoadError(error);
   const detail = error instanceof Error ? error.message : String(error);
   return (
     <Card role="alert">
       <EmptyState
         icon={<IconWarning size={18} />}
-        title={chunk ? 'Couldn’t load this page' : 'This page ran into a problem'}
+        title={intl.formatMessage(chunk ? messages.loadTitle : messages.title)}
         action={
           chunk ? (
             <Button variant="primary" size="lg" onClick={() => window.location.reload()}>
-              Reload
+              {intl.formatMessage(messages.reload)}
             </Button>
           ) : (
             <Button variant="primary" size="lg" onClick={onRetry}>
-              Retry
+              {intl.formatMessage(messages.retry)}
             </Button>
           )
         }
       >
         {chunk
-          ? 'The console was probably updated while this tab was open. Reload to get the current version.'
+          ? intl.formatMessage(messages.stale)
           : import.meta.env.DEV
             ? detail
-            : 'The rest of the console still works. Retry, or reload the page.'}
+            : intl.formatMessage(messages.rest)}
       </EmptyState>
     </Card>
   );

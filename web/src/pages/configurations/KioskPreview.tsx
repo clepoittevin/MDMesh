@@ -3,6 +3,8 @@
 // scale with Phone/Tablet and Rotate, and four thumbnails that select it. Same rules and functions as the agent:
 // data/kioskScrim.ts, data/kioskLauncherLayout.ts, data/kioskLabelLines.ts, docs/kiosk-background-scrim.md (version 3.6).
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react';
+import { defineMessage, defineMessages, useIntl, type IntlShape } from 'react-intl';
+import { EN_INTL, untyped } from '../../data/configIntl';
 import { browserMeasure, FALLBACK_FONT, KIOSK_FONT, launcherLayout, PLATE_RADIUS, type LauncherLayout, type Measure } from '../../data/kioskLauncherLayout';
 import {
   CONTROL_MIN,
@@ -28,9 +30,9 @@ import './KioskPreview.css';
 
 /** The devices the preview shows, by their short and long side in dp. */
 export const DEVICES = {
-  phone: { label: 'Phone', short: 360, long: 780 },
-  tablet43: { label: 'Tablet 4:3', short: 768, long: 1024 },
-  tablet1610: { label: 'Tablet 16:10', short: 800, long: 1280 },
+  phone: { label: defineMessage({ id: 'configEditor.preview.devicePhone', defaultMessage: 'Phone' }), short: 360, long: 780 },
+  tablet43: { label: defineMessage({ id: 'configEditor.preview.deviceTablet43', defaultMessage: 'Tablet 4:3' }), short: 768, long: 1024 },
+  tablet1610: { label: defineMessage({ id: 'configEditor.preview.deviceTablet1610', defaultMessage: 'Tablet 16:10' }), short: 800, long: 1280 },
 } as const;
 export type Model = keyof typeof DEVICES;
 export type Orientation = 'portrait' | 'landscape';
@@ -51,8 +53,82 @@ const ALL_VIEWS: readonly View[] = (Object.keys(DEVICES) as Model[]).flatMap((mo
   (['portrait', 'landscape'] as const).map((orientation) => ({ model, orientation })),
 );
 
+const messages = untyped(defineMessages({
+  portrait: { id: 'configEditor.preview.portrait', defaultMessage: 'portrait' },
+  landscape: { id: 'configEditor.preview.landscape', defaultMessage: 'landscape' },
+  viewLabel: { id: 'configEditor.preview.viewLabel', defaultMessage: '{device}, {orientation}' },
+  viewName: { id: 'configEditor.preview.viewName', defaultMessage: '{device} {orientation}' },
+  viewEnd: { id: 'configEditor.preview.viewEnd', defaultMessage: '{view}, end of list' },
+  listAnd: { id: 'configEditor.preview.listAnd', defaultMessage: '{rest} and {last}' },
+  notApplicable: { id: 'configEditor.preview.notApplicable', defaultMessage: 'n/a' },
+  text: {
+    id: 'configEditor.preview.text',
+    defaultMessage:
+      'Text {ratio} {pass, select, true {Pass} other {Fail}}{onPlate, select, true { (on plate)} other {}}',
+  },
+  notDimmed: { id: 'configEditor.preview.notDimmed', defaultMessage: 'Image not dimmed' },
+  dimmed: { id: 'configEditor.preview.dimmed', defaultMessage: 'Image dimmed {fraction, number, percent}' },
+  measuring: { id: 'configEditor.preview.measuring', defaultMessage: 'Measuring…' },
+  unloaded: { id: 'configEditor.preview.unloaded', defaultMessage: 'The image could not be loaded to measure it' },
+  unreadable: { id: 'configEditor.preview.unreadable', defaultMessage: 'Contrast unavailable in this browser' },
+  pinnedStatus: { id: 'configEditor.preview.pinnedStatus', defaultMessage: '{app} pinned' },
+  title: { id: 'configEditor.preview.title', defaultMessage: 'Preview on devices' },
+  ledePinned: {
+    id: 'configEditor.preview.ledePinned',
+    defaultMessage:
+      'This kiosk pins {app}, which opens over the image and covers the screen, so devices show the image only behind the splash while it opens and the hold screen if it keeps closing. {fit, select, fit {There the whole image is shown, letterboxed with the background color.} other {There the image fills the screen, cropped around its focal point.}}',
+  },
+  ledeGrid: {
+    id: 'configEditor.preview.ledeGrid',
+    defaultMessage:
+      '{fit, select, fit {The whole image is shown, letterboxed with the background color.} other {The image fills the screen, cropped around its focal point.}} Text sits on a plate of the background color where the image behind it is too bright or busy (solid over texture), and the image is dimmed by at most 30% for the Exit button.',
+  },
+  noApps: {
+    id: 'configEditor.preview.noApps',
+    defaultMessage: 'This kiosk has no apps shown in kiosk yet, so devices show only the title and a note to add apps.',
+  },
+  soft: {
+    id: 'configEditor.preview.soft',
+    defaultMessage: 'The image is {size} px on its short side, so it may look soft on large tablets.',
+  },
+  weakExit: {
+    id: 'configEditor.preview.weakExit',
+    defaultMessage:
+      'In {views}, the image is too bright behind the Exit button for it to stand out at 3:1, even dimmed 30%. A calmer or darker image at the bottom of the screen helps.',
+  },
+  deviceLabel: { id: 'configEditor.preview.deviceLabel', defaultMessage: 'Device' },
+  phone: { id: 'configEditor.preview.phone', defaultMessage: 'Phone' },
+  tablet: { id: 'configEditor.preview.tablet', defaultMessage: 'Tablet' },
+  rotateTo: { id: 'configEditor.preview.rotateTo', defaultMessage: 'Rotate to {orientation}' },
+  rotate: { id: 'configEditor.preview.rotate', defaultMessage: 'Rotate' },
+  gridScroll: { id: 'configEditor.preview.gridScroll', defaultMessage: 'Grid scroll' },
+  top: { id: 'configEditor.preview.top', defaultMessage: 'Top' },
+  endOfList: { id: 'configEditor.preview.endOfList', defaultMessage: 'End of list' },
+  screenShapes: { id: 'configEditor.preview.screenShapes', defaultMessage: 'Screen shapes' },
+  exitUnder: { id: 'configEditor.preview.exitUnder', defaultMessage: 'Exit button under 3:1' },
+  footnote: {
+    id: 'configEditor.preview.footnote',
+    defaultMessage:
+      'Text contrast is the worst case: against every pixel under each text. Layout shown at 360 dp wide for phones, in Roboto, Android’s default font; real devices vary in width and font, and other scripts (such as Chinese or Arabic) are shown in this browser’s fonts.',
+  },
+  howFit: { id: 'configEditor.preview.howFit', defaultMessage: 'the whole image, letterboxed' },
+  howFill: {
+    id: 'configEditor.preview.howFill',
+    defaultMessage: 'the image filling the screen, cropped around its focal point',
+  },
+  describePinned: { id: 'configEditor.preview.describePinned', defaultMessage: '{view}: {app} pinned, open over {how}' },
+  describe: {
+    id: 'configEditor.preview.describe',
+    defaultMessage:
+      '{view}{scrolled, select, true {, scrolled to the end of the list} other {}}: {how}{hasReadout, select, true {, {dim}, {text}} other {}}',
+  },
+}));
+
+const orientationText = (o: Orientation, intl: IntlShape) => intl.formatMessage(o === 'portrait' ? messages.portrait : messages.landscape);
+
 export const viewKey = (v: View) => `${v.model}-${v.orientation}`;
-export const viewLabel = (v: View) => `${DEVICES[v.model].label}, ${v.orientation}`;
+export const viewLabel = (v: View, intl: IntlShape = EN_INTL) =>
+  intl.formatMessage(messages.viewLabel, { device: intl.formatMessage(DEVICES[v.model].label), orientation: orientationText(v.orientation, intl) });
 export function viewWindow(v: View): { w: number; h: number } {
   const d = DEVICES[v.model];
   return v.orientation === 'portrait' ? { w: d.short, h: d.long } : { w: d.long, h: d.short };
@@ -82,11 +158,16 @@ const LARGE_BEZEL = 10;
 const THUMB_BEZEL = 4;
 const cameraOf = (v: View): 'top' | 'left' | null => (v.model !== 'phone' ? null : v.orientation === 'portrait' ? 'top' : 'left');
 
-const ratioText = (r: number) => (Number.isFinite(r) ? `${(Math.floor(r * 10) / 10).toFixed(1)}:1` : 'n/a');
+const ratioText = (r: number, intl: IntlShape) =>
+  Number.isFinite(r)
+    ? `${intl.formatNumber(Math.floor(r * 10) / 10, { minimumFractionDigits: 1, maximumFractionDigits: 1, useGrouping: false })}:1`
+    : intl.formatMessage(messages.notApplicable);
 
 /** "a", "a and b", "a, b and c". */
-function listNames(names: string[]): string {
-  return names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+function listNames(names: string[], intl: IntlShape): string {
+  return names.length < 2
+    ? names.join('')
+    : intl.formatMessage(messages.listAnd, { rest: names.slice(0, -1).join(', '), last: names[names.length - 1] });
 }
 
 /** Thumbnails: a shared screen height (px) and the number of columns, from the width the list has. */
@@ -104,10 +185,17 @@ export function thumbnailGrid(width: number): { columns: 1 | 2; height: number }
 }
 
 /** What a view reads: text contrast (with plates) and the dim. */
-export function readout(l: Legibility): { text: string; dim: string; pass: boolean } {
+export function readout(l: Legibility, intl: IntlShape = EN_INTL): { text: string; dim: string; pass: boolean } {
   const pass = l.textRatio >= TEXT_MIN;
-  const text = `Text ${ratioText(l.textRatio)} ${pass ? 'Pass' : 'Fail'}${l.onPlate ? ' (on plate)' : ''}`;
-  const dim = l.dim === 0 ? 'Image not dimmed' : `Image dimmed ${Math.round((l.dim / SCRIM_STEPS) * 100)}%`;
+  const text = intl.formatMessage(messages.text, {
+    ratio: ratioText(l.textRatio, intl),
+    pass: String(pass),
+    onPlate: String(l.onPlate),
+  });
+  const dim =
+    l.dim === 0
+      ? intl.formatMessage(messages.notDimmed)
+      : intl.formatMessage(messages.dimmed, { fraction: Math.round((l.dim / SCRIM_STEPS) * 100) / 100 });
   return { text, dim, pass };
 }
 
@@ -160,6 +248,7 @@ export function KioskBackgroundPreview({
   /** Text widths in dp; the browser's font by default. */
   measure?: Measure;
 }) {
+  const intl = useIntl();
   const headingId = useId();
   const [view, setView] = useState<View>(THUMBNAILS[0]);
   const [lastTablet, setLastTablet] = useState<Model>('tablet43');
@@ -281,7 +370,7 @@ export function KioskBackgroundPreview({
   const [thumbList, thumbsWidth] = useWidth<HTMLUListElement>();
   const thumbs = thumbnailGrid(thumbsWidth);
   const current = largeMeasured;
-  const big = current?.kind === 'ok' ? readout(current.legibility) : null;
+  const big = current?.kind === 'ok' ? readout(current.legibility, intl) : null;
   const weakExit = (v: View) => {
     const m = measured?.[viewKey(v)];
     return m?.kind === 'ok' && m.legibility.dim === DIM_MAX_STEP && (m.legibility.plates.exit?.ratio ?? Infinity) < CONTROL_MIN;
@@ -290,13 +379,13 @@ export function KioskBackgroundPreview({
   const weakViews = shown.filter(weakExit);
   const status = (m: Measured | undefined) =>
     !m
-      ? 'Measuring…'
+      ? intl.formatMessage(messages.measuring)
       : m.kind === 'unloaded'
-        ? 'The image could not be loaded to measure it'
+        ? intl.formatMessage(messages.unloaded)
         : m.kind === 'unreadable'
-          ? 'Contrast unavailable in this browser'
+          ? intl.formatMessage(messages.unreadable)
           : m.kind === 'pinned'
-            ? `${pinned} pinned`
+            ? intl.formatMessage(messages.pinnedStatus, { app: pinned })
             : null;
 
   return (
@@ -306,42 +395,50 @@ export function KioskBackgroundPreview({
       open={open}
       onToggle={(e) => setOpen(e.currentTarget.open)}
     >
-      <summary id={headingId}>Preview on devices</summary>
+      <summary id={headingId}>{intl.formatMessage(messages.title)}</summary>
       {isPinned ? (
         <p className="v2-kbg__lede">
-          This kiosk pins {pinned}, which opens over the image and covers the screen, so devices show the image only
-          behind the splash while it opens and the hold screen if it keeps closing.{' '}
-          {fit === 'fit' ? 'There the whole image is shown, letterboxed with the background color.' : 'There the image fills the screen, cropped around its focal point.'}
+          {intl.formatMessage(messages.ledePinned, { app: pinned, fit })}
         </p>
       ) : (
         <p className="v2-kbg__lede">
-          {fit === 'fit' ? 'The whole image is shown, letterboxed with the background color.' : 'The image fills the screen, cropped around its focal point.'} Text sits on a plate of the background color where the image
-          behind it is too bright or busy (solid over texture), and the image is dimmed by at most 30% for the Exit button.
+          {intl.formatMessage(messages.ledeGrid, { fit })}
         </p>
       )}
       {!isPinned && apps.length === 0 ? (
         <Callout tone="info" icon={<IconInfo size={16} />}>
-          This kiosk has no apps shown in kiosk yet, so devices show only the title and a note to add apps.
+          {intl.formatMessage(messages.noApps)}
         </Callout>
       ) : null}
       {Math.min(width, height) < SOFT_EDGE ? (
         <Callout tone="info" icon={<IconInfo size={16} />}>
-          The image is {Math.min(width, height)} px on its short side, so it may look soft on large tablets.
+          {intl.formatMessage(messages.soft, { size: Math.min(width, height) })}
         </Callout>
       ) : null}
       {weakViews.length ? (
         <Callout tone="warn" icon={<IconWarning size={16} />}>
-          In {listNames(weakViews.map((v) => `${DEVICES[v.model].label} ${v.orientation}`.toLowerCase()))}, the image is too bright behind the Exit button
-          for it to stand out at 3:1, even dimmed 30%. A calmer or darker image at the bottom of the screen helps.
+          {intl.formatMessage(messages.weakExit, {
+            views: listNames(
+              weakViews.map((v) =>
+                intl
+                  .formatMessage(messages.viewName, {
+                    device: intl.formatMessage(DEVICES[v.model].label),
+                    orientation: orientationText(v.orientation, intl),
+                  })
+                  .toLocaleLowerCase(intl.locale),
+              ),
+              intl,
+            ),
+          })}
         </Callout>
       ) : null}
       <div className="v2-kbg__toolbar">
         <Segmented
-          aria-label="Device"
+          aria-label={intl.formatMessage(messages.deviceLabel)}
           size="md"
           options={[
-            { value: 'phone', label: 'Phone' },
-            { value: 'tablet', label: 'Tablet' },
+            { value: 'phone', label: intl.formatMessage(messages.phone) },
+            { value: 'tablet', label: intl.formatMessage(messages.tablet) },
           ]}
           value={view.model === 'phone' ? 'phone' : 'tablet'}
           onChange={(v) => select({ model: v === 'phone' ? 'phone' : lastTablet, orientation: view.orientation })}
@@ -350,18 +447,18 @@ export function KioskBackgroundPreview({
           size="sm"
           onClick={rotate}
           aria-disabled={turning != null}
-          aria-label={`Rotate to ${view.orientation === 'portrait' ? 'landscape' : 'portrait'}`}
+          aria-label={intl.formatMessage(messages.rotateTo, { orientation: orientationText(view.orientation === 'portrait' ? 'landscape' : 'portrait', intl) })}
         >
-          <IconSync size={14} /> Rotate
+          <IconSync size={14} /> {intl.formatMessage(messages.rotate)}
         </Button>
         {/* Its place is kept while hidden (a view that doesn't scroll), so nothing in the row moves. */}
         <div className={`v2-kbg__scroll-slot${scrollable ? '' : ' is-hidden'}`} inert={!scrollable} aria-hidden={!scrollable || undefined}>
           <Segmented
-            aria-label="Grid scroll"
+            aria-label={intl.formatMessage(messages.gridScroll)}
             size="md"
             options={[
-              { value: 'top', label: 'Top' },
-              { value: 'end', label: 'End of list' },
+              { value: 'top', label: intl.formatMessage(messages.top) },
+              { value: 'end', label: intl.formatMessage(messages.endOfList) },
             ]}
             value={atEnd ? 'end' : 'top'}
             onChange={(v) => setAtEnd(v === 'end')}
@@ -382,8 +479,7 @@ export function KioskBackgroundPreview({
       >
         <p className="v2-kbg__large-readout" aria-live="polite">
           <span className="v2-kbg__shape-name">
-            {viewLabel(view)}
-            {scrolled ? ', end of list' : ''}
+            {scrolled ? intl.formatMessage(messages.viewEnd, { view: viewLabel(view, intl) }) : viewLabel(view, intl)}
           </span>
           {big ? (
             <>
@@ -399,12 +495,12 @@ export function KioskBackgroundPreview({
       <ul
         ref={thumbList}
         className="v2-kbg__thumbs"
-        aria-label="Screen shapes"
+        aria-label={intl.formatMessage(messages.screenShapes)}
         style={{ gridTemplateColumns: thumbs.columns === 2 ? 'auto auto' : 'auto' }}
       >
         {THUMBNAILS.map((t) => {
           const m = measured?.[viewKey(t)];
-          const r = m?.kind === 'ok' ? readout(m.legibility) : null;
+          const r = m?.kind === 'ok' ? readout(m.legibility, intl) : null;
           return (
             <li key={viewKey(t)}>
               <button
@@ -426,7 +522,7 @@ export function KioskBackgroundPreview({
                   pinned={pinned ?? null}
                 />
                 <span className="v2-kbg__caption">
-                  <span className="v2-kbg__shape-name">{viewLabel(t)}</span>
+                  <span className="v2-kbg__shape-name">{viewLabel(t, intl)}</span>
                   {r ? (
                     <>
                       <Readout r={r} />
@@ -444,9 +540,7 @@ export function KioskBackgroundPreview({
       </ul>
       {isPinned ? null : (
         <p className="v2-kbg__footnote">
-          Text contrast is the worst case: against every pixel under each text. Layout shown at 360 dp wide for phones, in
-          Roboto, Android’s default font; real devices vary in width and font, and other scripts (such as Chinese or Arabic)
-          are shown in this browser’s fonts.
+          {intl.formatMessage(messages.footnote)}
         </p>
       )}
     </details>
@@ -486,10 +580,11 @@ function useWidth<T extends HTMLElement>(): [RefObject<T | null>, number] {
 }
 
 function ExitWarning() {
+  const intl = useIntl();
   return (
     <span className="v2-kbg__readout is-warn">
       <IconWarning size={14} />
-      <span>Exit button under 3:1</span>
+      <span>{intl.formatMessage(messages.exitUnder)}</span>
     </span>
   );
 }
@@ -543,6 +638,7 @@ function LargeScreen({
   /** The readout, under the frame and aligned with its left edge. */
   children: ReactNode;
 }) {
+  const intl = useIntl();
   const [frame, available] = useWidth<HTMLDivElement>();
   const fitScale = (v: View) => {
     const win = viewWindow(v);
@@ -563,11 +659,19 @@ function LargeScreen({
     : {};
   const boxW = Math.max(w * scale, nextBox?.w ?? 0);
   const boxH = Math.max(h * scale, nextBox?.h ?? 0);
-  const r = legibility ? readout(legibility) : null;
-  const how = fit.mode === 'fit' ? 'the whole image, letterboxed' : 'the image filling the screen, cropped around its focal point';
-  const description = pinned != null
-    ? `${viewLabel(view)}: ${pinned} pinned, open over ${how}`
-    : `${viewLabel(view)}${scrolled ? ', scrolled to the end of the list' : ''}: ${how}${r ? `, ${r.dim.toLowerCase()}, ${r.text.toLowerCase()}` : ''}`;
+  const r = legibility ? readout(legibility, intl) : null;
+  const how = intl.formatMessage(fit.mode === 'fit' ? messages.howFit : messages.howFill);
+  const description =
+    pinned != null
+      ? intl.formatMessage(messages.describePinned, { view: viewLabel(view, intl), app: pinned, how })
+      : intl.formatMessage(messages.describe, {
+          view: viewLabel(view, intl),
+          scrolled: String(scrolled),
+          how,
+          hasReadout: String(r != null),
+          dim: r ? r.dim.toLocaleLowerCase(intl.locale) : '',
+          text: r ? r.text.toLocaleLowerCase(intl.locale) : '',
+        });
   return (
     <div ref={frame} className="v2-kbg__large">
       <div className="v2-kbg__large-figure" style={{ width: Math.floor(boxW + 2 * LARGE_BEZEL) }}>

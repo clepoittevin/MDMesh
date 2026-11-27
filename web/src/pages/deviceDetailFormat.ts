@@ -1,11 +1,59 @@
-// Pure display helpers for the device detail page. No React here.
+// Pure display helpers for the device detail page. No React here. The helpers that produce text take an optional
+// `intl` (from useIntl()); without it they answer in English, as callers outside this page (the kiosk gallery's
+// fmtBytes) and the tests read them.
+import { createIntl, defineMessages, type IntlShape, type MessageDescriptor } from 'react-intl';
 import { DEVICE_RESET_REVISION, type ConfigStatus } from '../api/configSync';
 import type { Outcome } from '../data/configOutcomes';
+import { own } from '../data/own';
 import { LOCATION_HISTORY_LIMIT, type LocationFix } from '../api/deviceLocations';
-import { formatRelative } from '../ui/RelativeTime';
+import { formatRelative, formatRelativeIntl } from '../ui/RelativeTime';
 import type { StatusKind, StatusTone } from '../ui/Status';
 
 export const DASH = '—';
+
+const messagesRaw = defineMessages({
+  gigabytes: { id: 'deviceDetail.format.gigabytes', defaultMessage: '{value} GB' },
+  megabytes: { id: 'deviceDetail.format.megabytes', defaultMessage: '{value} MB' },
+  kilobytes: { id: 'deviceDetail.format.kilobytes', defaultMessage: '{value} KB' },
+  bytes: { id: 'deviceDetail.format.bytes', defaultMessage: '{value} B' },
+  storageUsed: { id: 'deviceDetail.format.storageUsed', defaultMessage: '{used} / {total} GB' },
+  storageFree: { id: 'deviceDetail.format.storageFree', defaultMessage: '{free} free' },
+  alwaysOn: { id: 'deviceDetail.format.powerAlwaysOn', defaultMessage: 'Always-on' },
+  batterySaver: { id: 'deviceDetail.format.powerBatterySaver', defaultMessage: 'Battery-saver' },
+  wifi: { id: 'deviceDetail.format.networkWifi', defaultMessage: 'Wi-Fi' },
+  mobileData: { id: 'deviceDetail.format.networkMobile', defaultMessage: 'Mobile data' },
+  noNetwork: { id: 'deviceDetail.format.networkNone', defaultMessage: 'No network' },
+  ethernet: { id: 'deviceDetail.format.networkEthernet', defaultMessage: 'Ethernet' },
+  fused: { id: 'deviceDetail.format.providerFused', defaultMessage: 'Fused' },
+  gps: { id: 'deviceDetail.format.providerGps', defaultMessage: 'GPS' },
+  network: { id: 'deviceDetail.format.providerNetwork', defaultMessage: 'Network' },
+  passive: { id: 'deviceDetail.format.providerPassive', defaultMessage: 'Passive' },
+  range1h: { id: 'deviceDetail.format.range1h', defaultMessage: '1h' },
+  range24h: { id: 'deviceDetail.format.range24h', defaultMessage: '24h' },
+  range7d: { id: 'deviceDetail.format.range7d', defaultMessage: '7d' },
+  rangeAll: { id: 'deviceDetail.format.rangeAll', defaultMessage: 'All' },
+  rangeLast: {
+    id: 'deviceDetail.format.rangeLast',
+    defaultMessage:
+      '{kind, select, hour {the last hour} days {the last {count} days} other {the last {count} hours}}',
+  },
+  fixesNewestInRange: { id: 'deviceDetail.format.fixesNewestInRange', defaultMessage: 'newest {count} in this range' },
+  fixesNewest: { id: 'deviceDetail.format.fixesNewest', defaultMessage: 'newest {count} fixes' },
+  fixes: { id: 'deviceDetail.format.fixes', defaultMessage: '{count, plural, one {# fix} other {# fixes}}' },
+  outOfDate: { id: 'deviceDetail.format.revisionOutOfDate', defaultMessage: 'Out of date' },
+  delivered: { id: 'deviceDetail.format.commandDelivered', defaultMessage: 'Delivered' },
+  running: { id: 'deviceDetail.format.commandRunning', defaultMessage: 'Running' },
+  accuracy: { id: 'deviceDetail.format.accuracy', defaultMessage: '±{value} m' },
+});
+const messages: Record<keyof typeof messagesRaw, MessageDescriptor> = messagesRaw;
+
+// English, for callers that pass no intl.
+const EN = createIntl({ locale: 'en' });
+const fm = (intl: IntlShape | undefined, d: MessageDescriptor, values?: Record<string, string | number>) =>
+  (intl ?? EN).formatMessage(d, values);
+/** A number without digit grouping, to `digits` decimals at most (the decimal separator follows the locale). */
+const num = (intl: IntlShape | undefined, v: number, digits: number) =>
+  (intl ?? EN).formatNumber(v, { maximumFractionDigits: digits, useGrouping: false });
 
 /** A telemetry value as a single string (arrays → first element, as the classic page reads IMEI lists). */
 export function teleStr(v: unknown): string | undefined {
@@ -25,54 +73,66 @@ export function teleNum(v: unknown): number | undefined {
 }
 
 /** Decimal gigabytes (what Android's own storage screen shows). "18.2", "32", "0.4". */
-function gb(bytes: number): string {
+function gb(bytes: number, intl?: IntlShape): string {
   const v = bytes / 1e9;
-  const s = v >= 100 ? v.toFixed(0) : v.toFixed(1);
-  return s.endsWith('.0') ? s.slice(0, -2) : s;
+  return num(intl, v, v >= 100 ? 0 : 1);
 }
 
 /** Bytes as "3.8 GB", "512 MB", "12 KB". */
-export function fmtBytes(bytes: number | undefined): string {
+export function fmtBytes(bytes: number | undefined, intl?: IntlShape): string {
   if (bytes == null || !Number.isFinite(bytes) || bytes < 0) return DASH;
-  if (bytes >= 1e9) return `${gb(bytes)} GB`;
-  if (bytes >= 1e6) return `${Math.round(bytes / 1e6)} MB`;
-  if (bytes >= 1e3) return `${Math.round(bytes / 1e3)} KB`;
-  return `${bytes} B`;
+  if (bytes >= 1e9) return fm(intl, messages.gigabytes, { value: gb(bytes, intl) });
+  if (bytes >= 1e6) return fm(intl, messages.megabytes, { value: num(intl, Math.round(bytes / 1e6), 0) });
+  if (bytes >= 1e3) return fm(intl, messages.kilobytes, { value: num(intl, Math.round(bytes / 1e3), 0) });
+  return fm(intl, messages.bytes, { value: num(intl, bytes, 0) });
 }
 
 /** Storage as used / total ("18.2 / 32 GB"), from the agent's totalStorageBytes and freeStorageBytes. */
-export function fmtStorage(total: number | undefined, free: number | undefined): string {
+export function fmtStorage(total: number | undefined, free: number | undefined, intl?: IntlShape): string {
   if (total != null && total > 0) {
-    if (free != null && free >= 0 && free <= total) return `${gb(total - free)} / ${gb(total)} GB`;
-    return `${gb(total)} GB`;
+    if (free != null && free >= 0 && free <= total) {
+      return fm(intl, messages.storageUsed, { used: gb(total - free, intl), total: gb(total, intl) });
+    }
+    return fm(intl, messages.gigabytes, { value: gb(total, intl) });
   }
-  if (free != null && free >= 0) return `${fmtBytes(free)} free`;
+  if (free != null && free >= 0) return fm(intl, messages.storageFree, { free: fmtBytes(free, intl) });
   return DASH;
 }
 
 /** "Always-on" / "Battery-saver" for the agent's power mode. */
-export function powerLabel(mode?: string | null): string | undefined {
-  if (mode === 'alwaysOn') return 'Always-on';
-  if (mode === 'adaptive') return 'Battery-saver';
+export function powerLabel(mode?: string | null, intl?: IntlShape): string | undefined {
+  if (mode === 'alwaysOn') return fm(intl, messages.alwaysOn);
+  if (mode === 'adaptive') return fm(intl, messages.batterySaver);
   return undefined;
 }
 
 /** The agent's networkType (wifi | cellular | none) as a label. */
-export function networkLabel(type?: string): string | undefined {
+export function networkLabel(type?: string, intl?: IntlShape): string | undefined {
   if (!type) return undefined;
   const t = type.toLowerCase();
-  if (t === 'wifi' || t === 'wi-fi') return 'Wi-Fi';
-  if (t === 'cellular' || t === 'mobile') return 'Mobile data';
-  if (t === 'none') return 'No network';
-  if (t === 'ethernet') return 'Ethernet';
+  if (t === 'wifi' || t === 'wi-fi') return fm(intl, messages.wifi);
+  if (t === 'cellular' || t === 'mobile') return fm(intl, messages.mobileData);
+  if (t === 'none') return fm(intl, messages.noNetwork);
+  if (t === 'ethernet') return fm(intl, messages.ethernet);
   return type;
 }
 
 /** Android location provider → label; the raw value goes in a tooltip. */
-export function providerLabel(p?: unknown): string | undefined {
+export function providerLabel(p?: unknown, intl?: IntlShape): string | undefined {
   if (typeof p !== 'string' || !p) return undefined;
-  const map: Record<string, string> = { fused: 'Fused', gps: 'GPS', network: 'Network', passive: 'Passive' };
-  return map[p.toLowerCase()] ?? p;
+  const map: Record<string, MessageDescriptor> = {
+    fused: messages.fused,
+    gps: messages.gps,
+    network: messages.network,
+    passive: messages.passive,
+  };
+  const d = own(map, p.toLowerCase());
+  return d ? fm(intl, d) : p;
+}
+
+/** "±12 m": a location's accuracy radius. */
+export function fmtAccuracy(meters: number, intl?: IntlShape): string {
+  return fm(intl, messages.accuracy, { value: num(intl, Math.round(meters), 0) });
 }
 
 /** A timestamp (epoch ms) the browser can turn into a date, or undefined (bad telemetry must not throw). */
@@ -124,11 +184,22 @@ export function cleanFixes(list: unknown): LocationFix[] {
 
 /** The Location tab's time ranges, in hours back from now. 0 is All: the newest fixes, however old. */
 export const LOCATION_RANGES: ReadonlyArray<{ value: number; label: string }> = [
-  { value: 1, label: '1h' },
-  { value: 24, label: '24h' },
-  { value: 168, label: '7d' },
-  { value: 0, label: 'All' },
+  { value: 1, label: messages.range1h.defaultMessage as string },
+  { value: 24, label: messages.range24h.defaultMessage as string },
+  { value: 168, label: messages.range7d.defaultMessage as string },
+  { value: 0, label: messages.rangeAll.defaultMessage as string },
 ];
+
+/** The ranges as the Segmented control shows them, labels in the console's language. */
+export function locationRangeOptions(intl: IntlShape): Array<{ value: number; label: string }> {
+  const label: Record<number, MessageDescriptor> = {
+    1: messages.range1h,
+    24: messages.range24h,
+    168: messages.range7d,
+    0: messages.rangeAll,
+  };
+  return LOCATION_RANGES.map((r) => ({ value: r.value, label: intl.formatMessage(label[r.value]) }));
+}
 
 /** The `since` of a range (listLocations): `hours` before `now`, or 0 for All. */
 export function locationSince(hours: number, now: number): number {
@@ -136,26 +207,37 @@ export function locationSince(hours: number, now: number): number {
 }
 
 /** "the last hour", "the last 24 hours", "the last 7 days"; undefined for All. */
-export function rangePhrase(hours: number): string | undefined {
+export function rangePhrase(hours: number, intl?: IntlShape): string | undefined {
   if (hours <= 0) return undefined;
-  if (hours === 1) return 'the last hour';
-  return hours > 24 && hours % 24 === 0 ? `the last ${hours / 24} days` : `the last ${hours} hours`;
+  const p = rangeParts(hours);
+  return fm(intl, messages.rangeLast, { kind: p.kind, count: p.count });
+}
+
+/** A range's phrase as ICU arguments (`kind`: hour | hours | days; `count`), for sentences that name the range. */
+export function rangeParts(hours: number): { kind: 'hour' | 'hours' | 'days'; count: number } {
+  if (hours === 1) return { kind: 'hour', count: 1 };
+  return hours > 24 && hours % 24 === 0 ? { kind: 'days', count: hours / 24 } : { kind: 'hours', count: hours };
 }
 
 /** "12 fixes", or "newest 500 in this range" when the server's cap cut the list (the range holds more). */
-export function fixesCount(count: number, hours: number): string {
-  if (count >= LOCATION_HISTORY_LIMIT) return hours > 0 ? `newest ${count} in this range` : `newest ${count} fixes`;
-  return `${count} fix${count === 1 ? '' : 'es'}`;
+export function fixesCount(count: number, hours: number, intl?: IntlShape): string {
+  if (count >= LOCATION_HISTORY_LIMIT) {
+    return fm(intl, hours > 0 ? messages.fixesNewestInRange : messages.fixesNewest, { count });
+  }
+  return fm(intl, messages.fixes, { count });
 }
 
 /** "6m", "2h", "just now": an age without the trailing "ago" (rail "Fix age"). */
-export function fmtAge(ms: number, now: number): string {
+export function fmtAge(ms: number, now: number, intl?: IntlShape): string {
+  // In another language the age keeps its own wording ("il y a 6 min"): stripping an English " ago" can't apply.
+  if (intl && intl.locale !== 'en') return formatRelativeIntl(intl, ms, now, 'short');
   return formatRelative(ms, now, 'short').replace(/ ago$/, '');
 }
 
 /** A command's time: "3m ago", "2h ago" within a day, then "Yesterday", "3 days ago", the date. */
-export function fmtWhen(ms: number, now: number): string {
-  return now - ms < 24 * 3600 * 1000 ? formatRelative(ms, now, 'short') : formatRelative(ms, now, 'long');
+export function fmtWhen(ms: number, now: number, intl?: IntlShape): string {
+  const style = now - ms < 24 * 3600 * 1000 ? 'short' : 'long';
+  return intl ? formatRelativeIntl(intl, ms, now, style) : formatRelative(ms, now, style);
 }
 
 export function capitalise(s: string): string {
@@ -175,8 +257,8 @@ export function makeModel(manufacturer?: string, model?: string): string | undef
    --------------------------------------------------------------------------------------------------------------- */
 
 /** Short revision for display, 7 characters as git shows them ("8b04d7a"); "Out of date" for the agent's stale marker. */
-export function shortRevision(r?: string | null): string {
-  if (r === DEVICE_RESET_REVISION) return 'Out of date';
+export function shortRevision(r?: string | null, intl?: IntlShape): string {
+  if (r === DEVICE_RESET_REVISION) return fm(intl, messages.outOfDate);
   return r ? r.slice(0, 7) : DASH;
 }
 
@@ -188,7 +270,7 @@ export function configNeedsPanel(s: ConfigStatus | null, outcomes: Outcome[]): b
 }
 
 /** Command status → status pill (Done / Failed / Expired). */
-export function commandStatus(status: string): { kind: StatusKind; label?: string } {
+export function commandStatus(status: string, intl?: IntlShape): { kind: StatusKind; label?: string } {
   switch (status) {
     case 'done':
       return { kind: 'done' };
@@ -201,9 +283,9 @@ export function commandStatus(status: string): { kind: StatusKind; label?: strin
     case 'pending':
       return { kind: 'pending' };
     case 'delivered':
-      return { kind: 'pending', label: 'Delivered' };
+      return { kind: 'pending', label: fm(intl, messages.delivered) };
     case 'accepted':
-      return { kind: 'pending', label: 'Running' };
+      return { kind: 'pending', label: fm(intl, messages.running) };
     default:
       return { kind: 'pending', label: capitalise(status) };
   }

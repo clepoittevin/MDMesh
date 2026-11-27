@@ -27,6 +27,10 @@ New
   stay. Needs agent 0.7.0; the database adds `configurations.modifyAccounts` on start (#141).
 - Enrollment codes can name the device they enroll (numbered "Name 1", "Name 2", … for a code for several devices),
   and the Devices page filters can show only unnamed devices (#186).
+- Console in French. Settings → Appearance → Language picks Browser, English or Français; a browser set to French
+  gets it at once. Dates, times, sizes and numbers follow the language. The seeded roles (the upstream project's
+  Russian names, or the installers' English ones) and the seeded configurations show in the console's language; the
+  database keeps their names.
 
 Fixes
 - Console: on Settings and the configuration editor, the section menu no longer floats over the cards when the

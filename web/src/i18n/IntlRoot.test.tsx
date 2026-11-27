@@ -49,6 +49,23 @@ describe('IntlRoot', () => {
     expect(document.documentElement.lang).toBe('xx');
   });
 
+  it('has set <html lang> by the time the page first renders (dates written during render follow it)', async () => {
+    const seen: string[] = [];
+    const Page = () => {
+      seen.push(document.documentElement.lang);
+      return <Hello />;
+    };
+    const english = render(<IntlRoot><Page /></IntlRoot>);
+    expect(seen).toEqual(['en']);
+    english.unmount();
+    seen.length = 0;
+    localStorage.setItem(LOCALE_KEY, 'xx');
+    render(<IntlRoot><Page /></IntlRoot>);
+    release({ 'test.hello': 'Hallo' });
+    await screen.findByText('Hallo');
+    expect(seen[0]).toBe('xx');
+  });
+
   it('stays in English when the catalog fails to load', async () => {
     localStorage.setItem(LOCALE_KEY, 'ar');
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});

@@ -84,20 +84,36 @@ export async function checkForUpdates(): Promise<UpdateStatus | null> {
   }
 }
 
+/**
+ * How an apply or auto-update toggle went. On failure `error` is the supervisor's own text, when its body has one;
+ * otherwise `httpStatus` says why (0: the request didn't reach it) and the screen words it.
+ */
+export interface UpdateActionResult {
+  ok: boolean;
+  error?: string;
+  httpStatus?: number;
+}
+
+/** A refused request's result: the body's `error` text if it sent one, and the status either way. */
+async function refused(r: Response): Promise<UpdateActionResult> {
+  const body = await r.json().catch(() => ({}));
+  const error = (body as { error?: unknown }).error;
+  return { ok: false, error: typeof error === 'string' && error ? error : undefined, httpStatus: r.status };
+}
+
 /** Kick off a one-click apply. credentials:'include' forwards JSESSIONID for the supervisor's authz. */
-export async function applyUpdate(): Promise<{ ok: boolean; error?: string }> {
+export async function applyUpdate(): Promise<UpdateActionResult> {
   try {
     const r = await fetch('/update/apply', { method: 'POST', credentials: 'include', headers: { Accept: 'application/json', 'X-MDMesh-Console': '1' } });
     if (r.status === 202) return { ok: true };
-    const body = await r.json().catch(() => ({}));
-    return { ok: false, error: (body as { error?: string }).error || `HTTP ${r.status}` };
-  } catch (e) {
-    return { ok: false, error: String((e as Error)?.message || e) };
+    return await refused(r);
+  } catch {
+    return { ok: false, httpStatus: 0 };
   }
 }
 
 /** Toggle unattended ("automatic") updates. */
-export async function setAutoUpdate(auto: boolean): Promise<{ ok: boolean; error?: string }> {
+export async function setAutoUpdate(auto: boolean): Promise<UpdateActionResult> {
   try {
     const r = await fetch('/update/auto', {
       method: 'POST', credentials: 'include',
@@ -105,9 +121,8 @@ export async function setAutoUpdate(auto: boolean): Promise<{ ok: boolean; error
       body: JSON.stringify({ auto }),
     });
     if (r.ok) return { ok: true };
-    const body = await r.json().catch(() => ({}));
-    return { ok: false, error: (body as { error?: string }).error || `HTTP ${r.status}` };
-  } catch (e) {
-    return { ok: false, error: String((e as Error)?.message || e) };
+    return await refused(r);
+  } catch {
+    return { ok: false, httpStatus: 0 };
   }
 }

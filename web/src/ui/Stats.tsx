@@ -1,5 +1,6 @@
 import type { Key, ReactNode } from 'react';
 import { Link } from 'react-router';
+import { FormattedMessage, useIntl } from 'react-intl';
 import { StackedBar } from './Bars';
 import { Skeleton } from './Skeleton';
 import { StatusDot } from './Status';
@@ -74,20 +75,22 @@ export interface FleetSummaryProps {
  */
 export function FleetSummary({
   total,
-  caption = 'devices enrolled',
+  caption: captionProp,
   legend,
   stats,
   loading,
   headingId = 'v2-fleet',
   className,
 }: FleetSummaryProps) {
+  const intl = useIntl();
+  const caption = captionProp ?? intl.formatMessage({ id: 'ui.fleet.caption', defaultMessage: 'devices enrolled' });
   const known = total !== null && !loading;
-  const pct = (n: number) => (known && total > 0 ? `${Math.round((n / total) * 100)}%` : '');
+  const pct = (n: number) => (known && total > 0 ? intl.formatNumber(n / total, { style: 'percent', maximumFractionDigits: 0 }) : '');
   const label = legend.map((l) => `${l.count} ${typeof l.label === 'string' ? l.label.toLowerCase() : ''}`.trim()).join(', ');
   return (
     <section aria-labelledby={headingId} aria-busy={loading || undefined} className={cx('v2-fleet', className)}>
       <h2 id={headingId} className="v2-fleet__title">
-        Fleet
+        <FormattedMessage id="ui.fleet.title" defaultMessage="Fleet" />
       </h2>
       <div className="v2-fleet__head">
         {loading ? (

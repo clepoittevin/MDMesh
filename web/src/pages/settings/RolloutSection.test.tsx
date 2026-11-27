@@ -82,6 +82,33 @@ describe('Agent rollout', () => {
   });
 });
 
+describe('Agent rollout: a refresh that fails', () => {
+  const failing = (message: string) => {
+    const fetch = stubApi();
+    const rest = fetch.getMockImplementation();
+    fetch.mockImplementation(async (input, init) => {
+      if (String(input).startsWith('/update/status')) return new Response(JSON.stringify(STATUS));
+      if (String(input).includes('/rollout/active')) return new Response(JSON.stringify({ status: 'ERROR', message, data: null }));
+      return rest!(input, init);
+    });
+    renderInConsole(<AppRoutes />, { path: '/settings', user: ROLES.admin });
+  };
+
+  it('says why, in words for an error key the server sent', async () => {
+    failing('error.permission.denied');
+    const line = await main().findByText(/Couldn’t refresh the rollout/);
+    await settled();
+    expect(line.textContent).toBe('Couldn’t refresh the rollout: Managing rollouts needs permission to edit devices and access to every device.');
+  });
+
+  it('shows any other reason as the server sent it', async () => {
+    failing('constructor');
+    const line = await main().findByText(/Couldn’t refresh the rollout/);
+    await settled();
+    expect(line.textContent).toBe('Couldn’t refresh the rollout: constructor');
+  });
+});
+
 describe('Agent rollout: the server first', () => {
   // As the updater reports a 0.5.0 server with 0.5.1 released: it offers 0.5.0's own agent, never 0.5.1's.
   const OLDER = { ...STATUS, latest: '0.5.1', updateAvailable: true,

@@ -1,13 +1,40 @@
 import { useEffect, useId, useState, type FormEvent } from 'react';
+import { defineMessages, useIntl, type MessageDescriptor } from 'react-intl';
 import {
   changeOwnPassword,
   IMPERSONATED,
-  IMPERSONATED_MESSAGE,
   isTooManyAttempts,
-  TOO_MANY_MESSAGE,
   type AuthUser,
 } from '../../api/auth';
+import { authMessages } from '../../api/authMessages';
 import { Button, Callout, Field, IconAlert, Modal, PasswordInput, RuleList, useToast, type Rule } from '../../ui';
+import { apiErrorText } from '../../api/apiErrorText';
+
+const messages = defineMessages<'ruleDifferent' | 'ruleMatch' | 'sessionMissing' | 'changedTitle' | 'changedBody' | 'newEmpty' | 'refused' | 'notChanged' | 'title' | 'description' | 'cancel' | 'current' | 'wrongCurrent' | 'showCurrent'>({
+  ruleDifferent: { id: 'settings.password.ruleDifferent', defaultMessage: 'Different from your current password' },
+  ruleMatch: { id: 'settings.password.ruleMatch', defaultMessage: 'Both new passwords match' },
+  sessionMissing: {
+    id: 'settings.password.sessionMissing',
+    defaultMessage: 'Your session is missing your account details. Sign out and in again, then retry.',
+  },
+  changedTitle: { id: 'settings.password.changedTitle', defaultMessage: 'Password changed' },
+  changedBody: {
+    id: 'settings.password.changedBody',
+    defaultMessage: 'Use the new password the next time you sign in.',
+  },
+  newEmpty: { id: 'settings.password.newEmpty', defaultMessage: 'Enter a new password.' },
+  refused: {
+    id: 'settings.password.refused',
+    defaultMessage: 'The server refused the change. Sign out and in again, then retry.',
+  },
+  notChanged: { id: 'settings.password.notChanged', defaultMessage: 'The password was not changed.' },
+  title: { id: 'settings.password.title', defaultMessage: 'Change password' },
+  description: { id: 'settings.password.description', defaultMessage: 'For {login}.' },
+  cancel: { id: 'settings.password.cancel', defaultMessage: 'Cancel' },
+  current: { id: 'settings.password.current', defaultMessage: 'Current password' },
+  wrongCurrent: { id: 'settings.password.wrongCurrent', defaultMessage: 'That isn’t your current password.' },
+  showCurrent: { id: 'settings.password.showCurrent', defaultMessage: 'Show current password' },
+}) as Record<'ruleDifferent' | 'ruleMatch' | 'sessionMissing' | 'changedTitle' | 'changedBody' | 'newEmpty' | 'refused' | 'notChanged' | 'title' | 'description' | 'cancel' | 'current' | 'wrongCurrent' | 'showCurrent', MessageDescriptor>;
 
 /** Also the account editor's minimum (Settings → Users & roles). */
 export const MIN_LENGTH = 8;
@@ -19,6 +46,7 @@ export const MIN_LENGTH = 8;
  * every opening starts blank.
  */
 export function ChangePasswordModal({ open, user, onClose }: { open: boolean; user: AuthUser | null; onClose: () => void }) {
+  const intl = useIntl();
   const toast = useToast();
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
@@ -41,9 +69,9 @@ export function ChangePasswordModal({ open, user, onClose }: { open: boolean; us
 
   const typed = next.length > 0;
   const rules: Rule[] = [
-    { key: 'len', label: `At least ${MIN_LENGTH} characters`, met: typed ? next.length >= MIN_LENGTH : null },
-    { key: 'diff', label: 'Different from your current password', met: typed && current ? next !== current : null },
-    { key: 'match', label: 'Both new passwords match', met: again ? next === again : null },
+    { key: 'len', label: intl.formatMessage(authMessages.minLength, { min: MIN_LENGTH }), met: typed ? next.length >= MIN_LENGTH : null },
+    { key: 'diff', label: intl.formatMessage(messages.ruleDifferent), met: typed && current ? next !== current : null },
+    { key: 'match', label: intl.formatMessage(messages.ruleMatch), met: again ? next === again : null },
   ];
   const valid = current.length > 0 && next.length >= MIN_LENGTH && next !== current && next === again;
 
@@ -51,7 +79,7 @@ export function ChangePasswordModal({ open, user, onClose }: { open: boolean; us
     e.preventDefault();
     if (!valid || busy) return;
     if (!user?.id || !user.login) {
-      setErr('Your session is missing your account details. Sign out and in again, then retry.');
+      setErr(intl.formatMessage(messages.sessionMissing));
       return;
     }
     setBusy(true);
@@ -59,17 +87,17 @@ export function ChangePasswordModal({ open, user, onClose }: { open: boolean; us
     setWrongCurrent(false);
     try {
       await changeOwnPassword({ id: user.id, login: user.login }, current, next);
-      toast.push('ok', 'Password changed', 'Use the new password the next time you sign in.');
+      toast.push('ok', intl.formatMessage(messages.changedTitle), intl.formatMessage(messages.changedBody));
       onClose();
     } catch (ex) {
       const m = (ex as Error).message;
       if (m === 'error.password.wrong') setWrongCurrent(true);
       // The current-password check counts as a sign-in for the server's limit (LoginThrottle, v0.3.9).
-      else if (isTooManyAttempts(ex)) setErr(TOO_MANY_MESSAGE);
-      else if (m === 'error.password.empty') setErr('Enter a new password.');
-      else if (m === IMPERSONATED) setErr(IMPERSONATED_MESSAGE);
-      else if (m === 'error.permission.denied') setErr('The server refused the change. Sign out and in again, then retry.');
-      else setErr(m || 'The password was not changed.');
+      else if (isTooManyAttempts(ex)) setErr(intl.formatMessage(authMessages.tooMany));
+      else if (m === 'error.password.empty') setErr(intl.formatMessage(messages.newEmpty));
+      else if (m === IMPERSONATED) setErr(intl.formatMessage(authMessages.impersonated));
+      else if (m === 'error.permission.denied') setErr(intl.formatMessage(messages.refused));
+      else setErr(apiErrorText(intl, ex) || intl.formatMessage(messages.notChanged));
     } finally {
       setBusy(false);
     }
@@ -81,15 +109,15 @@ export function ChangePasswordModal({ open, user, onClose }: { open: boolean; us
       onClose={() => !busy && onClose()}
       dismissOnBackdrop={false}
       size="sm"
-      title="Change password"
-      description={user?.login ? `For ${user.login}.` : undefined}
+      title={intl.formatMessage(messages.title)}
+      description={user?.login ? intl.formatMessage(messages.description, { login: user.login }) : undefined}
       footer={
         <>
           <Button size="lg" onClick={onClose} disabled={busy}>
-            Cancel
+            {intl.formatMessage(messages.cancel)}
           </Button>
           <Button type="submit" form={formId} variant="primary" size="lg" disabled={!valid || busy}>
-            {busy ? 'Saving…' : 'Change password'}
+            {busy ? intl.formatMessage(authMessages.saving) : intl.formatMessage(messages.title)}
           </Button>
         </>
       }
@@ -100,11 +128,14 @@ export function ChangePasswordModal({ open, user, onClose }: { open: boolean; us
             {err}
           </Callout>
         ) : null}
-        <Field label="Current password" error={wrongCurrent ? 'That isn’t your current password.' : undefined}>
+        <Field
+          label={intl.formatMessage(messages.current)}
+          error={wrongCurrent ? intl.formatMessage(messages.wrongCurrent) : undefined}
+        >
           <PasswordInput
             size="md"
             autoComplete="current-password"
-            toggleLabel="Show current password"
+            toggleLabel={intl.formatMessage(messages.showCurrent)}
             value={current}
             onChange={(e) => {
               setCurrent(e.target.value);
@@ -113,22 +144,22 @@ export function ChangePasswordModal({ open, user, onClose }: { open: boolean; us
             required
           />
         </Field>
-        <Field label="New password">
+        <Field label={intl.formatMessage(authMessages.newPassword)}>
           <PasswordInput
             size="md"
             autoComplete="new-password"
-            toggleLabel="Show new password"
+            toggleLabel={intl.formatMessage(authMessages.showNew)}
             value={next}
             onChange={(e) => setNext(e.target.value)}
             aria-describedby={rulesId}
             required
           />
         </Field>
-        <Field label="Type it again">
+        <Field label={intl.formatMessage(authMessages.typeAgain)}>
           <PasswordInput
             size="md"
             autoComplete="new-password"
-            toggleLabel="Show the password typed again"
+            toggleLabel={intl.formatMessage(authMessages.showAgain)}
             value={again}
             onChange={(e) => setAgain(e.target.value)}
             aria-describedby={rulesId}

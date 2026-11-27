@@ -2,6 +2,7 @@
 // a device is offline by recency of its last check-in; an online device whose configuration needs an admin's look
 // is "attention"; a device the server delivered a factory reset to is "wiped", whatever its last check-in says.
 // Pure functions, no React.
+import { defineMessages, type MessageDescriptor } from 'react-intl';
 import { DEVICE_RESET_LABEL, SOME_DEFERRED_LABEL, type ConfigSyncSummary } from '../api/configSync';
 import type { DeviceView } from '../api/devices';
 import { isOnline } from './presence';
@@ -47,6 +48,24 @@ export const ISSUE_REASON: Record<IssueKind, string> = {
   deferred: 'Some settings deferred',
   reset: 'Configuration out of date on the device',
 };
+
+/**
+ * The same reasons as messages: ISSUE_REASON (kept as is, it is part of what other pages import) stays English;
+ * pages that show a reason to the admin format ISSUE_REASON_MESSAGES[kind] instead, so it follows the language.
+ */
+export const ISSUE_REASON_MESSAGES: Record<IssueKind, MessageDescriptor> = defineMessages({
+  failed: { id: 'overview.issueReason.failed', defaultMessage: 'Configuration failed to apply' },
+  outOfSync: { id: 'overview.issueReason.outOfSync', defaultMessage: 'Configuration out of sync' },
+  agentTooOld: {
+    id: 'overview.issueReason.agentTooOld',
+    defaultMessage: 'Agent too old for configuration sync',
+  },
+  deferred: { id: 'overview.issueReason.deferred', defaultMessage: 'Some settings deferred' },
+  reset: {
+    id: 'overview.issueReason.reset',
+    defaultMessage: 'Configuration out of date on the device',
+  },
+});
 
 export const ISSUE_TONE: Record<IssueKind, 'alert' | 'warn'> = {
   failed: 'alert',

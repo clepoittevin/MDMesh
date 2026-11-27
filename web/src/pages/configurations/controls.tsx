@@ -1,7 +1,9 @@
 import { useState, type ReactNode } from 'react';
+import { defineMessages, useIntl, type MessageDescriptor } from 'react-intl';
+import { untyped } from '../../data/configIntl';
 import type { Application } from '../../api/applications';
 import type { ConfigApp } from '../../api/configurations';
-import { DEFAULT_SEGMENTS, flagOffValue, type FieldDef } from '../../data/configFields';
+import { DEFAULT_SEGMENTS, fieldText, flagOffValue, type FieldDef } from '../../data/configFields';
 import { appNameForVersionId, versionIdForApp } from '../../data/configurationRules';
 import {
   Badge,
@@ -35,17 +37,33 @@ export interface ControlProps {
   tone?: InputTone;
 }
 
+const messages = untyped(defineMessages({
+  visibleButton: { id: 'configEditor.control.visibleButton', defaultMessage: 'Visible button' },
+  hiddenGesture: { id: 'configEditor.control.hiddenGesture', defaultMessage: 'Hidden gesture' },
+  allow: { id: 'configEditor.control.allow', defaultMessage: 'Allow' },
+  block: { id: 'configEditor.control.block', defaultMessage: 'Block' },
+  show: { id: 'configEditor.control.show', defaultMessage: 'Show' },
+  hide: { id: 'configEditor.control.hide', defaultMessage: 'Hide' },
+  none: { id: 'configEditor.control.noApp', defaultMessage: '— none —' },
+  unknownVersion: { id: 'configEditor.control.unknownVersion', defaultMessage: '{name} (version #{id})' },
+  showLess: { id: 'configEditor.control.showLess', defaultMessage: 'Show less' },
+  learnMore: { id: 'configEditor.control.learnMore', defaultMessage: 'Learn more' },
+  agentNeeds: { id: 'configEditor.control.agentNeeds', defaultMessage: 'Needs agent {version} or later. Older agents ignore it.' },
+  agentTag: { id: 'configEditor.control.agentTag', defaultMessage: 'Agent {version}+' },
+}));
+
 /**
  * Presentation of `flag` fields (configFields: nullable Boolean where null ≡ false). Each keeps the classic semantics;
  * only the control differs. `toggle` = a switch, On = true.
  */
-const FLAG_UI: Record<string, { labels: [string, string]; falseFirst?: boolean } | 'toggle'> = {
-  kioskExit: { labels: ['Visible button', 'Hidden gesture'], falseFirst: true },
-  kioskHome: { labels: ['Allow', 'Block'] },
-  kioskRecents: { labels: ['Allow', 'Block'] },
-  kioskNotifications: { labels: ['Allow', 'Block'] },
-  kioskKeyguard: { labels: ['Allow', 'Block'] },
-  kioskSystemInfo: { labels: ['Show', 'Hide'] },
+const ALLOW_BLOCK_LABELS: [MessageDescriptor, MessageDescriptor] = [messages.allow, messages.block];
+const FLAG_UI: Record<string, { labels: [MessageDescriptor, MessageDescriptor]; falseFirst?: boolean } | 'toggle'> = {
+  kioskExit: { labels: [messages.visibleButton, messages.hiddenGesture], falseFirst: true },
+  kioskHome: { labels: ALLOW_BLOCK_LABELS },
+  kioskRecents: { labels: ALLOW_BLOCK_LABELS },
+  kioskNotifications: { labels: ALLOW_BLOCK_LABELS },
+  kioskKeyguard: { labels: ALLOW_BLOCK_LABELS },
+  kioskSystemInfo: { labels: [messages.show, messages.hide] },
   kioskLockButtons: 'toggle',
   kioskLockVolume: 'toggle',
 };
@@ -58,6 +76,7 @@ const textValue = (v: string, stored: unknown) => (v === '' && stored == null ? 
 
 /** The control for one configuration field, by its configFields type. */
 export function FieldControl({ def, value, stored, onChange, disabled, labelId, helpId, apps = [], assigned = [], tone }: ControlProps) {
+  const intl = useIntl();
   const aria = { 'aria-labelledby': labelId, 'aria-describedby': helpId };
   switch (def.type) {
     case 'switch':
@@ -72,7 +91,7 @@ export function FieldControl({ def, value, stored, onChange, disabled, labelId, 
           {...aria}
           value={value === true}
           onChange={set}
-          labels={ui.labels}
+          labels={[intl.formatMessage(ui.labels[0]), intl.formatMessage(ui.labels[1])]}
           falseFirst={ui.falseFirst}
           disabled={disabled}
         />
@@ -82,7 +101,7 @@ export function FieldControl({ def, value, stored, onChange, disabled, labelId, 
       return (
         <TriState
           {...aria}
-          segments={def.segments ?? DEFAULT_SEGMENTS}
+          segments={(def.segments ?? DEFAULT_SEGMENTS).map((s) => ({ ...s, label: intl.formatMessage(s.label) }))}
           value={(value as boolean | null | undefined) ?? null}
           onChange={onChange}
           disabled={disabled}
@@ -95,7 +114,7 @@ export function FieldControl({ def, value, stored, onChange, disabled, labelId, 
         return (
           <Segmented<string | number>
             {...aria}
-            options={(def.options ?? []).map((o) => ({ value: o.value, label: o.label }))}
+            options={(def.options ?? []).map((o) => ({ value: o.value, label: fieldText(intl, o.label) }))}
             value={value == null ? undefined : (value as string | number)}
             onChange={onChange}
             disabled={disabled}
@@ -113,7 +132,7 @@ export function FieldControl({ def, value, stored, onChange, disabled, labelId, 
           <option value="">—</option>
           {def.options?.map((o) => (
             <option key={String(o.value)} value={String(o.value)}>
-              {o.label}
+              {fieldText(intl, o.label)}
             </option>
           ))}
         </Select>
@@ -162,7 +181,7 @@ export function FieldControl({ def, value, stored, onChange, disabled, labelId, 
       // Unset = the kiosk launcher's own default: "Default", with Reset back to it.
       return (
         <ColourInput
-          aria-label={def.label}
+          aria-label={intl.formatMessage(def.label)}
           value={value ? String(value) : null}
           disabled={disabled}
           onChange={(v) => onChange(v)}
@@ -211,6 +230,7 @@ export function AppSelect({
   'aria-labelledby'?: string;
   'aria-describedby'?: string;
 }) {
+  const intl = useIntl();
   const options = apps
     .map((a) => ({ a, vid: versionIdForApp(a, assigned) }))
     .filter((o): o is { a: Application; vid: number } => o.vid != null);
@@ -227,10 +247,10 @@ export function AppSelect({
       disabled={disabled}
       onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
     >
-      <option value="">— none —</option>
+      <option value="">{intl.formatMessage(messages.none)}</option>
       {!known ? (
         <option value={String(value)}>
-          {appNameForVersionId(apps, value as number, assigned)} (version #{String(value)})
+          {intl.formatMessage(messages.unknownVersion, { name: appNameForVersionId(apps, value as number, assigned), id: String(value) })}
         </option>
       ) : null}
       {options.map(({ a, vid }) => (
@@ -261,6 +281,7 @@ function SecretInput({
   pin?: boolean;
   onChange: (v: string) => void;
 }) {
+  const intl = useIntl();
   const [shown, setShown] = useState(false);
   return (
     <span className="v2-cfged-secret">
@@ -287,7 +308,7 @@ function SecretInput({
         onClick={() => setShown((v) => !v)}
         className="v2-cfged-secret__btn"
       >
-        {shown ? 'Hide' : 'Show'}
+        {intl.formatMessage(shown ? messages.hide : messages.show)}
       </Button>
     </span>
   );
@@ -295,13 +316,14 @@ function SecretInput({
 
 /** A setting's help: one line (at most 80 characters), and its longer explanation behind "Learn more". */
 export function FieldHelp({ text, more }: { text: string; more?: string }): ReactNode {
+  const intl = useIntl();
   const [open, setOpen] = useState(false);
   if (!more) return text;
   return (
     <>
       {text}{' '}
       <button type="button" className="v2-cfged-more" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
-        {open ? 'Show less' : 'Learn more'}
+        {intl.formatMessage(open ? messages.showLess : messages.learnMore)}
       </button>
       {open ? <span className="v2-cfged-moretext">{more}</span> : null}
     </>
@@ -310,10 +332,11 @@ export function FieldHelp({ text, more }: { text: string; more?: string }): Reac
 
 /** The agent version a setting needs, as a small tag: "Agent 0.5+" for 0.5.0. */
 export function AgentTag({ version }: { version: string }) {
+  const intl = useIntl();
   return (
-    <Tooltip content={`Needs agent ${version} or later. Older agents ignore it.`}>
+    <Tooltip content={intl.formatMessage(messages.agentNeeds, { version })}>
       <Badge tone="outline" size="xs">
-        Agent {version.replace(/\.0$/, '')}+
+        {intl.formatMessage(messages.agentTag, { version: version.replace(/\.0$/, '') })}
       </Badge>
     </Tooltip>
   );

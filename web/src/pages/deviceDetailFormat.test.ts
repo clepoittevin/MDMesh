@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { DEVICE_RESET_REVISION } from '../api/configSync';
 import { LOCATION_HISTORY_LIMIT } from '../api/deviceLocations';
 import { EVENT_LABELS, EVENT_VERBS } from '../data/deviceActivity';
-import { LOCATION_RANGES, eventTone, fixesCount, locationSince, rangePhrase, shortRevision } from './deviceDetailFormat';
+import { LOCATION_RANGES, eventTone, fixesCount, locationSince, providerLabel, rangePhrase, shortRevision } from './deviceDetailFormat';
 
 describe('the agent’s storage events (#220)', () => {
   it('are named and shown as warnings', () => {
@@ -59,5 +59,13 @@ describe('an eventsDropped event', () => {
     expect(eventTone('eventsDropped')).toBe('warn');
     expect(EVENT_LABELS.eventsDropped).toBe('Events dropped');
     expect(EVENT_VERBS.eventsDropped).toBe('dropped events it could not send');
+  });
+});
+
+describe('a location provider', () => {
+  it('labels the ones Android names, and shows any other as the device sent it', () => {
+    expect(providerLabel('GPS')).toBe('GPS');
+    expect(providerLabel('fused')).not.toBe('fused');
+    for (const p of ['constructor', 'toString', '__proto__', 'acme']) expect(providerLabel(p)).toBe(p);
   });
 });

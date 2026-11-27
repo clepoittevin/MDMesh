@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { IntlProvider } from 'react-intl';
 import { CATALOGS, resolveLocale, SOURCE_LOCALE, storedLocale, type Catalog } from './locales';
 
@@ -29,12 +29,10 @@ export function IntlRoot({ children }: { children: ReactNode }) {
     );
   }, [wanted]);
 
-  // Before paint, so the first frame in a locale already carries its lang (for screen readers).
-  useLayoutEffect(() => {
-    if (active) document.documentElement.lang = active.locale;
-  }, [active]);
-
   if (!active) return null;
+  // Set while rendering, not in an effect: the page below reads it as it renders (ui/format's consoleLocale), and the
+  // first frame in a locale already carries its lang (for screen readers).
+  document.documentElement.lang = active.locale;
   return (
     <IntlProvider locale={active.locale} defaultLocale={SOURCE_LOCALE} messages={active.messages}>
       {children}

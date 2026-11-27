@@ -6,6 +6,7 @@
 // They edit the configuration's own fields, not `extensions`: their storage is CORE_STORAGE, which only core can name,
 // and the editor tracks their changes itself (pages/ConfigEditorPage.tsx changedKeys).
 import { createContext, useContext, type ReactNode } from 'react';
+import { defineMessages, type MessageDescriptor } from 'react-intl';
 import { CORE_STORAGE, coreComponent, type ConfigSectionContribution } from '../types';
 import { ORDER } from './order';
 
@@ -21,6 +22,20 @@ export const CORE_CONFIG = {
 } as const;
 
 export type CoreConfigSection = keyof typeof CORE_CONFIG;
+
+/**
+ * The section nav labels as messages, by section id (a core section's `title` stays its English text, part of the
+ * registry's data; the editor shows the message for a core section).
+ */
+export const coreConfigMessages: Readonly<Record<string, MessageDescriptor>> = defineMessages({
+  identity: { id: 'ext.configSection.identity', defaultMessage: 'Identity' },
+  apps: { id: 'ext.configSection.apps', defaultMessage: 'Apps' },
+  kiosk: { id: 'ext.configSection.kiosk', defaultMessage: 'Kiosk' },
+  network: { id: 'ext.configSection.network', defaultMessage: 'Network' },
+  security: { id: 'ext.configSection.security', defaultMessage: 'Security' },
+  enrollment: { id: 'ext.configSection.enrollment', defaultMessage: 'Enrollment' },
+  headwind: { id: 'ext.configSection.headwind', defaultMessage: 'Legacy launcher settings' },
+});
 
 const CoreConfigParts = createContext<Partial<Record<CoreConfigSection, ReactNode>> | null>(null);
 
