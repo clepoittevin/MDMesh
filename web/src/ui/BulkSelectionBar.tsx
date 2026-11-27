@@ -5,7 +5,7 @@ import { cx } from './cx';
 import './BulkSelectionBar.css';
 
 const messages = defineMessages<'selectedNoun' | 'selected'>({
-  selectedNoun: { id: 'shell.bulk.selectedNoun', defaultMessage: '{count} {noun} selected' },
+  selectedNoun: { id: 'shell.bulk.selectedNoun', defaultMessage: '{count, plural, one {# {noun} selected} other {# {noun} selected}}' },
   selected: { id: 'shell.bulk.selected', defaultMessage: '{count, plural, one {#} other {#}} selected' },
 }) as Record<'selectedNoun' | 'selected', MessageDescriptor>;
 

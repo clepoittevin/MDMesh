@@ -852,7 +852,7 @@
     "defaultMessage": "Réinitialiser le code de verrouillage ?"
   },
   "commands.action.powerAdaptive.description": {
-    "defaultMessage": "Maintient la connexion permanente uniquement lorsque l’écran est allumé ou que l’appareil est en charge, et utilise le signal de vie basse consommation au repos. Réglage par défaut, économe en batterie."
+    "defaultMessage": "Maintient la connexion permanente uniquement lorsque l’écran est allumé ou que l’appareil est en charge, et utilise le signal de vie basse consommation au repos. Paramètre par défaut, économe en batterie."
   },
   "commands.action.powerAdaptive.label": {
     "defaultMessage": "Connectivité : économie de batterie"
@@ -1332,13 +1332,13 @@
     "defaultMessage": "Vérifier le code PIN"
   },
   "configEditor.nav.defaultPin": {
-    "defaultMessage": "PIN par défaut"
+    "defaultMessage": "Code PIN par défaut"
   },
   "configEditor.nav.noPin": {
-    "defaultMessage": "Sans PIN"
+    "defaultMessage": "Sans code PIN"
   },
   "configEditor.nav.oldPin": {
-    "defaultMessage": "Ancien PIN"
+    "defaultMessage": "Ancien code PIN"
   },
   "configEditor.page.allConfigurations": {
     "defaultMessage": "Toutes les configurations"
@@ -1395,7 +1395,7 @@
     "defaultMessage": "Accorder"
   },
   "configEditor.permissions.note": {
-    "defaultMessage": "Chaque appareil applique ce que son Android et l’application prennent en charge. « Par défaut » supprime le réglage forcé."
+    "defaultMessage": "Chaque appareil applique ce que son Android et l’application prennent en charge. « Par défaut » supprime le paramètre forcé."
   },
   "configEditor.permissions.summary": {
     "defaultMessage": "Autorisations · {count, plural, one {# disponible} other {# disponibles}}"
@@ -1404,19 +1404,19 @@
     "defaultMessage": "Ce code PIN est un code par défaut très connu : toute personne qui le connaît peut quitter le mode kiosque. Choisissez-en un que seul votre personnel connaît."
   },
   "configEditor.pin.defaultTemplate": {
-    "defaultMessage": "Ce modèle utilise un code PIN par défaut très connu. Dupliquez-le, définissez votre propre PIN et déplacez ses appareils vers la copie."
+    "defaultMessage": "Ce modèle utilise un code PIN par défaut très connu. Dupliquez-le, définissez votre propre code PIN et déplacez ses appareils vers la copie."
   },
   "configEditor.pin.legacy": {
-    "defaultMessage": "Ce PIN a été enregistré avant que les PIN de sortie doivent comporter 6 à 12 chiffres. Les appareils continuent de l’utiliser, mais il est plus facile à deviner. Définissez-en un nouveau."
+    "defaultMessage": "Ce code PIN a été enregistré avant que les codes PIN de sortie doivent comporter 6 à 12 chiffres. Les appareils continuent de l’utiliser, mais il est plus facile à deviner. Définissez-en un nouveau."
   },
   "configEditor.pin.none": {
-    "defaultMessage": "Aucun PIN de sortie : les agents antérieurs à 0.3.6 laissent n’importe qui quitter le mode kiosque ; les suivants n’offrent aucune sortie sur l’appareil. Définissez-en un."
+    "defaultMessage": "Aucun code PIN de sortie : les agents antérieurs à 0.3.6 laissent n’importe qui quitter le mode kiosque ; les suivants n’offrent aucune sortie sur l’appareil. Définissez-en un."
   },
   "configEditor.pin.noneTemplate": {
-    "defaultMessage": "Ce modèle n’a pas de PIN de sortie. Dupliquez-le, définissez un PIN et déplacez ses appareils vers la copie."
+    "defaultMessage": "Ce modèle n’a pas de code PIN de sortie. Dupliquez-le, définissez un code PIN et déplacez ses appareils vers la copie."
   },
   "configEditor.pin.warnProblem": {
-    "defaultMessage": "{problem} Les appareils de cette configuration gardent le PIN qu’ils ont jusqu’à l’enregistrement."
+    "defaultMessage": "{problem} Les appareils de cette configuration gardent le code PIN qu’ils ont jusqu’à l’enregistrement."
   },
   "configEditor.placement.centre": {
     "defaultMessage": "Centrer"
@@ -1614,7 +1614,7 @@
     "defaultMessage": "Les appareils qui utilisent cette configuration reçoivent les modifications à leur prochaine synchronisation, sauf {old, plural, one {# appareil dont l’agent est trop ancien pour la synchronisation des configurations} other {# appareils dont les agents sont trop anciens pour la synchronisation des configurations}}."
   },
   "configEditor.toast.checkExitPin": {
-    "defaultMessage": "Vérifiez le PIN de sortie"
+    "defaultMessage": "Vérifiez le code PIN de sortie"
   },
   "configEditor.toast.created": {
     "defaultMessage": "Configuration créée"
@@ -1665,7 +1665,7 @@
     "defaultMessage": "Configuration enregistrée"
   },
   "configEditor.toast.stillLoading": {
-    "defaultMessage": "Les applications attribuées sont encore en cours de chargement — réessayez dans un instant."
+    "defaultMessage": "Les applications attribuées sont encore en cours de chargement : réessayez dans un instant."
   },
   "configEditor.toast.stillLoadingTitle": {
     "defaultMessage": "Chargement en cours"
@@ -1677,7 +1677,7 @@
     "defaultMessage": "Extras admin du QR code"
   },
   "configFields.allowedClasses.help": {
-    "defaultMessage": "Liste autorisée d’écrans de réglages de l’ancien lanceur."
+    "defaultMessage": "Liste autorisée d’écrans de paramètres de l’ancien lanceur."
   },
   "configFields.allowedClasses.label": {
     "defaultMessage": "Classes d’applications autorisées"
@@ -1893,7 +1893,7 @@
     "defaultMessage": "Récepteur d’événements"
   },
   "configFields.gps.help": {
-    "defaultMessage": "L’ancien lanceur modifiait le réglage de localisation."
+    "defaultMessage": "L’ancien lanceur modifiait le paramètre de localisation."
   },
   "configFields.gps.label": {
     "defaultMessage": "GPS / localisation"
@@ -1935,7 +1935,7 @@
     "defaultMessage": "Non envoyé aux appareils : la page d’enrôlement peut placer ce Wi-Fi dans le QR code d’enrôlement."
   },
   "configFields.groupNote.kiosk": {
-    "defaultMessage": "Les réglages placés sous « Mode kiosque » ne s’appliquent que lorsque le mode kiosque est activé."
+    "defaultMessage": "Les paramètres placés sous « Mode kiosque » ne s’appliquent que lorsque le mode kiosque est activé."
   },
   "configFields.groupNote.kioskAppearance": {
     "defaultMessage": "L’apparence du lanceur du mode kiosque MDMesh, lorsque le mode kiosque est activé."
@@ -1968,7 +1968,7 @@
     "defaultMessage": "Bouton visible"
   },
   "configFields.kioskExit.help": {
-    "defaultMessage": "Comment accéder à la saisie du PIN de sortie : un bouton visible, ou 7 appuis en haut à droite."
+    "defaultMessage": "Comment accéder à la saisie du code PIN de sortie : un bouton visible, ou 7 appuis en haut à droite."
   },
   "configFields.kioskExit.label": {
     "defaultMessage": "Sortie du mode kiosque"
@@ -2031,13 +2031,13 @@
     "defaultMessage": "Informations système"
   },
   "configFields.locationServices.help": {
-    "defaultMessage": "Active ou désactive les services de localisation d’Android, et verrouille le réglage."
+    "defaultMessage": "Active ou désactive les services de localisation d’Android, et verrouille le paramètre."
   },
   "configFields.locationServices.label": {
     "defaultMessage": "Services de localisation"
   },
   "configFields.locationServices.more": {
-    "defaultMessage": "Nécessite un appareil Android 11+ avec propriétaire de l’appareil (Device Owner) ; les agents plus anciens signalent qu’il n’est pas pris en charge. Tant qu’il est géré, l’utilisateur ne peut pas modifier le réglage. « Non géré » rend à l’utilisateur le contrôle du réglage mais laisse les services de localisation dans leur état actuel. Cela est distinct de la remontée de la position, qui contrôle ce que MDMesh collecte."
+    "defaultMessage": "Nécessite un appareil Android 11+ avec propriétaire de l’appareil (Device Owner) ; les agents plus anciens signalent qu’il n’est pas pris en charge. Tant qu’il est géré, l’utilisateur ne peut pas modifier le paramètre. « Non géré » rend à l’utilisateur le contrôle du paramètre mais laisse les services de localisation dans leur état actuel. Cela est distinct de la remontée de la position, qui contrôle ce que MDMesh collecte."
   },
   "configFields.lockSafeSettings.help": {
     "defaultMessage": "Paramètre de l’ancien lanceur. Pour bloquer le mode sans échec, utilisez Restrictions → Mode sans échec."
@@ -2112,16 +2112,16 @@
     "defaultMessage": "6 à 12 chiffres, demandés lorsque quelqu’un quitte le mode kiosque sur l’appareil."
   },
   "configFields.password.label": {
-    "defaultMessage": "PIN de sortie du mode kiosque"
+    "defaultMessage": "Code PIN de sortie du kiosque"
   },
   "configFields.password.more": {
-    "defaultMessage": "Laissez-le vide et l’appareil n’a aucune sortie (terminez le mode kiosque depuis la console ; les agents antérieurs à 0.3.6 laissent n’importe qui quitter). Avec l’agent 0.5.0, 5 PIN erronés bloquent la sortie pendant 1 minute, puis chaque nouvelle série de 3 erreurs la bloque plus longtemps, jusqu’à 1 heure, puis chaque PIN erroné la bloque une heure de plus ; « Lever le blocage du code PIN », sur la page de l’appareil, met fin au blocage, tout comme un nouveau PIN. Les administrateurs reçoivent un e-mail si le serveur peut en envoyer (SMTP)."
+    "defaultMessage": "Laissez-le vide et l’appareil n’a aucune sortie (terminez le mode kiosque depuis la console ; les agents antérieurs à 0.3.6 laissent n’importe qui quitter). Avec l’agent 0.5.0, 5 codes PIN erronés bloquent la sortie pendant 1 minute, puis chaque nouvelle série de 3 erreurs la bloque plus longtemps, jusqu’à 1 heure, puis chaque code PIN erroné la bloque une heure de plus ; « Lever le blocage du code PIN », sur la page de l’appareil, met fin au blocage, tout comme un nouveau code PIN. Les administrateurs reçoivent un e-mail si le serveur peut en envoyer (SMTP)."
   },
   "configFields.passwordMode.help": {
-    "defaultMessage": "Règle de code d’accès de l’ancien lanceur : présent, simple, modéré ou fort."
+    "defaultMessage": "Règle de code de verrouillage de l’ancien lanceur : présent, simple, modéré ou fort."
   },
   "configFields.passwordMode.label": {
-    "defaultMessage": "Qualité du code d’accès"
+    "defaultMessage": "Qualité du code de verrouillage"
   },
   "configFields.permissive.help": {
     "defaultMessage": "Mode de l’ancien lanceur qui ne verrouillait rien."
@@ -2187,7 +2187,7 @@
     "defaultMessage": "Activé"
   },
   "configFields.showWifi.help": {
-    "defaultMessage": "L’ancien lanceur affichait les réglages Wi-Fi quand il ne pouvait pas joindre le serveur."
+    "defaultMessage": "L’ancien lanceur affichait les paramètres Wi-Fi quand il ne pouvait pas joindre le serveur."
   },
   "configFields.showWifi.label": {
     "defaultMessage": "Afficher le Wi-Fi en cas d’erreur"
@@ -2262,10 +2262,10 @@
     "defaultMessage": "Volume (%)"
   },
   "configFields.wifi.help": {
-    "defaultMessage": "« Bloquer » verrouille les réglages Wi-Fi : les utilisateurs ne peuvent plus changer de réseau."
+    "defaultMessage": "« Bloquer » verrouille les paramètres Wi-Fi : les utilisateurs ne peuvent plus changer de réseau."
   },
   "configFields.wifi.label": {
-    "defaultMessage": "Réglages Wi-Fi"
+    "defaultMessage": "Paramètres Wi-Fi"
   },
   "configFields.wifi.more": {
     "defaultMessage": "Cela n’éteint pas le Wi-Fi : c’est le rôle de la radio Wi-Fi. « Autoriser » lève le verrouillage."
@@ -2313,25 +2313,25 @@
     "defaultMessage": "Intégrée"
   },
   "configurations.badge.defaultPin": {
-    "defaultMessage": "PIN par défaut"
+    "defaultMessage": "Code PIN par défaut"
   },
   "configurations.badge.defaultPinTip": {
-    "defaultMessage": "Le PIN de sortie du mode kiosque est un code par défaut très connu. Changez-le."
+    "defaultMessage": "Le code PIN de sortie du kiosque est un code par défaut très connu. Changez-le."
   },
   "configurations.badge.kiosk": {
     "defaultMessage": "Kiosque"
   },
   "configurations.badge.noPin": {
-    "defaultMessage": "Sans PIN"
+    "defaultMessage": "Sans code PIN"
   },
   "configurations.badge.noPinTip": {
-    "defaultMessage": "Le mode kiosque n’a pas de PIN de sortie. Définissez-en un."
+    "defaultMessage": "Le mode kiosque n’a pas de code PIN de sortie. Définissez-en un."
   },
   "configurations.badge.oldPin": {
-    "defaultMessage": "Ancien PIN"
+    "defaultMessage": "Ancien code PIN"
   },
   "configurations.badge.oldPinTip": {
-    "defaultMessage": "Le PIN de sortie du mode kiosque ne comporte pas 6 à 12 chiffres (il a été enregistré avant cette règle). Les appareils le conservent. Définissez-en un nouveau."
+    "defaultMessage": "Le code PIN de sortie du kiosque ne comporte pas 6 à 12 chiffres (il a été enregistré avant cette règle). Les appareils le conservent. Définissez-en un nouveau."
   },
   "configurations.card.apps": {
     "defaultMessage": "Applications"
@@ -2595,7 +2595,7 @@
     "defaultMessage": "Afficher"
   },
   "configurations.rule.exitPin": {
-    "defaultMessage": "Le PIN de sortie doit comporter de {min} à {max} chiffres, ou rester vide pour qu’il n’y ait aucune sortie sur l’appareil."
+    "defaultMessage": "Le code PIN de sortie doit comporter de {min} à {max} chiffres, ou rester vide pour qu’il n’y ait aucune sortie sur l’appareil."
   },
   "configurations.seeded.background": {
     "defaultMessage": "Mode arrière-plan (agent)"
@@ -3282,7 +3282,7 @@
     "defaultMessage": "L’appareil utilise une révision plus ancienne de {name}. Il appliquera la révision actuelle à son prochain contact."
   },
   "deviceDetail.config.outOfSyncTitle": {
-    "defaultMessage": "Configuration non synchronisée"
+    "defaultMessage": "Configuration désynchronisée"
   },
   "deviceDetail.config.partialTitle": {
     "defaultMessage": "La configuration n’a pas été entièrement appliquée"
@@ -3318,13 +3318,13 @@
     "defaultMessage": "L’appareil n’a pas pu appliquer de nouveau toute sa configuration après un redémarrage."
   },
   "deviceDetail.config.staleStorageRecovered": {
-    "defaultMessage": "L’appareil a restauré des réglages que son stockage avait endommagés."
+    "defaultMessage": "L’appareil a restauré des paramètres que son stockage avait endommagés."
   },
   "deviceDetail.config.staleTitle": {
     "defaultMessage": "Configuration obsolète sur l’appareil"
   },
   "deviceDetail.config.staleWipeNotStarted": {
-    "defaultMessage": "Une réinitialisation d’usine n’a pas démarré : l’appareil est donc revenu à ses réglages."
+    "defaultMessage": "Une réinitialisation d’usine n’a pas démarré : l’appareil est donc revenu à ses paramètres."
   },
   "deviceDetail.config.staleWithCause": {
     "defaultMessage": "{cause} L’appareil a redemandé {name} ; le serveur la renvoie."
@@ -4056,7 +4056,7 @@
     "defaultMessage": "Système"
   },
   "deviceKiosk.category.uploaded": {
-    "defaultMessage": "Importée"
+    "defaultMessage": "Envoyée"
   },
   "deviceKiosk.category.web": {
     "defaultMessage": "Application web"
@@ -4758,7 +4758,7 @@
     "defaultMessage": "Nom"
   },
   "devices.status.neverCheckedIn": {
-    "defaultMessage": "Jamais connecté"
+    "defaultMessage": "Aucun contact"
   },
   "devices.status.wipedPrefix": {
     "defaultMessage": "Effacé"
@@ -4833,7 +4833,7 @@
     "defaultMessage": "{count, plural, one {# appareil récupère sa configuration.} other {# appareils récupèrent leur configuration.}}"
   },
   "enroll.arrivals.newsSilent": {
-    "defaultMessage": "{count, plural, one {# appareil ne s’est pas encore manifesté.} other {# appareils ne se sont pas encore manifestés.}}"
+    "defaultMessage": "{count, plural, one {# appareil n’a pas encore pris contact.} other {# appareils n’ont pas encore pris contact.}}"
   },
   "enroll.arrivals.noDeviceYet": {
     "defaultMessage": "Aucun appareil pour l’instant. Un appareil s’affiche ici quelques secondes après son enrôlement."
@@ -4848,7 +4848,7 @@
     "defaultMessage": "Enrôlé, récupère sa configuration…"
   },
   "enroll.arrivals.stateSilent": {
-    "defaultMessage": "Enrôlé, ne s’est pas encore manifesté"
+    "defaultMessage": "Enrôlé, n’a pas encore pris contact"
   },
   "enroll.arrivals.stoppedLooking": {
     "defaultMessage": "La recherche de nouveaux appareils s’est arrêtée au bout de 30 minutes."
@@ -5307,7 +5307,7 @@
     "defaultMessage": "{label} : en file d’attente"
   },
   "ext.lists.notConnectedBody": {
-    "defaultMessage": "Il recevra la commande à sa prochaine connexion."
+    "defaultMessage": "Il recevra la commande à son prochain contact."
   },
   "ext.lists.notConnectedTitle": {
     "defaultMessage": "{number} n’est pas connecté pour le moment"
@@ -5382,7 +5382,7 @@
     "defaultMessage": "Un fichier différent portant ce nom existe déjà dans Fichiers. Renommez l’image et réessayez."
   },
   "kiosk.background.error.noPermission": {
-    "defaultMessage": "Vous avez besoin de la permission de gérer les fichiers pour envoyer une image."
+    "defaultMessage": "Vous avez besoin de l’autorisation de gérer les fichiers pour envoyer une image."
   },
   "kiosk.background.error.notSaved": {
     "defaultMessage": "Le serveur n’a pas pu enregistrer l’image."
@@ -5493,7 +5493,7 @@
     "defaultMessage": "Synchronisation demandée"
   },
   "overview.attention.syncRequestedBody": {
-    "defaultMessage": "{number} se connecte maintenant et récupère sa configuration."
+    "defaultMessage": "{number} contacte le serveur maintenant et récupère sa configuration."
   },
   "overview.attention.syncing": {
     "defaultMessage": "Synchronisation…"
@@ -5514,7 +5514,7 @@
     "defaultMessage": "Tous synchronisés"
   },
   "overview.byConfig.deferred": {
-    "defaultMessage": "Paramètres différés : {count}"
+    "defaultMessage": "{count, plural, one {# paramètre différé} other {# paramètres différés}}"
   },
   "overview.byConfig.emptyBody": {
     "defaultMessage": "Les appareils sont comptés ici selon la configuration qu’ils utilisent."
@@ -5523,7 +5523,7 @@
     "defaultMessage": "Configuration {id}"
   },
   "overview.byConfig.inSync": {
-    "defaultMessage": "Synchronisés : {count}"
+    "defaultMessage": "{count, plural, one {# synchronisé} other {# synchronisés}}"
   },
   "overview.byConfig.loading": {
     "defaultMessage": "Chargement des configurations…"
@@ -5535,13 +5535,13 @@
     "defaultMessage": "Aucune configuration"
   },
   "overview.byConfig.notReported": {
-    "defaultMessage": "Non signalés : {count}"
+    "defaultMessage": "{count, plural, one {# non signalé} other {# non signalés}}"
   },
   "overview.byConfig.nothingAssigned": {
     "defaultMessage": "{count, plural, one {# appareil n’a} other {# appareils n’ont}} aucune configuration attribuée"
   },
   "overview.byConfig.outOfSync": {
-    "defaultMessage": "Désynchronisés : {count}"
+    "defaultMessage": "{count, plural, one {# désynchronisé} other {# désynchronisés}}"
   },
   "overview.byConfig.syncNotReported": {
     "defaultMessage": "Synchronisation non signalée"
@@ -5652,7 +5652,7 @@
     "defaultMessage": "{count} en attente"
   },
   "overview.rollout.tooOld": {
-    "defaultMessage": "Trop anciens pour la mise à jour : {count}"
+    "defaultMessage": "{count, plural, one {# trop ancien pour la mise à jour} other {# trop anciens pour la mise à jour}}"
   },
   "overview.server.cantInstall": {
     "defaultMessage": "{version} ne peut pas être installée ici"
@@ -5748,10 +5748,10 @@
     "defaultMessage": "Aucun appareil n’a de configuration"
   },
   "overview.sync.notReported": {
-    "defaultMessage": "Non signalés : {count}"
+    "defaultMessage": "{count, plural, one {# non signalé} other {# non signalés}}"
   },
   "overview.sync.outOfSync": {
-    "defaultMessage": "Désynchronisés : {count}"
+    "defaultMessage": "{count, plural, one {# désynchronisé} other {# désynchronisés}}"
   },
   "overview.updated.prefix": {
     "defaultMessage": "Mis à jour "
@@ -5814,7 +5814,7 @@
     "defaultMessage": "{count} à jour"
   },
   "rollout.cohort.waiting": {
-    "defaultMessage": "{count} en attente de connexion"
+    "defaultMessage": "{count} en attente de contact"
   },
   "rollout.error.active": {
     "defaultMessage": "Un autre déploiement est déjà en cours. Actualisez pour le voir."
@@ -5826,7 +5826,7 @@
     "defaultMessage": "Cette version de l’agent est incomplète. Recherchez les mises à jour, puis réessayez."
   },
   "rollout.error.permissionDenied": {
-    "defaultMessage": "Gérer les déploiements nécessite la permission de modifier les appareils et l’accès à tous les appareils."
+    "defaultMessage": "Gérer les déploiements nécessite l’autorisation de modifier les appareils et l’accès à tous les appareils."
   },
   "rollout.error.sha256": {
     "defaultMessage": "Cette version de l’agent n’a pas de somme de contrôle SHA-256 complète : elle ne peut pas être déployée."
@@ -5841,7 +5841,7 @@
     "defaultMessage": "Tous les appareils qui peuvent se mettre à jour ont le nouvel agent. Terminez le déploiement pour le clore."
   },
   "rollout.hint.fleetWaiting": {
-    "defaultMessage": "Les appareils hors ligne recevront la mise à jour à leur prochaine connexion. Terminez le déploiement quand vous avez fini."
+    "defaultMessage": "Les appareils hors ligne recevront la mise à jour à leur prochain contact. Terminez le déploiement quand vous avez fini."
   },
   "rollout.hint.wholeFleetDone": {
     "defaultMessage": "Tous les appareils sont pilotes : il n’y a personne vers qui étendre. Terminez le déploiement pour le clore."
@@ -5925,7 +5925,7 @@
     "defaultMessage": "Extension du déploiement…"
   },
   "rollout.promote.text": {
-    "defaultMessage": "L’agent {version} est envoyé à tous les autres appareils qui peuvent l’installer. Les appareils hors ligne le recevront à leur prochaine connexion."
+    "defaultMessage": "L’agent {version} est envoyé à tous les autres appareils qui peuvent l’installer. Les appareils hors ligne le recevront à leur prochain contact."
   },
   "rollout.promote.title": {
     "defaultMessage": "Étendre à tous les autres ?"
@@ -6039,7 +6039,7 @@
     "defaultMessage": "Thème"
   },
   "settings.appearance.themeHelp": {
-    "defaultMessage": "« Suivre le système » reprend le réglage clair ou sombre de votre ordinateur."
+    "defaultMessage": "« Suivre le système » reprend le paramètre clair ou sombre de votre ordinateur."
   },
   "settings.appearance.title": {
     "defaultMessage": "Apparence"
@@ -6210,7 +6210,7 @@
     "defaultMessage": "E-mail"
   },
   "settings.users.colPermissions": {
-    "defaultMessage": "Permissions"
+    "defaultMessage": "Autorisations"
   },
   "settings.users.colRole": {
     "defaultMessage": "Rôle"
@@ -6366,7 +6366,7 @@
     "defaultMessage": "{count, plural, one {# sélectionné} other {# sélectionnés}}"
   },
   "shell.bulk.selectedNoun": {
-    "defaultMessage": "{count} {noun} sélectionné(s)"
+    "defaultMessage": "{count, plural, one {# {noun} sélectionné} other {# {noun} sélectionnés}}"
   },
   "shell.copy.copied": {
     "defaultMessage": "Copié"
@@ -6789,7 +6789,7 @@
     "defaultMessage": "Installer les mises à jour automatiquement"
   },
   "updates.auto.locked": {
-    "defaultMessage": "Seul un super-administrateur, ou l’administrateur d’une installation mono-client, peut modifier ce réglage."
+    "defaultMessage": "Seul un super-administrateur, ou l’administrateur d’une installation mono-client, peut modifier ce paramètre."
   },
   "updates.auto.saveFailed": {
     "defaultMessage": "Enregistrement impossible."
@@ -7227,7 +7227,7 @@
     "defaultMessage": "Saisissez un nom de rôle de 50 caractères au maximum."
   },
   "users.error.rolePermission": {
-    "defaultMessage": "Les permissions sélectionnées ne sont pas valides. Rechargez la page et réessayez."
+    "defaultMessage": "Les autorisations sélectionnées ne sont pas valides. Rechargez la page et réessayez."
   },
   "users.error.roleProtected": {
     "defaultMessage": "Les rôles d’administrateur ne peuvent être ni modifiés ni supprimés."
@@ -7245,7 +7245,7 @@
     "defaultMessage": "Annuler"
   },
   "users.roleEditor.description": {
-    "defaultMessage": "Les modifications de permissions s’appliquent à tous les utilisateurs ayant ce rôle dès leur prochaine requête au serveur."
+    "defaultMessage": "Les modifications d’autorisations s’appliquent à tous les utilisateurs ayant ce rôle dès leur prochaine requête au serveur."
   },
   "users.roleEditor.descriptionField": {
     "defaultMessage": "Description"
@@ -7254,7 +7254,7 @@
     "defaultMessage": "Modifier {name}"
   },
   "users.roleEditor.filter": {
-    "defaultMessage": "Filtrer les permissions"
+    "defaultMessage": "Filtrer les autorisations"
   },
   "users.roleEditor.name": {
     "defaultMessage": "Nom du rôle"
@@ -7263,7 +7263,7 @@
     "defaultMessage": "Nouveau rôle"
   },
   "users.roleEditor.permissions": {
-    "defaultMessage": "Permissions ({count, plural, one {# sélectionnée} other {# sélectionnées}})"
+    "defaultMessage": "Autorisations ({count, plural, one {# sélectionnée} other {# sélectionnées}})"
   },
   "users.roleEditor.save": {
     "defaultMessage": "Enregistrer le rôle"

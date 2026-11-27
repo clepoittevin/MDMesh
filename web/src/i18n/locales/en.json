@@ -5531,7 +5531,7 @@
     "defaultMessage": "All in sync"
   },
   "overview.byConfig.deferred": {
-    "defaultMessage": "{count} deferred settings"
+    "defaultMessage": "{count, plural, one {# deferred setting} other {# deferred settings}}"
   },
   "overview.byConfig.emptyBody": {
     "defaultMessage": "Devices are counted here by the configuration they use."
@@ -5540,7 +5540,7 @@
     "defaultMessage": "Configuration {id}"
   },
   "overview.byConfig.inSync": {
-    "defaultMessage": "{count} in sync"
+    "defaultMessage": "{count, plural, one {# in sync} other {# in sync}}"
   },
   "overview.byConfig.loading": {
     "defaultMessage": "Loading configurations…"
@@ -5552,13 +5552,13 @@
     "defaultMessage": "No configuration"
   },
   "overview.byConfig.notReported": {
-    "defaultMessage": "{count} not reported"
+    "defaultMessage": "{count, plural, one {# not reported} other {# not reported}}"
   },
   "overview.byConfig.nothingAssigned": {
     "defaultMessage": "{count, plural, one {# device has} other {# devices have}} nothing assigned"
   },
   "overview.byConfig.outOfSync": {
-    "defaultMessage": "{count} out of sync"
+    "defaultMessage": "{count, plural, one {# out of sync} other {# out of sync}}"
   },
   "overview.byConfig.syncNotReported": {
     "defaultMessage": "Sync not reported"
@@ -5669,7 +5669,7 @@
     "defaultMessage": "{count} queued"
   },
   "overview.rollout.tooOld": {
-    "defaultMessage": "{count} too old to update"
+    "defaultMessage": "{count, plural, one {# too old to update} other {# too old to update}}"
   },
   "overview.server.cantInstall": {
     "defaultMessage": "{version} can’t be installed here"
@@ -5765,10 +5765,10 @@
     "defaultMessage": "No device has a configuration"
   },
   "overview.sync.notReported": {
-    "defaultMessage": "{count} not reported"
+    "defaultMessage": "{count, plural, one {# not reported} other {# not reported}}"
   },
   "overview.sync.outOfSync": {
-    "defaultMessage": "{count} out of sync"
+    "defaultMessage": "{count, plural, one {# out of sync} other {# out of sync}}"
   },
   "overview.updated.prefix": {
     "defaultMessage": "Updated"
@@ -6386,7 +6386,7 @@
     "defaultMessage": "{count, plural, one {#} other {#}} selected"
   },
   "shell.bulk.selectedNoun": {
-    "defaultMessage": "{count} {noun} selected"
+    "defaultMessage": "{count, plural, one {# {noun} selected} other {# {noun} selected}}"
   },
   "shell.copy.copied": {
     "defaultMessage": "Copied"
