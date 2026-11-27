@@ -154,7 +154,11 @@ const messages: Record<string, MessageDescriptor> = defineMessages({
   },
   attentionLabel: { id: 'devices.attention.label', defaultMessage: 'Needs attention' },
   rollOutAgent: { id: 'devices.attention.rollOutAgent', defaultMessage: 'Roll out an agent update' },
-  attentionTitle: { id: 'devices.attention.title', defaultMessage: '{count, plural, one {#} other {#}} need attention' },
+  // `shown` is the count as displayed ("7", or "7+" while the check is partial); `count` only picks the plural form.
+  attentionTitle: {
+    id: 'devices.attention.title',
+    defaultMessage: '{count, plural, one {{shown} need attention} other {{shown} need attention}}',
+  },
   searchLabel: { id: 'devices.toolbar.searchLabel', defaultMessage: 'Search devices' },
   searchPlaceholder: { id: 'devices.toolbar.searchPlaceholder', defaultMessage: 'Search name, number, IMEI, configuration' },
   statusLabel: { id: 'devices.toolbar.statusLabel', defaultMessage: 'Status' },
@@ -1122,7 +1126,7 @@ export function DevicesPage() {
             ) : undefined
           }
         >
-          <span className="v2-devices-attn__title">{intl.formatMessage(messages.attentionTitle, { count: attentionText })}</span>
+          <span className="v2-devices-attn__title">{intl.formatMessage(messages.attentionTitle, { count: counts.attention, shown: attentionText })}</span>
           {issueEntries.length > 0 ? (
             <span className="v2-devices-attn__chips">
               {issueEntries.map((k) => (

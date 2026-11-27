@@ -4257,7 +4257,7 @@
     "defaultMessage": "Roll out an agent update"
   },
   "devices.attention.title": {
-    "defaultMessage": "{count, plural, one {#} other {#}} need attention"
+    "defaultMessage": "{count, plural, one {{shown} need attention} other {{shown} need attention}}"
   },
   "devices.bulk.catalog.customKiosk": {
     "defaultMessage": "Custom kiosk"

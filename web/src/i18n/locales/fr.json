@@ -4248,7 +4248,7 @@
     "defaultMessage": "Déployer une mise à jour de l’agent"
   },
   "devices.attention.title": {
-    "defaultMessage": "{count, plural, one {# nécessite une intervention} other {# nécessitent une intervention}}"
+    "defaultMessage": "{count, plural, one {{shown} nécessite une intervention} other {{shown} nécessitent une intervention}}"
   },
   "devices.bulk.catalog.customKiosk": {
     "defaultMessage": "Kiosque personnalisé"
