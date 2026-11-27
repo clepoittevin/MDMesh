@@ -10,14 +10,16 @@ Unreleased.
 ## Unreleased
 
 Heads-up
-- Configurations carried over from Headwind with **Extra QR parameters**: the enrollment QR now uses the setup
-  entries MDMesh knows among them (Enrollment section). Check that field before making codes; the editor points out
-  the entries it leaves out.
+- Configurations carried over from the upstream project with **Extra QR parameters**: the enrollment QR now uses them
+  (Enrollment section). Check that field before making codes; the editor points out the entries it leaves out and
+  the ones it can't check.
 
 New
 - Enroll: the enrollment QR now carries the configuration's setup settings (Enrollment section): **Skip intro
-  screens**, **Language**, **Time zone**, a **Hidden network** and **Enroll over mobile data**, plus a few known Android
-  provisioning entries in **Extra QR parameters** (each with a value of its type; others are left out, and said so). Entries naming the agent, its download or its enrollment extras, and MDMesh's
+  screens**, **Language**, **Time zone**, a **Hidden network** and **Enroll over mobile data**, plus any other Android
+  provisioning entry in **Extra QR parameters**, such as `PROVISIONING_ALLOW_OFFLINE`. The entries MDMesh knows are
+  checked (a value of the wrong type is left out); the others go in as typed, and the editor and the Enroll page
+  point them out. Entries about the agent's package or a role holder's, the enrollment extras, and MDMesh's
   defaults (system apps stay enabled, no encryption step), are never replaced; Wi-Fi comes from the setup Wi-Fi and
   the Enroll page only. The Enroll page sums up what the code adds.
 - Configuration → Security → **Accounts** blocks adding and removing accounts on Device Owner devices, such as a
