@@ -1218,19 +1218,19 @@
     "defaultMessage": "« {value} » n’est pas une valeur qu’Android accepte ici : elle est donc exclue du code. Choisissez-en une dans la liste."
   },
   "configEditor.enrollment.qrUnchecked": {
-    "defaultMessage": "{keys} : ajouté au code tel que saisi. MDMesh ne connaît pas ces entrées et ne peut donc pas les vérifier : un nom ou une valeur erronés peuvent bloquer la configuration initiale de l’appareil."
+    "defaultMessage": "{keys} : repris dans le code sans modification. MDMesh ne connaît pas ces entrées et ne peut donc pas les vérifier : un nom ou une valeur erronés peuvent bloquer la configuration initiale de l’appareil."
   },
   "configEditor.enrollment.qrUnusedInvalid": {
-    "defaultMessage": "{keys} : non utilisé. La valeur n’est pas du type attendu par cette entrée."
+    "defaultMessage": "{keys} : non pris en compte. La valeur n’est pas du type attendu par cette entrée."
   },
   "configEditor.enrollment.qrUnusedProtected": {
-    "defaultMessage": "{keys} : non utilisé. MDMesh les définit lui-même."
+    "defaultMessage": "{keys} : non pris en compte. MDMesh s’en charge lui-même."
   },
   "configEditor.enrollment.qrUnusedUnsupported": {
-    "defaultMessage": "{keys} : non utilisé. Le nom d’une entrée de provisionnement commence par android.app.extra."
+    "defaultMessage": "{keys} : non pris en compte. Le nom d’une entrée de provisionnement commence par android.app.extra."
   },
   "configEditor.enrollment.qrUnusedWifi": {
-    "defaultMessage": "{keys} : non utilisé. Le Wi-Fi vient du Wi-Fi de configuration ci-dessus et de la page d’enrôlement."
+    "defaultMessage": "{keys} : non pris en compte. Le Wi-Fi vient du Wi-Fi de configuration ci-dessus et de la page d’enrôlement."
   },
   "configEditor.enrollment.setupScreens": {
     "defaultMessage": "Écrans de configuration initiale"
@@ -1965,7 +1965,7 @@
     "defaultMessage": "Mises à jour"
   },
   "configFields.groupNote.enrollment": {
-    "defaultMessage": "Non envoyé aux appareils : la page d’enrôlement les place dans le QR code d’enrôlement."
+    "defaultMessage": "Non envoyés aux appareils : la page d’enrôlement place ces paramètres dans le QR code d’enrôlement."
   },
   "configFields.groupNote.kiosk": {
     "defaultMessage": "Les paramètres placés sous « Mode kiosque » ne s’appliquent que lorsque le mode kiosque est activé."
@@ -5130,7 +5130,7 @@
     "defaultMessage": "Scannez pour enrôler"
   },
   "enroll.qrSize.dense": {
-    "defaultMessage": "Ce code contient {bytes} octets : il est donc dense, et la caméra de configuration de certains appareils peut avoir du mal à le scanner. Une adresse de serveur ou un Wi-Fi plus courts, ou moins de paramètres supplémentaires du QR code, l’allègent."
+    "defaultMessage": "Ce code contient {bytes} octets : il est donc dense, et l’appareil photo de certains appareils peut avoir du mal à le scanner pendant la configuration initiale. Une adresse de serveur ou un Wi-Fi plus courts, ou moins de paramètres supplémentaires du QR code, l’allègent."
   },
   "enroll.qrSize.tooLarge": {
     "defaultMessage": "Ce code contiendrait {bytes} octets, plus que ce que peut contenir un QR code ({max}). L’adresse du serveur (elle figure deux fois dans le code) ou le Wi-Fi sont trop longs : raccourcissez-les."
