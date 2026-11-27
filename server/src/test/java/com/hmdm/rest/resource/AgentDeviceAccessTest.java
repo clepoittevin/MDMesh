@@ -297,6 +297,20 @@ public class AgentDeviceAccessTest {
     }
 
     @Test
+    public void aTokensDeviceNameIsTrimmedAndABlankOrBadOneIsRefusedOrDropped() {
+        AgentEnrollmentToken body = new AgentEnrollmentToken();
+        body.setDeviceName("  Target  ");
+        assertEquals("Target", ((AgentEnrollmentToken) resource.mintToken(body).getData()).getDeviceName());
+        body.setDeviceName("   ");
+        assertNull(((AgentEnrollmentToken) resource.mintToken(body).getData()).getDeviceName());
+
+        sideEffects.clear();
+        body.setDeviceName("Target\n3");
+        assertEquals("error.agent.token.deviceName", resource.mintToken(body).getMessage());
+        assertEquals("nothing minted", Collections.emptyList(), sideEffects);
+    }
+
+    @Test
     public void aUserWithAllConfigurationsMayBindAnyOfTheCustomers() {
         assertEquals(Response.ResponseStatus.OK, mint(OTHER_OWN_CONFIG).getStatus());
         assertNotEquals(Response.ResponseStatus.OK, mint(99).getStatus());

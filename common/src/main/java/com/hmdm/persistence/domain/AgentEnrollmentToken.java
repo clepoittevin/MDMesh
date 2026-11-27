@@ -34,6 +34,11 @@ public class AgentEnrollmentToken implements Serializable {
     private int useCount;
     /** When the token was stopped (revoke-all), or NULL. A stopped token enrolls nothing more. */
     private Long revokedAt;
+    /**
+     * The name the enrolled device gets (its description), or NULL. A token for several devices numbers them:
+     * "name 1", "name 2", ... (EnrollmentTokenLimits.enrolledDeviceName).
+     */
+    private String deviceName;
     /** Mint request only: how long the token is valid, in hours (EnrollmentTokenLimits). Not stored. */
     private Integer validHours;
 
@@ -126,5 +131,13 @@ public class AgentEnrollmentToken implements Serializable {
 
     public void setValidHours(Integer validHours) {
         this.validHours = validHours;
+    }
+
+    public String getDeviceName() {
+        return deviceName;
+    }
+
+    public void setDeviceName(String deviceName) {
+        this.deviceName = deviceName;
     }
 }

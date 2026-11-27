@@ -273,6 +273,14 @@ exited or credentials cleared while the older agent ran.
 
 ## Version notes
 
+### Unreleased
+
+- **API: enrollment codes can name their device.** `POST /rest/private/agent/v1/token` takes an optional `deviceName`
+  (up to 200 characters, no control characters; trimmed, blank means none; otherwise `error.agent.token.deviceName`).
+  The enrolled device gets it as its name, numbered `<deviceName> 1`, `<deviceName> 2`, … for a code with `maxUses`
+  above 1. The QR code and the agent protocol are unchanged. Going back to an older release without a restore works:
+  its codes enroll unnamed devices.
+
 ### v0.6.0
 
 - **From source, setup.sh backs up the database before an update** (this one included), to `backups/` in the clone. It

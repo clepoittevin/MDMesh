@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { defineMessages, FormattedMessage } from 'react-intl';
 import { useNavigate, useSearchParams } from 'react-router';
 import { forceSync } from '../api/commands';
 import { listConfigurations, type ConfigurationSummary } from '../api/configurations';
@@ -72,6 +73,18 @@ import { notConnected } from '../data/presence';
 import { useFleetSync } from '../data/useFleetSync';
 import { ISSUE_CHIP, syncKind, syncLabel } from './devicesStatus';
 import './DevicesPage.css';
+
+const messages = defineMessages({
+  unnamedOnly: {
+    id: 'devices.filters.unnamedOnly',
+    defaultMessage: 'Only unnamed devices',
+    description: 'Checkbox in the Filter menu, followed by how many there are',
+  },
+  unnamedOnlyHelp: {
+    id: 'devices.filters.unnamedOnlyHelp',
+    defaultMessage: 'Devices without a name, listed by their number: name them to find them again.',
+  },
+});
 
 type View = 'table' | 'cards';
 type StatusFilter = 'all' | Presence;
@@ -185,6 +198,7 @@ export function DevicesPage() {
   const [type, setType] = useState<'all' | DeviceKind>('all');
   const [android, setAndroid] = useState('all');
   const [dupOnly, setDupOnly] = useState(false);
+  const [unnamedOnly, setUnnamedOnly] = useState(false);
   // ?config=<id> or ?config=none (Unassigned); the Configurations page links here with it.
   const configFilter = params.get('config') ?? 'all';
   const setConfigFilter = (v: string) =>
@@ -287,6 +301,11 @@ export function DevicesPage() {
   useEffect(() => {
     if (dupTotal === 0 && dupOnly) setDupOnly(false);
   }, [dupTotal, dupOnly]);
+  // Unnamed: no description, so the list shows the device's number (a random ID for one the agent enrolled).
+  // Wiped rows are left out of All, so out of the count too (as for duplicates, #137).
+  // The filter is not turned off when the count reaches 0: a search may match only named devices, and the filter
+  // must still be on when the search is cleared. Its checkbox stays up while it is on, so it can always be turned off.
+  const unnamedTotal = useMemo(() => devices.filter((d) => d.wipedAt == null && !d.description?.trim()).length, [devices]);
 
   // ---- filter, sort, page ----
   const needle = q.trim().toLowerCase();
@@ -301,6 +320,7 @@ export function DevicesPage() {
         if (android !== 'all' && d.androidVersion !== android) return false;
         if (type !== 'all' && kind(d) !== type) return false;
         if (dupOnly && dupOf(d) <= 1) return false;
+        if (unnamedOnly && d.description?.trim()) return false;
         if (textFilter) {
           const hay = [d.number, d.description, d.serial, d.imei, d.info?.imei, ...(d.reportedImeis ?? []), d.phone, configName(d), ...(d.groups ?? []).map((g) => g.name)]
             .filter(Boolean)
@@ -310,7 +330,7 @@ export function DevicesPage() {
         }
         return true;
       }),
-    [devices, configFilter, android, type, kind, dupOnly, dupOf, textFilter, needle, configName],
+    [devices, configFilter, android, type, kind, dupOnly, dupOf, unnamedOnly, textFilter, needle, configName],
   );
 
   const [visible, setVisible] = useState<DeviceView[]>([]);
@@ -406,7 +426,7 @@ export function DevicesPage() {
   // Back to the first page when the question changes.
   useEffect(() => {
     setPage(1);
-  }, [q, status, issue, type, configFilter, android, dupOnly, sort.key, sort.dir, view, pageSize]);
+  }, [q, status, issue, type, configFilter, android, dupOnly, unnamedOnly, sort.key, sort.dir, view, pageSize]);
 
   // ---- options for the selects (values present in the list) ----
   const typeOptions = useMemo(() => {
@@ -687,7 +707,8 @@ export function DevicesPage() {
     type !== 'all' ||
     configFilter !== 'all' ||
     android !== 'all' ||
-    dupOnly;
+    dupOnly ||
+    unnamedOnly;
   const clearFilters = () => {
     setQ('');
     setIssue(null);
@@ -704,15 +725,17 @@ export function DevicesPage() {
     );
     setAndroid('all');
     setDupOnly(false);
+    setUnnamedOnly(false);
   };
 
   // The filters behind the Filter button: how many are on, and clearing just them.
-  const filterCount = [type !== 'all', configFilter !== 'all', android !== 'all', dupOnly].filter(Boolean).length;
+  const filterCount = [type !== 'all', configFilter !== 'all', android !== 'all', dupOnly, unnamedOnly].filter(Boolean).length;
   const clearMenuFilters = () => {
     setType('all');
     setConfigFilter('all');
     setAndroid('all');
     setDupOnly(false);
+    setUnnamedOnly(false);
   };
 
   const pickIssue = (k: IssueKind) => {
@@ -1055,6 +1078,22 @@ export function DevicesPage() {
                 }
                 checked={dupOnly}
                 onChange={() => setDupOnly((v) => !v)}
+              />
+            ) : null}
+            {unnamedTotal > 0 || unnamedOnly ? (
+              <Checkbox
+                label={
+                  <span className="v2-devices-filters__dup">
+                    <span>
+                      <FormattedMessage {...messages.unnamedOnly} /> <span className="v2-num v2-secondary">{unnamedTotal}</span>
+                    </span>
+                    <span className="v2-devices-filters__help">
+                      <FormattedMessage {...messages.unnamedOnlyHelp} />
+                    </span>
+                  </span>
+                }
+                checked={unnamedOnly}
+                onChange={() => setUnnamedOnly((v) => !v)}
               />
             ) : null}
             {filterCount ? (

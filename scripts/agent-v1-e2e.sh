@@ -405,5 +405,27 @@ chk "resume-only took no use: the code's second device still enrolls" \
   "$(enroll_attempt "$TOK8" "${ATT8}second" | field "d['status']")" "OK"
 chk "and then the code is used up" "$(enroll_attempt "$TOK8" "${ATT8}third" | field "d['message']")" "error.agent.token.used"
 
+# A code can name its devices: as given for a single-use code, numbered in enrollment order for a batch (enrolls
+# three devices).
+echo "== a code with a device name names the devices it enrolls =="
+# The name (description) of the device with this number, as the console's list reads it.
+device_name(){ curl -s -b "$CJ" -X POST -H 'Content-Type: application/json' -d "{\"value\":\"$1\",\"pageSize\":5,\"pageNum\":1}" \
+  "$BASE/rest/private/devices/search" | field "[x.get('description') for x in d['data']['devices']['items'] if x['number']=='$1'][0]"; }
+NAME9="E2E named $(date +%s)"
+TOK9=$(curl -s -b "$CJ" -X POST -H 'Content-Type: application/json' -d "{\"validHours\":1,\"deviceName\":\"  $NAME9 \"}" \
+  "$BASE/rest/private/agent/v1/token" | field "str(d['data']['deviceName'])+':'+d['data']['token']")
+chk "named token minted, its name trimmed" "${TOK9%%:*}" "$NAME9"
+TOK9=${TOK9#*:}
+chk "single-use named token: the device gets the name" \
+  "$(device_name "$(enroll_with "$TOK9" | field "d['data']['deviceId']")")" "$NAME9"
+TOK10=$(curl -s -b "$CJ" -X POST -H 'Content-Type: application/json' -d "{\"maxUses\":2,\"validHours\":1,\"deviceName\":\"$NAME9\"}" \
+  "$BASE/rest/private/agent/v1/token" | field "d['data']['token']")
+chk "two-device named token: 1st device numbered 1" \
+  "$(device_name "$(enroll_with "$TOK10" | field "d['data']['deviceId']")")" "$NAME9 1"
+chk "two-device named token: 2nd device numbered 2" \
+  "$(device_name "$(enroll_with "$TOK10" | field "d['data']['deviceId']")")" "$NAME9 2"
+chk "token with a tab in its device name refused" "$(curl -s -b "$CJ" -X POST -H 'Content-Type: application/json' \
+  -d '{"deviceName":"a\tb"}' "$BASE/rest/private/agent/v1/token" | field "d['message']")" "error.agent.token.deviceName"
+
 echo "===== RESULT: PASS=$PASS FAIL=$FAIL ====="
 [ "$FAIL" -eq 0 ]

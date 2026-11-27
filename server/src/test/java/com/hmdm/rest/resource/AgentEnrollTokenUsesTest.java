@@ -8,8 +8,12 @@ import com.hmdm.rest.json.Response;
 import com.hmdm.testsupport.Fakes;
 import org.junit.Test;
 
+import java.util.Arrays;
+import java.util.Collections;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -64,5 +68,52 @@ public class AgentEnrollTokenUsesTest {
         String timeout = Fakes.sqlOf(AgentEnrollmentTokenMapper.class, "setEnrollLockTimeout").toLowerCase();
         assertTrue("transaction-local, as set local: " + timeout,
                 timeout.contains("set_config('lock_timeout', #{timeout}, true)"));
+    }
+
+    @Test
+    public void a_single_use_token_with_a_device_name_gives_its_device_that_name() {
+        EnrollFixture f = new EnrollFixture();
+        f.token.setMaxUses(1);
+        f.token.setDeviceName("Target 3");
+
+        assertEquals(Response.ResponseStatus.OK, f.enroll(null).getStatus());
+        assertEquals(Collections.singletonList("Target 3"), f.descriptions);
+    }
+
+    @Test
+    public void a_token_for_several_devices_numbers_them_in_enrollment_order() {
+        EnrollFixture f = new EnrollFixture();
+        f.token.setMaxUses(3);
+        f.token.setDeviceName("Target");
+
+        assertEquals(Response.ResponseStatus.OK, f.enroll(null).getStatus());
+        assertEquals(Response.ResponseStatus.OK, f.enroll(null).getStatus());
+        assertEquals(Arrays.asList("Target 1", "Target 2"), f.descriptions);
+    }
+
+    @Test
+    public void a_token_without_a_device_name_leaves_the_device_unnamed() {
+        EnrollFixture f = new EnrollFixture();
+        f.token.setMaxUses(3);
+
+        assertEquals(Response.ResponseStatus.OK, f.enroll(null).getStatus());
+        assertEquals(1, f.descriptions.size());
+        assertNull(f.descriptions.get(0));
+    }
+
+    @Test
+    public void a_retried_or_recovered_enrollment_takes_no_number_and_renames_nothing() {
+        EnrollFixture f = new EnrollFixture();
+        f.token.setMaxUses(3);
+        f.token.setDeviceName("Target");
+
+        assertEquals(Response.ResponseStatus.OK, f.enroll("attempt-0123456789abcdef").getStatus());
+        assertEquals("a retry resumes", Response.ResponseStatus.OK, f.enroll("attempt-0123456789abcdef").getStatus());
+        assertEquals("a recovery resumes", Response.ResponseStatus.OK, f.resume("attempt-0123456789abcdef").getStatus());
+        assertEquals("one device, one use", 1, f.token.getUseCount());
+
+        assertEquals(Response.ResponseStatus.OK, f.enroll("attempt-fedcba9876543210").getStatus());
+        assertEquals("the next device gets the next number",
+                Arrays.asList("Target 1", "Target 2"), f.descriptions);
     }
 }

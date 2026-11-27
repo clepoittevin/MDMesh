@@ -42,6 +42,34 @@
   "configEditor.enrollment.setupScreensHelp": {
     "defaultMessage": "Android applies these while the device sets itself up."
   },
+  "devices.filters.unnamedOnly": {
+    "defaultMessage": "Only unnamed devices",
+    "description": "Checkbox in the Filter menu, followed by how many there are"
+  },
+  "devices.filters.unnamedOnlyHelp": {
+    "defaultMessage": "Devices without a name, listed by their number: name them to find them again."
+  },
+  "enroll.deviceName.example": {
+    "defaultMessage": "Name",
+    "description": "Stands for the device name in the numbering example, while none is typed"
+  },
+  "enroll.deviceName.help": {
+    "defaultMessage": "Optional: the device gets this name. Leave it empty to name it later."
+  },
+  "enroll.deviceName.helpBatch": {
+    "defaultMessage": "Optional: each device gets this name, numbered in the order they enroll: “{name} 1”, “{name} 2”, …",
+    "description": "For a code that enrolls several devices. {name} is the name typed, or the example name"
+  },
+  "enroll.deviceName.invalid": {
+    "defaultMessage": "A device name can be up to {max, number} characters, without line breaks or tabs."
+  },
+  "enroll.deviceName.label": {
+    "defaultMessage": "Device name"
+  },
+  "enroll.deviceName.pending": {
+    "defaultMessage": "Press Enter to put the name in the code.",
+    "description": "Shown instead of the code while the name typed isn't in it yet"
+  },
   "enroll.qrSize.dense": {
     "defaultMessage": "This code holds {bytes} bytes, so it is dense: some devices' setup cameras may struggle to scan it. A shorter server address or Wi-Fi, or fewer Extra QR parameters, make it lighter."
   },

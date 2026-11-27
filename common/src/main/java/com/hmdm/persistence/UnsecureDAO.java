@@ -632,8 +632,10 @@ public class UnsecureDAO {
      * configuration, skipping the legacy "create new devices" flag (an explicitly-bound config IS
      * the admin's intent, mirroring the createOptions overload below). Returns null only when no
      * config is bound AND the customer's settings disallow on-demand creation / name no default.
+     * {@code description} is the device's name from the token, or null.
      */
-    public Device createNewDeviceForToken(String deviceId, int customerId, Integer boundConfigurationId) {
+    public Device createNewDeviceForToken(String deviceId, int customerId, Integer boundConfigurationId,
+                                          String description) {
         Settings settings = getSettings(customerId);
         Integer configurationId = boundConfigurationId;
         if (configurationId == null) {
@@ -662,6 +664,7 @@ public class UnsecureDAO {
             newDevice.setGroups(groups);
         }
         newDevice.setNumber(deviceId);
+        newDevice.setDescription(description);
         newDevice.setLastUpdate(0L);
         insertDevice(newDevice);
         logger.info("New device {} added (customer {}, configuration {})", deviceId, customerId, configurationId);

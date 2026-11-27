@@ -3348,4 +3348,12 @@
         <rollback>ALTER TABLE configurations DROP COLUMN modifyAccounts;</rollback>
     </changeSet>
 
+    <changeSet id="26.11.26-agentEnrollmentToken-deviceName" author="clepoittevin" context="common">
+        <comment>Column,new: agentEnrollmentToken#deviceName, the name (devices#description) a device enrolled with the
+            token gets; a token for several devices numbers them ("name 1", "name 2", ...). NULL: the device gets no
+            name, as before. Older releases insert tokens without it and read it with SELECT * only.</comment>
+        <sql>ALTER TABLE agentEnrollmentToken ADD COLUMN deviceName TEXT;</sql>
+        <rollback>ALTER TABLE agentEnrollmentToken DROP COLUMN deviceName;</rollback>
+    </changeSet>
+
 </databaseChangeLog>

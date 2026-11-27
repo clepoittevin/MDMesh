@@ -12,6 +12,7 @@ import com.hmdm.persistence.domain.Device;
 import com.hmdm.persistence.mapper.AgentDeviceMapper;
 import com.hmdm.persistence.mapper.AgentEnrollmentTokenMapper;
 import com.hmdm.util.CryptoUtil;
+import com.hmdm.util.EnrollmentTokenLimits;
 import org.mybatis.guice.transactional.Transactional;
 
 import javax.crypto.Mac;
@@ -38,10 +39,13 @@ public class AgentEnrollmentDAO {
     /** How long after an enrollment the agent may retry it (a lost response); its first check-in closes it sooner. */
     public static final long RETRY_WINDOW_MS = 24L * 60L * 60L * 1000L;
 
-    /** Creates the device row for a token enrollment (in the token's customer and configuration), or null if refused. */
+    /**
+     * Creates the device row for a token enrollment (in the token's customer and configuration, with the name the token
+     * gives it or a null description), or null if refused.
+     */
     @ImplementedBy(UnsecureDeviceFactory.class)
     public interface DeviceFactory {
-        Device create(String deviceNumber, int customerId, Integer configurationId);
+        Device create(String deviceNumber, int customerId, Integer configurationId, String description);
     }
 
     /** The production {@link DeviceFactory}: {@link UnsecureDAO#createNewDeviceForToken}. */
@@ -54,8 +58,8 @@ public class AgentEnrollmentDAO {
         }
 
         @Override
-        public Device create(String deviceNumber, int customerId, Integer configurationId) {
-            return unsecureDAO.createNewDeviceForToken(deviceNumber, customerId, configurationId);
+        public Device create(String deviceNumber, int customerId, Integer configurationId, String description) {
+            return unsecureDAO.createNewDeviceForToken(deviceNumber, customerId, configurationId, description);
         }
     }
 
@@ -256,6 +260,9 @@ public class AgentEnrollmentDAO {
             // was deleted, checked in, or is past the window, or the request carries no usable attempt).
             return Outcome.notResumable();
         }
+        // The use this enrollment takes, read under the lock: enrollments with one token run one after another, so no
+        // two get the same number. A refusal below rolls the claim back, and the next enrollment gets the number again.
+        int useNumber = locked.getUseCount() + 1;
         // The claim first: a used-up, stopped or expired code gets its final answer, never the device limit's
         // retryable one. A refusal below rolls the claim back, so no use is spent.
         if (tokenMapper.claim(tokenId, now) != 1) {
@@ -264,7 +271,8 @@ public class AgentEnrollmentDAO {
         // A new device: within the customer's device limit. A resumed enrollment (above) adds no device, so it is never
         // counted again.
         enforceDeviceLimit(customerId);
-        Device device = deviceFactory.create(deviceNumber, customerId, configurationId);
+        Device device = deviceFactory.create(deviceNumber, customerId, configurationId,
+                EnrollmentTokenLimits.enrolledDeviceName(locked.getDeviceName(), locked.getMaxUses(), useNumber));
         if (device == null) {
             throw new CreationRefusedException();
         }

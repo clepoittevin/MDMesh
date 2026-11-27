@@ -23,6 +23,8 @@ New
 - Configuration → Security → **Accounts** blocks adding and removing accounts on Device Owner devices, such as a
   second Google account that the first one's Play Store restrictions don't cover. Accounts already on the device
   stay. Needs agent 0.7.0; the database adds `configurations.modifyAccounts` on start (#141).
+- Enrollment codes can name the device they enroll (numbered "Name 1", "Name 2", … for a code for several devices),
+  and the Devices page filters can show only unnamed devices (#186).
 
 Fixes
 - Console: on Settings and the configuration editor, the section menu no longer floats over the cards when the

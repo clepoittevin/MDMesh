@@ -35,6 +35,8 @@ final class EnrollFixture {
 
     final AgentEnrollmentToken token = new AgentEnrollmentToken();
     final List<String> created = new ArrayList<>();
+    /** The description each created device got, in order (null when the token names none). */
+    final List<String> descriptions = new ArrayList<>();
     final List<String> completed = new ArrayList<>();
     final Map<String, String> secretHashes = new HashMap<>();
     /** Attempt hash → device, while its enrollment can be resumed (until the device checks in). */
@@ -128,13 +130,15 @@ final class EnrollFixture {
         return true;
     }
 
-    private Device createDevice(String number, int customerId, Integer configurationId) {
+    private Device createDevice(String number, int customerId, Integer configurationId, String description) {
         if (!creationEnabled) return null;
         created.add(number);
+        descriptions.add(description);
         Device d = new Device();
         d.setNumber(number);
         d.setCustomerId(customerId);
         d.setConfigurationId(configurationId);
+        d.setDescription(description);
         return d;
     }
 

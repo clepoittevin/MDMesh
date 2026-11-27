@@ -276,7 +276,7 @@ public class DeviceHistoryOnDeleteTest {
             SecurityContext.release();
         }
         assertTrue("enrollment's device factory made the device",
-                injector.getInstance(UnsecureDAO.class).createNewDeviceForToken(tokenNumber, customerId, configurationId)
+                injector.getInstance(UnsecureDAO.class).createNewDeviceForToken(tokenNumber, customerId, configurationId, null)
                         != null);
 
         AgentCommandDAO agent = injector.getInstance(AgentCommandDAO.class);
