@@ -152,6 +152,9 @@ jobs:
           T2_M2_REPO: ${{ env.M2_COLD != 'true' && format('{0}/t2-m2', runner.temp) || '' }}
           # An exact hit holds what this build needs already: skip the copy-out.
           T2_M2_SAVE: ${{ steps.m2.outputs.cache-hit == 'true' && '0' || '1' }}
+          # The installs read releases from this repository, the one whose release/minisign.pub signs them (a fork
+          # carrying its own key would otherwise fetch the official releases and fail their signature check).
+          T2_ORIGIN_URL: https://github.com/${{ github.repository }}.git
         run: |
           tests/native/run.sh "$DISTRO" "$SCENARIO"
           if [ -n "$T2_M2_REPO" ] && [ -e "$T2_M2_REPO.t2-saved" ]; then echo "m2-saved=true" >> "$GITHUB_OUTPUT"; fi
