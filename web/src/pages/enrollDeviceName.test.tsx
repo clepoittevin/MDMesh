@@ -106,4 +106,25 @@ describe('Enroll: device name', () => {
     expect(main().queryByText('Press Enter to put the name in the code.')).toBeNull();
     expect(posts(fetch)).toHaveLength(2);
   }, SLOW);
+
+  it('hides the token too, and every way to copy it, until the name typed is in it', async () => {
+    const fetch = stubApi(api());
+    await openEnroll(fetch);
+    fireEvent.click(main().getByRole('tab', { name: 'Token' }));
+    expect((main().getByRole('textbox', { name: 'Enrollment token' }) as HTMLInputElement).value).toBe('tok-1');
+
+    fireEvent.change(nameField(), { target: { value: 'Scorer' } });
+    expect(main().getByText('Press Enter to put the name in the code.')).toBeTruthy();
+    expect(main().queryByRole('textbox', { name: 'Enrollment token' })).toBeNull();
+    expect(main().queryByDisplayValue('tok-1')).toBeNull();
+    expect(main().queryByRole('button', { name: 'Copy' })).toBeNull();
+    expect(document.body.textContent).not.toContain('tok-1');
+
+    fireEvent.keyDown(nameField(), { key: 'Enter' });
+    await waitFor(() => expect(posts(fetch)).toHaveLength(2), LOAD);
+    await waitFor(() =>
+      expect((main().getByRole('textbox', { name: 'Enrollment token' }) as HTMLInputElement).value).toBe('tok-2'),
+    );
+    await settled();
+  }, SLOW);
 });
