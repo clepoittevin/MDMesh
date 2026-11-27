@@ -290,10 +290,9 @@ export function DevicesPage() {
   }, [dupTotal, dupOnly]);
   // Unnamed: no description, so the list shows the device's number (a random ID for one the agent enrolled).
   // Wiped rows are left out of All, so out of the count too (as for duplicates, #137).
+  // The filter is not turned off when the count reaches 0: a search may match only named devices, and the filter
+  // must still be on when the search is cleared. Its checkbox stays up while it is on, so it can always be turned off.
   const unnamedTotal = useMemo(() => devices.filter((d) => d.wipedAt == null && !d.description?.trim()).length, [devices]);
-  useEffect(() => {
-    if (unnamedTotal === 0 && unnamedOnly) setUnnamedOnly(false);
-  }, [unnamedTotal, unnamedOnly]);
 
   // ---- filter, sort, page ----
   const needle = q.trim().toLowerCase();
@@ -1068,7 +1067,7 @@ export function DevicesPage() {
                 onChange={() => setDupOnly((v) => !v)}
               />
             ) : null}
-            {unnamedTotal > 0 ? (
+            {unnamedTotal > 0 || unnamedOnly ? (
               <Checkbox
                 label={
                   <span className="v2-devices-filters__dup">
