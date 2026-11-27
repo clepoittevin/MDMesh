@@ -5183,6 +5183,12 @@
   "enroll.setup.unreadable": {
     "defaultMessage": "{summary} (autres paramètres supplémentaires du QR code exclus : {error})"
   },
+  "enroll.setup.unreadableWhy.invalidJson": {
+    "defaultMessage": "JSON invalide ({detail})"
+  },
+  "enroll.setup.unreadableWhy.notMembers": {
+    "defaultMessage": "ni membres JSON (\"clé\": valeur) ni objet JSON"
+  },
   "enroll.setup.unsupported": {
     "defaultMessage": "{count, plural, one {# entrée exclue} other {# entrées exclues}} : ce n’est pas une entrée de provisionnement, ou sa valeur n’est pas du bon type"
   },

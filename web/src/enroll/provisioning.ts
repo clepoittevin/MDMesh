@@ -62,7 +62,16 @@ export interface ExtraQrParameters {
   ignored: string[];
   /** Set when the text isn't JSON: nothing is added then. */
   error: string | null;
+  /** With `error`: which of the two it is, for a page that words it in the reader's language. */
+  errorKind?: QrTextErrorKind;
+  /** With `errorKind` 'invalidJson': what the JSON parser said. */
+  errorDetail?: string;
 }
+
+/** Why Extra QR parameters can't be read: the text isn't JSON, or it is JSON but not members or one object. */
+export type QrTextErrorKind = 'invalidJson' | 'notMembers';
+
+type QrTextError = { error: string; errorKind: QrTextErrorKind; errorDetail?: string };
 
 /**
  * Reads a configuration's Extra QR parameters (`qrParameters`). Two forms are accepted: a JSON object, or its members
@@ -75,7 +84,7 @@ export interface ExtraQrParameters {
  */
 export function parseExtraQrParameters(text: unknown): ExtraQrParameters {
   const read = readQrParameters(text);
-  if ('error' in read) return { entries: {}, ignored: [], error: read.error };
+  if ('error' in read) return { entries: {}, ignored: [], ...read };
   const entries: Record<string, unknown> = Object.create(null);
   const ignored: string[] = [];
   for (const [key, value] of Object.entries(read.entries)) {
@@ -86,7 +95,7 @@ export function parseExtraQrParameters(text: unknown): ExtraQrParameters {
 }
 
 /** Every entry of a configuration's Extra QR parameters, protected ones included, or why the text can't be read. */
-export function readQrParameters(text: unknown): { entries: Record<string, unknown> } | { error: string } {
+export function readQrParameters(text: unknown): { entries: Record<string, unknown> } | QrTextError {
   if (typeof text !== 'string' || text.trim() === '') return { entries: {} };
   let body = text.trim();
   if (body.startsWith('{')) body = body.replace(/,\s*}\s*$/, '}');
@@ -95,10 +104,11 @@ export function readQrParameters(text: unknown): { entries: Record<string, unkno
   try {
     parsed = JSON.parse(body);
   } catch (e) {
-    return { error: `invalid JSON (${(e as Error).message})` };
+    const errorDetail = (e as Error).message;
+    return { error: `invalid JSON (${errorDetail})`, errorKind: 'invalidJson', errorDetail };
   }
   if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    return { error: 'not JSON members ("key": value) or one JSON object' };
+    return { error: 'not JSON members ("key": value) or one JSON object', errorKind: 'notMembers' };
   }
   return { entries: parsed as Record<string, unknown> };
 }
@@ -265,7 +275,7 @@ export function configurationQrExtras(config: Record<string, unknown> | null | u
   for (const [k, v] of Object.entries(split.settings)) {
     if (isSet(v)) entries[QR_EXTRA_PREFIX + k] = v;
   }
-  return { entries, ignored: others.ignored, error: others.error };
+  return { ...others, entries };
 }
 
 const WIFI_PREFIX = 'android.app.extra.PROVISIONING_WIFI_';

@@ -5201,6 +5201,12 @@
   "enroll.setup.unreadable": {
     "defaultMessage": "{summary} (other Extra QR parameters left out: {error})"
   },
+  "enroll.setup.unreadableWhy.invalidJson": {
+    "defaultMessage": "invalid JSON ({detail})"
+  },
+  "enroll.setup.unreadableWhy.notMembers": {
+    "defaultMessage": "not JSON members (\"key\": value) or one JSON object"
+  },
   "enroll.setup.unsupported": {
     "defaultMessage": "{count, plural, one {# entry left out} other {# entries left out}}: not a provisioning entry, or a value of the wrong type"
   },
