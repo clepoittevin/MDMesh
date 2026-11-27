@@ -1,24 +1,36 @@
 // Small display helpers. Render an em dash for absent values.
+import { SOURCE_LOCALE, storedLocale } from '../i18n/locales';
 
 export const DASH = '—';
 
+const language = (tag: string) => tag.split('-')[0].toLowerCase();
+
 /**
- * The console's language for dates and numbers formatted outside react-intl: IntlRoot keeps `<html lang>` on the
- * active locale, so dates follow the console (French months in French) rather than the browser. Undefined (the
- * browser's) before it is set, as in tests.
+ * The locale every date in the console is written in. Dates are in the console's language (`<html lang>`, which
+ * IntlRoot sets), with the region of the browser when the browser speaks that language: an English console on an
+ * en-GB browser keeps "26 Nov 2026", a French one on fr-CA its own order. English nobody chose (the browser's language
+ * has no translation) keeps the browser's formats, as before the console had languages; English chosen in Settings
+ * gives English dates on any browser. Undefined is the browser's own, also before `<html lang>` is set, as in tests.
  */
 export function consoleLocale(): string | undefined {
   if (typeof document === 'undefined') return undefined;
-  // English keeps the browser's regional date order (en-GB, en-CA…); other languages use their own.
   const lang = document.documentElement.lang;
-  return lang && lang !== 'en' ? lang : undefined;
+  if (!lang) return undefined;
+  const regional = (navigator.languages ?? []).find((tag) => language(tag) === language(lang));
+  if (regional) return regional;
+  return lang === SOURCE_LOCALE && storedLocale()?.toLowerCase() !== SOURCE_LOCALE ? undefined : lang;
+}
+
+/** A date (and time, when `options` ask for one) in the console's locale. */
+export function fmtDate(ms: number | Date, options: Intl.DateTimeFormatOptions): string {
+  return new Date(ms).toLocaleString(consoleLocale(), options);
 }
 
 export function fmtDateTime(ms?: number): string {
   if (!ms) return DASH;
   const d = new Date(ms);
   if (Number.isNaN(d.getTime())) return DASH;
-  return d.toLocaleString(consoleLocale(), {
+  return fmtDate(d, {
     year: 'numeric',
     month: 'short',
     day: '2-digit',

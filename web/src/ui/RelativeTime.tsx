@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { defineMessages, useIntl, type IntlShape } from 'react-intl';
 import { untyped } from '../data/configIntl';
-import { DASH, fmtDateTime } from './format';
+import { DASH, fmtDate, fmtDateTime } from './format';
 
 export type RelativeStyle = 'short' | 'long';
 
@@ -82,7 +82,7 @@ export function formatRelativeIntl(
   if (hr < 24) return f(messages.hours, hr);
   if (day === 1) return f(messages.yesterday);
   if (day < 30) return f(messages.days, day);
-  return intl.formatDate(ms, { day: 'numeric', month: 'short', year: 'numeric' });
+  return fmtDate(ms, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 /** Re-render cadence: every second under a minute (when seconds show), 30s under an hour, else every 5 minutes. */

@@ -26,6 +26,7 @@ import {
   cx,
   LinkButton,
 } from '../../ui';
+import { fmtDate } from '../../ui/format';
 import { applyRunning, type SupervisorState } from '../../data/useSupervisor';
 import { entrySize, parseReleaseEntries, type ReleaseEntry } from '../../data/releaseNotes';
 import type { Block, NotesSection } from '../../whatsnew/changelog';
@@ -202,11 +203,11 @@ const DONE_NOTICE_MS = 24 * 60 * 60 * 1000;
 
 const SHORT_DATE = { day: 'numeric', month: 'short', year: 'numeric' } as const;
 
-function releasedOn(iso: string | null | undefined, intl: IntlShape): string | null {
+function releasedOn(iso: string | null | undefined): string | null {
   if (!iso) return null;
   const t = Date.parse(iso);
   if (!Number.isFinite(t)) return null;
-  return intl.formatDate(t, SHORT_DATE);
+  return fmtDate(t, SHORT_DATE);
 }
 
 function channelLabel(ch: string | null | undefined, intl: IntlShape): string | null {
@@ -220,10 +221,10 @@ const FOLDED_ITEMS = 3;
 const FOLD_OVER = 6;
 
 /** "22 Oct 2026" from a heading's date or an ISO time. */
-function noteDate(d: string | null, intl: IntlShape): string | null {
+function noteDate(d: string | null): string | null {
   if (!d) return null;
   const t = Date.parse(/^\d{4}-\d{2}-\d{2}$/.test(d) ? `${d}T12:00:00` : d);
-  return Number.isFinite(t) ? intl.formatDate(t, SHORT_DATE) : null;
+  return Number.isFinite(t) ? fmtDate(t, SHORT_DATE) : null;
 }
 
 const noNavigation = () => {};
@@ -255,7 +256,7 @@ const groupSize = (g: NotesSection) => g.blocks.reduce((n, b) => n + (b.kind ===
 function ReleaseNotesEntry({ entry, folded }: { entry: ReleaseEntry; folded: boolean }) {
   const headId = useId();
   const intl = useIntl();
-  const date = noteDate(entry.date, intl);
+  const date = noteDate(entry.date);
   const groups = folded ? entry.groups.filter((g) => g.kind !== 'underTheHood') : entry.groups;
   return (
     <article className="v2-relnotes__entry" aria-labelledby={headId}>
@@ -592,12 +593,12 @@ export function UpdatesSection({
                 {intl.formatMessage(m.signatureNotVerified)}
               </Badge>
             )}
-            {channelLabel(s.channel, intl) || releasedOn(s.release?.publishedAt, intl) ? (
+            {channelLabel(s.channel, intl) || releasedOn(s.release?.publishedAt) ? (
               <span className="v2-settings-meta">
                 {[
                   channelLabel(s.channel, intl),
-                  releasedOn(s.release?.publishedAt, intl) &&
-                    intl.formatMessage(m.releasedOn, { date: releasedOn(s.release?.publishedAt, intl) }),
+                  releasedOn(s.release?.publishedAt) &&
+                    intl.formatMessage(m.releasedOn, { date: releasedOn(s.release?.publishedAt) }),
                 ]
                   .filter(Boolean)
                   .join(' · ')}

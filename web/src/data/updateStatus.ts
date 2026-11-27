@@ -3,6 +3,7 @@
 import { defineMessages, type IntlShape } from 'react-intl';
 import { isApplyTerminal, type UpdateStatus } from '../api/updates';
 import { compareVersions } from './releaseNotes';
+import { fmtDate } from '../ui/format';
 import { EN_INTL, untyped } from './configIntl';
 
 /** The update status's wording as messages (each helper below takes an optional `intl`; English without one). */
@@ -94,7 +95,7 @@ export function agoText(ms: number, intl: IntlShape = EN_INTL, now: number = Dat
   if (hr < 24) return intl.formatMessage(m.agoHours, { count: hr });
   if (day === 1) return intl.formatMessage(m.agoYesterday);
   if (day < 30) return intl.formatMessage(m.agoDays, { count: day });
-  return intl.formatDate(ms, { day: 'numeric', month: 'short', year: 'numeric' });
+  return fmtDate(ms, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 const PHASE_MESSAGE: Readonly<Record<string, keyof typeof updateStatusMessages>> = {

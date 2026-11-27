@@ -38,6 +38,7 @@ import {
   LinkButton,
   Modal,
 } from '../ui';
+import { fmtDate } from '../ui/format';
 import { paths } from '../routes';
 // Not from the barrel: QrPanel pulls in `qrcode`, which stays in this page's chunk.
 import { QrPanel } from '../ui/QrPanel';
@@ -319,7 +320,7 @@ function replacedText(intl: IntlShape, r: Replaced): string {
   return intl.formatMessage(E.replaced, {
     count: r.count,
     hasUntil: String(!!r.until),
-    until: r.until ? fmtExpiry(intl, r.until) : '',
+    until: r.until ? fmtExpiry(r.until) : '',
   });
 }
 
@@ -355,10 +356,10 @@ function tokenError(intl: IntlShape, err: unknown): string {
 }
 
 /** Token expiry, short enough for the summary box: a token lives 30 days at most, so no year ("Oct 16, 1:54 PM"). */
-function fmtExpiry(intl: IntlShape, ms: number): string {
+function fmtExpiry(ms: number): string {
   const d = new Date(ms);
   if (Number.isNaN(d.getTime())) return '—';
-  return intl.formatDate(d, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  return fmtDate(d, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
 /** "in 7 days", "in 24 hours", "in 5 minutes", "in under a minute". */
@@ -692,9 +693,9 @@ export function EnrollPage() {
   );
   if (token?.expiresAt) {
     expiresValue = expired ? (
-      <span className="v2-enroll__expired">{intl.formatMessage(E.expiredAt, { when: fmtExpiry(intl, token.expiresAt) })}</span>
+      <span className="v2-enroll__expired">{intl.formatMessage(E.expiredAt, { when: fmtExpiry(token.expiresAt) })}</span>
     ) : (
-      intl.formatMessage(E.expiresIn, { when: fmtExpiry(intl, token.expiresAt), relative: untilText(intl, token.expiresAt, now) })
+      intl.formatMessage(E.expiresIn, { when: fmtExpiry(token.expiresAt), relative: untilText(intl, token.expiresAt, now) })
     );
   }
   const facts = (withWifi: boolean): KeyValueItem[] => [
@@ -866,7 +867,7 @@ export function EnrollPage() {
         fullScreenNote={intl.formatMessage(E.qrFullNote, {
           maxUses: token?.maxUses ?? 1,
           hasExpiry: String(!!token?.expiresAt),
-          when: token?.expiresAt ? fmtExpiry(intl, token.expiresAt) : '',
+          when: token?.expiresAt ? fmtExpiry(token.expiresAt) : '',
         })}
       />
     ) : (
