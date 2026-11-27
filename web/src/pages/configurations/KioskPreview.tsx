@@ -159,7 +159,9 @@ const THUMB_BEZEL = 4;
 const cameraOf = (v: View): 'top' | 'left' | null => (v.model !== 'phone' ? null : v.orientation === 'portrait' ? 'top' : 'left');
 
 const ratioText = (r: number, intl: IntlShape) =>
-  Number.isFinite(r) ? `${(Math.floor(r * 10) / 10).toFixed(1)}:1` : intl.formatMessage(messages.notApplicable);
+  Number.isFinite(r)
+    ? `${intl.formatNumber(Math.floor(r * 10) / 10, { minimumFractionDigits: 1, maximumFractionDigits: 1, useGrouping: false })}:1`
+    : intl.formatMessage(messages.notApplicable);
 
 /** "a", "a and b", "a, b and c". */
 function listNames(names: string[], intl: IntlShape): string {

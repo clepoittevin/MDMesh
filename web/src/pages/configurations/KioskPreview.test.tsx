@@ -3,6 +3,7 @@
 // image's cells come from a colour function of the position in image pixels.
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import axe from 'axe-core';
+import { createIntl } from 'react-intl';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { KioskBackgroundImageInfo } from '../../api/configurations';
 import { AppRoutes } from '../../App';
@@ -544,6 +545,9 @@ describe('readout', () => {
       text: 'Text 4.6:1 Pass (on plate)', dim: 'Image dimmed 22%', pass: true,
     });
     expect(readout({ dim: 0, plates: {}, textRatio: 4.49, onPlate: false }).text).toBe('Text 4.4:1 Fail');
+    // The ratio's decimal mark follows the console's language.
+    const fr = createIntl({ locale: 'fr', onError: () => {} });
+    expect(readout({ dim: 0, plates: {}, textRatio: 4.49, onPlate: false }, fr).text).toBe('Text 4,4:1 Fail');
   });
 });
 

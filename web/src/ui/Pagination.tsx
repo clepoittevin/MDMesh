@@ -54,7 +54,12 @@ export function Pagination({
         <FormattedMessage
           id="shell.pagination.showing"
           defaultMessage="Showing <num>{first}–{last}</num> of <num>{total}</num>"
-          values={{ first, last, total, num: (chunks) => <span className="v2-num">{chunks}</span> }}
+          values={{
+            first: intl.formatNumber(first),
+            last: intl.formatNumber(last),
+            total: intl.formatNumber(total),
+            num: (chunks) => <span className="v2-num">{chunks}</span>,
+          }}
         />
         {suffix ? <> {suffix}</> : null}
       </span>

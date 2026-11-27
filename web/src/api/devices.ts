@@ -1,4 +1,5 @@
 import { defineMessages, type IntlShape, type MessageDescriptor } from 'react-intl';
+import { apiErrorText } from './apiErrorText';
 import { ApiError, apiClient } from './client';
 import { EN_INTL } from '../data/configIntl';
 
@@ -125,7 +126,7 @@ export function bulkErrorText(e: unknown, change: 'devices' | 'configuration' = 
   const message = e instanceof Error ? e.message : '';
   if (change === 'configuration' && message === 'error.permission.denied') return intl.formatMessage(bulkMessages.deniedConfiguration);
   const known = Object.prototype.hasOwnProperty.call(BULK_ERRORS, message) ? BULK_ERRORS[message] : undefined;
-  return known ? intl.formatMessage(known) : message;
+  return known ? intl.formatMessage(known) : apiErrorText(intl, e);
 }
 
 /** Rename a device's friendly description — POST /private/devices/{id}/description

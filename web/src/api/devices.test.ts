@@ -1,5 +1,7 @@
-import { describe, expect, it } from 'vitest';
-import { ApiError } from './client';
+import { createIntl } from 'react-intl';
+import { describe, expect, it, vi } from 'vitest';
+import { CATALOGS } from '../i18n/locales';
+import { ApiError, apiClient } from './client';
 import { BULK_DELETE_PARTIAL, bulkDeletePartial, bulkErrorText } from './devices';
 
 describe('bulkDeletePartial', () => {
@@ -38,5 +40,15 @@ describe('bulkErrorText', () => {
   it('passes other messages through', () => {
     expect(bulkErrorText(new Error('Network down'))).toBe('Network down');
     expect(bulkErrorText(undefined)).toBe('');
+  });
+});
+
+describe('bulkErrorText for a failure the console words itself', () => {
+  it('says it in the console’s language', async () => {
+    const fr = createIntl({ locale: 'fr', messages: await CATALOGS.fr() });
+    vi.stubGlobal('fetch', async () => Promise.reject(new TypeError('Failed to fetch')));
+    const offline: unknown = await apiClient.get('/private/devices').catch((e: unknown) => e);
+    vi.unstubAllGlobals();
+    expect(bulkErrorText(offline, 'devices', fr)).toBe('Impossible de joindre le serveur.');
   });
 });

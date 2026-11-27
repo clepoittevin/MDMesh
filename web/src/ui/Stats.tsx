@@ -85,7 +85,7 @@ export function FleetSummary({
   const intl = useIntl();
   const caption = captionProp ?? intl.formatMessage({ id: 'ui.fleet.caption', defaultMessage: 'devices enrolled' });
   const known = total !== null && !loading;
-  const pct = (n: number) => (known && total > 0 ? `${Math.round((n / total) * 100)}%` : '');
+  const pct = (n: number) => (known && total > 0 ? intl.formatNumber(n / total, { style: 'percent', maximumFractionDigits: 0 }) : '');
   const label = legend.map((l) => `${l.count} ${typeof l.label === 'string' ? l.label.toLowerCase() : ''}`.trim()).join(', ');
   return (
     <section aria-labelledby={headingId} aria-busy={loading || undefined} className={cx('v2-fleet', className)}>
