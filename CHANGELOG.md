@@ -9,6 +9,12 @@ Unreleased.
 
 ## Unreleased
 
+Upgrading
+- Docker installs: PostgreSQL 18 replaces PostgreSQL 14, which is end of life. New installs start on 18. An existing
+  install keeps running on 14 until you move its database once with `scripts/pg-upgrade-18.sh` (a few minutes
+  offline; the 14 volume is kept for going back). From source, `./setup.sh --update` waits for it
+  ([UPGRADING.md](docs/UPGRADING.md#postgresql-18)).
+
 Heads-up
 - Configurations carried over from the upstream project with **Extra QR parameters**: the enrollment QR now uses them
   (Enrollment section). Check that field before making codes; the editor points out the entries it leaves out and
