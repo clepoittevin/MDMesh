@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { defineMessages, FormattedMessage } from 'react-intl';
 import { useNavigate, useSearchParams } from 'react-router';
 import { forceSync } from '../api/commands';
 import { listConfigurations, type ConfigurationSummary } from '../api/configurations';
@@ -72,6 +73,18 @@ import { notConnected } from '../data/presence';
 import { useFleetSync } from '../data/useFleetSync';
 import { ISSUE_CHIP, syncKind, syncLabel } from './devicesStatus';
 import './DevicesPage.css';
+
+const messages = defineMessages({
+  unnamedOnly: {
+    id: 'devices.filters.unnamedOnly',
+    defaultMessage: 'Only unnamed devices',
+    description: 'Checkbox in the Filter menu, followed by how many there are',
+  },
+  unnamedOnlyHelp: {
+    id: 'devices.filters.unnamedOnlyHelp',
+    defaultMessage: 'Devices without a name, listed by their number: name them to find them again.',
+  },
+});
 
 type View = 'table' | 'cards';
 type StatusFilter = 'all' | Presence;
@@ -1072,10 +1085,10 @@ export function DevicesPage() {
                 label={
                   <span className="v2-devices-filters__dup">
                     <span>
-                      Only unnamed devices <span className="v2-num v2-secondary">{unnamedTotal}</span>
+                      <FormattedMessage {...messages.unnamedOnly} /> <span className="v2-num v2-secondary">{unnamedTotal}</span>
                     </span>
                     <span className="v2-devices-filters__help">
-                      Devices without a name, listed by their number: name them to find them again.
+                      <FormattedMessage {...messages.unnamedOnlyHelp} />
                     </span>
                   </span>
                 }

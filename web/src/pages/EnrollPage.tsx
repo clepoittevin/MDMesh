@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { defineMessage, defineMessages, FormattedMessage, useIntl, type IntlShape } from 'react-intl';
 import { ApiError } from '../api/client';
 import { getConfigurations, type Configuration } from '../api/configurations';
 import { mintEnrollToken, revokeAllEnrollTokens } from '../api/enroll';
@@ -69,6 +70,36 @@ interface Minted {
 /** As long as a device name can be (the same as renaming a device). */
 const DEVICE_NAME_MAX = 200;
 
+const messages = {
+  ...defineMessages({
+    nameLabel: { id: 'enroll.deviceName.label', defaultMessage: 'Device name' },
+    nameHelp: {
+      id: 'enroll.deviceName.help',
+      defaultMessage: 'Optional: the device gets this name. Leave it empty to name it later.',
+    },
+    nameExample: {
+      id: 'enroll.deviceName.example',
+      defaultMessage: 'Name',
+      description: 'Stands for the device name in the numbering example, while none is typed',
+    },
+    namePending: {
+      id: 'enroll.deviceName.pending',
+      defaultMessage: 'Press Enter to put the name in the code.',
+      description: "Shown instead of the code while the name typed isn't in it yet",
+    },
+  }),
+  // The messages with values say which (react-intl checks the call against them).
+  nameHelpBatch: defineMessage<{ name: string }>({
+    id: 'enroll.deviceName.helpBatch',
+    defaultMessage: 'Optional: each device gets this name, numbered in the order they enroll: “{name} 1”, “{name} 2”, …',
+    description: 'For a code that enrolls several devices. {name} is the name typed, or the example name',
+  }),
+  nameInvalid: defineMessage<{ max: number }>({
+    id: 'enroll.deviceName.invalid',
+    defaultMessage: 'A device name can be up to {max, number} characters, without line breaks or tabs.',
+  }),
+};
+
 /**
  * How many devices one code enrolls: one, a code to send to a customer, or a batch set up together. A code for several
  * works for anyone who has it until it expires, so it is bounded both ways.
@@ -121,7 +152,7 @@ function readDefault(): string {
 }
 
 /** Sentences for the token errors the server is known to send; anything else is shown as it comes (classic). */
-function tokenError(err: unknown): string {
+function tokenError(err: unknown, intl: IntlShape): string {
   if (err instanceof ApiError && err.httpStatus === 0) return 'Cannot reach the server.';
   if (err instanceof ApiError) {
     if (err.message === 'error.configuration.not.found')
@@ -131,7 +162,7 @@ function tokenError(err: unknown): string {
     if (err.message === 'error.agent.token.maxUses') return 'A code can enroll 1 to 1000 devices.';
     if (err.message === 'error.agent.token.validHours') return 'A code can be valid for 1 hour to 30 days.';
     if (err.message === 'error.agent.token.deviceName')
-      return `A device name can be up to ${DEVICE_NAME_MAX} characters, without line breaks or tabs.`;
+      return intl.formatMessage(messages.nameInvalid, { max: DEVICE_NAME_MAX });
     return err.message || 'Couldn’t make a code.';
   }
   return 'Couldn’t make a code.';
@@ -175,8 +206,6 @@ function useNow(everyMs: number, at?: number): number {
 const MINT_SETTLE_MS = 300;
 /** How long the device name must rest before it goes into a code by itself: one code per pause, not per keystroke. */
 const NAME_SETTLE_MS = 1500;
-/** Shown instead of the code while the name typed isn't in it yet. */
-const NAME_PENDING = 'Press Enter to put the name in the code.';
 
 function qrSteps(wifiInCode: boolean): ReactNode[] {
   return [
@@ -235,6 +264,7 @@ function useArrivalNews(arrivals: Arrival[], active: boolean, watching: boolean)
 
 /** Enroll. Classic: pages/EnrollPage.tsx. */
 export function EnrollPage() {
+  const intl = useIntl();
   const toast = useToast();
   const mobile = useMediaQuery(MOBILE_QUERY);
 
@@ -396,11 +426,11 @@ export function EnrollPage() {
         if (createdAt != null) setSince((s) => s ?? createdAt);
       } else setTokError('The server did not return a token.');
     } catch (err) {
-      if (seq === mintSeq.current) setTokError(tokenError(err));
+      if (seq === mintSeq.current) setTokError(tokenError(err, intl));
     } finally {
       if (seq === mintSeq.current) setBusy(false);
     }
-  }, []);
+  }, [intl]);
 
   // The token binds the device to the configuration and its limits server-side: mint again whenever a choice changes.
   // The first code is minted at once; a later choice waits until it settles, so arrowing through a select mints one
@@ -507,7 +537,7 @@ export function EnrollPage() {
     ...(withWifi && wifiOn
       ? [{ key: 'wifi', label: 'Joins Wi-Fi', value: wifiIssue ? 'Not in the code (see Wi-Fi above)' : ssid || 'No network name yet' }]
       : []),
-    ...(token?.deviceName ? [{ key: 'name', label: 'Device name', value: token.deviceName }] : []),
+    ...(token?.deviceName ? [{ key: 'name', label: intl.formatMessage(messages.nameLabel), value: token.deviceName }] : []),
     { key: 'use', label: 'Use', value: usesText(token?.maxUses ?? uses) },
     { key: 'expires', label: 'Expires', value: expiresValue },
   ];
@@ -571,11 +601,11 @@ export function EnrollPage() {
       </div>
 
       <Field
-        label="Device name"
+        label={intl.formatMessage(messages.nameLabel)}
         help={
           uses === 1
-            ? 'Optional: the device gets this name. Leave it empty to name it later.'
-            : `Optional: each device gets this name, numbered in the order they enroll: “${nameDraft.trim() || 'Name'} 1”, “${nameDraft.trim() || 'Name'} 2”, …`
+            ? intl.formatMessage(messages.nameHelp)
+            : intl.formatMessage(messages.nameHelpBatch, { name: nameDraft.trim() || intl.formatMessage(messages.nameExample) })
         }
       >
         <Input
@@ -678,7 +708,7 @@ export function EnrollPage() {
   ) : namePending ? (
     <div className="v2-qr">
       <div className="v2-qr__frame v2-enroll__qrwait" role="status">
-        {NAME_PENDING}
+        <FormattedMessage {...messages.namePending} />
       </div>
     </div>
   ) : payload && !expired ? (
@@ -786,7 +816,7 @@ export function EnrollPage() {
           <div className="v2-enroll__token">
             {namePending ? (
               <span className="v2-enroll__tokenwait" role="status">
-                {NAME_PENDING}
+                <FormattedMessage {...messages.namePending} />
               </span>
             ) : token && !expired ? (
               <Field label="Enrollment token">
