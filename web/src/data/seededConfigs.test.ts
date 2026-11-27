@@ -33,9 +33,9 @@ describe('seeded configurations', () => {
 
   it('leaves a copy, a reused name and an edited description as typed', () => {
     expect(configName(fr, { id: 12, name: 'Background (Agent) Mode' })).toBe('Background (Agent) Mode');
-    expect(configName(fr, { id: 4, name: 'Arbitres' })).toBe('Arbitres');
-    expect(configDescription(fr, { id: 3, name: 'Background (Agent) Mode', description: 'Téléphones du club' })).toBe(
-      'Téléphones du club',
+    expect(configName(fr, { id: 4, name: 'Accueil' })).toBe('Accueil');
+    expect(configDescription(fr, { id: 3, name: 'Background (Agent) Mode', description: 'Téléphones de service' })).toBe(
+      'Téléphones de service',
     );
     expect(configName(fr, null)).toBe('');
   });

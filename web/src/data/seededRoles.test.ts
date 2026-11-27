@@ -16,21 +16,40 @@ describe('seeded roles', () => {
     expect(roleName(en, { id: 1, name: ' Супер-Администратор ' })).toBe('Super admin');
   });
 
-  it('falls back to the seeded id for an unknown Russian name, and leaves other names as typed', () => {
-    expect(roleName(en, { id: 3, name: 'Пользователь системы' })).toBe('User');
-    expect(roleName(fr, { id: 2, name: 'Arbitres' })).toBe('Arbitres');
+  it('leaves any other name as typed, a seeded role renamed in Russian included', () => {
+    expect(roleName(en, { id: 3, name: 'Пользователь системы' })).toBe('Пользователь системы');
+    expect(isSeededRole({ id: 3, name: 'Пользователь системы' })).toBe(false);
+    expect(roleName(fr, { id: 2, name: 'Support' })).toBe('Support');
     expect(roleName(en, { id: 120, name: 'Оператор' })).toBe('Оператор');
-    expect(isSeededRole({ id: 2, name: 'Arbitres' })).toBe(false);
+    expect(isSeededRole({ id: 2, name: 'Support' })).toBe(false);
+    expect(isSeededRole({ id: 2, name: 'Администратор' })).toBe(true);
   });
 
   it('translates a seeded description, keeps one an admin wrote', () => {
     expect(roleDescription(en, { id: 4, name: 'Наблюдатель', description: 'Наблюдатель зорко наблюдает' })).toBe(
       'Read-only access to the control panel',
     );
-    expect(roleDescription(en, { id: 2, name: 'Администратор', description: 'Responsables du club' })).toBe(
-      'Responsables du club',
+    expect(roleDescription(en, { id: 2, name: 'Администратор', description: 'Équipe informatique' })).toBe(
+      'Équipe informatique',
     );
-    expect(roleDescription(en, { id: 9, name: 'Arbitres', description: 'Saisie des scores' })).toBe('Saisie des scores');
+    expect(roleDescription(en, { id: 2, name: 'Администратор', description: 'Администраторы филиала' })).toBe(
+      'Администраторы филиала',
+    );
+    expect(roleDescription(en, { id: 9, name: 'Support', description: 'Assistance aux utilisateurs' })).toBe(
+      'Assistance aux utilisateurs',
+    );
+  });
+
+  it('translates a seeded description left in the other seed’s language', () => {
+    expect(roleDescription(en, { id: 2, name: 'Admin', description: 'Выполняет функции администратора для одной клиентской записи' })).toBe(
+      'Full access to the control panel',
+    );
+  });
+
+  it('does not describe a role that has no description, even one named like a seeded role', () => {
+    expect(roleDescription(en, { id: 140, name: 'Observer' })).toBe('');
+    expect(roleDescription(en, { id: 140, name: 'Observer', description: ' ' })).toBe('');
+    expect(roleDescription(en, { id: 2, name: 'Администратор', description: null })).toBe('');
   });
 });
 
