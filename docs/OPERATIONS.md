@@ -56,7 +56,7 @@ of [your own edge rules](../DEPLOY.md#your-own-edge-rules).
 | `SUPERVISOR_VERSION` | `.env` | quick start: the installed release by digest | Supervisor image tag. When it is `latest` or a digest pin, each update moves it to the release's signed digest; `docker compose up -d` then starts that supervisor. Any other value is left alone. |
 | `APPLY_SUPPORTED` | `.env` (native: always `0`) | `1` with a registry `IMAGE_OWNER`, else `0` | `1` shows one-click **Update**, `0` shows manual steps. |
 | `AUTO_UPDATE` | `.env` | `0` | `1` applies releases unattended ([details](UPGRADING.md#quick-start-installs)). |
-| `HEALTH_TIMEOUT` | `.env` (not on native) | `180` | Seconds a new server gets to answer after an update or a rollback before it counts as failed (an update is then rolled back). At least `30`: a smaller value, `0` included (it doesn't mean "no limit"), is ignored and the supervisor's log says so. Raise it when a release's database update may take longer on your data. Read from `.env` when an update starts, so adding a line there is enough; supervisors before this release ignore it ([Upgrading](UPGRADING.md#unreleased)). |
+| `HEALTH_TIMEOUT` | `.env` (not on native) | `180` | Seconds a new server gets to answer after an update or a rollback before it counts as failed (an update is then rolled back). At least `30`: a smaller value, `0` included (it doesn't mean "no limit"), is ignored and the supervisor's log says so. Raise it when a release's database update may take longer on your data. Read from `.env` when an update starts, so adding a line there is enough; supervisors before 0.6.0 ignore it ([Upgrading](UPGRADING.md#v060)). |
 
 `./setup.sh` rewrites the version variables and `APPLY_SUPPORTED` from the clone on every run
 ([Upgrading](UPGRADING.md#from-source-docker-installs)).
@@ -399,14 +399,23 @@ check-in).
 ## Backups and restore
 
 **Docker.** One-click updates dump the database first, and a rollback restores that dump
-([Upgrading](UPGRADING.md#recovery-and-rollback)). `./setup.sh` takes no dump, so before a from-source upgrade make
-one yourself:
+([Upgrading](UPGRADING.md#recovery-and-rollback)). From source, `./setup.sh` (and so `--update`) dumps it before it
+moves the install to another version, with the command below, to
+`backups/pre-update-<time>-from-<version>.dump` in the clone: `<time>` in UTC, `<version>` the release the dump belongs
+to. The dumps are readable by their owner only, and they stay until you remove them.
+A checkout without a release tag takes none: make one with the command below. A stopped postgres is started for the
+dump. setup.sh stops before it changes the install when it can't take it: when postgres doesn't start, the dump fails,
+or `backups/` has less free space than the database takes (free some, or make `backups` a link to a directory on a
+larger disk). The install still runs its version, and only the clone has moved (to the new release, after `--update`):
+run `./setup.sh` again once fixed, or `git checkout -` to go back to the code the install runs. A dump by hand, at any
+time:
 
 ```bash
 docker compose exec -T postgres pg_dump -U mdmesh -Fc mdmesh > mdmesh-pre-upgrade.dump
 ```
 
-To go back to it, stop the server, restore, then build the release the dump was taken on:
+To go back to it, stop the server, restore, then build the release the dump was taken on (for one of setup.sh's, use
+its `backups/…` file in place of `mdmesh-pre-upgrade.dump`):
 
 ```bash
 docker compose stop server
