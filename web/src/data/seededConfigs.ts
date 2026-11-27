@@ -4,6 +4,7 @@
 // id and English name (configurationRules.ts isLocked), so renaming them would unlock them. A configuration an admin
 // created or renamed, and a description an admin changed, show as typed.
 import { defineMessages, type IntlShape, type MessageDescriptor } from 'react-intl';
+import { own } from './own';
 
 type Seeded = 'managedLauncher' | 'miui' | 'background' | 'default';
 
@@ -54,7 +55,7 @@ interface ConfigLike {
 }
 
 function seeded(c: ConfigLike) {
-  const seed = SEED[c.name?.trim() ?? ''];
+  const seed = own(SEED, c.name?.trim() ?? '');
   if (!seed) return null;
   if (seed.ids && (c.id == null || !seed.ids.includes(c.id))) return null;
   return seed;

@@ -3,6 +3,7 @@
 import { createIntl, defineMessages, type IntlShape, type MessageDescriptor } from 'react-intl';
 import type { CommandHistoryItem } from '../api/commands';
 import { classifyOutcome, outcomeSummary } from './configOutcomes';
+import { own } from './own';
 
 const commandMessagesRaw = defineMessages({
   configApply: { id: 'deviceActivity.command.configApply', defaultMessage: 'Apply configuration' },
@@ -66,7 +67,7 @@ const detailMessages: Record<keyof typeof detailMessagesRaw, MessageDescriptor> 
 const EN = createIntl({ locale: 'en' });
 
 export function commandName(type: string, intl: IntlShape = EN): string {
-  const d = Object.prototype.hasOwnProperty.call(COMMAND_NAMES, type) ? COMMAND_NAMES[type] : undefined;
+  const d = own(COMMAND_NAMES, type);
   return d ? intl.formatMessage(d) : type;
 }
 
@@ -159,13 +160,13 @@ export const EVENT_VERBS: Record<string, string> = plain(EVENT_VERB_MESSAGES);
 
 /** An event type's label in the console's language (the raw type when it is not a known one). */
 export function eventLabel(type: string, intl: IntlShape = EN): string {
-  const d = (EVENT_LABEL_MESSAGES as Record<string, MessageDescriptor>)[type];
+  const d = own<MessageDescriptor>(EVENT_LABEL_MESSAGES, type);
   return d ? intl.formatMessage(d) : type;
 }
 
 /** An event type's verb phrase in the console's language (the raw type when it is not a known one). */
 export function eventVerb(type: string, intl: IntlShape = EN): string {
-  const d = (EVENT_VERB_MESSAGES as Record<string, MessageDescriptor>)[type];
+  const d = own<MessageDescriptor>(EVENT_VERB_MESSAGES, type);
   return d ? intl.formatMessage(d) : type;
 }
 
@@ -202,9 +203,6 @@ const KIOSK_DETAILS: Record<string, MessageDescriptor> = {
   'exited on-device': eventDetailMessages.kioskExited,
   'returned on-device': eventDetailMessages.kioskReturned,
 };
-
-const own = <T,>(map: Record<string, T>, key: string): T | undefined =>
-  Object.prototype.hasOwnProperty.call(map, key) ? map[key] : undefined;
 
 /**
  * An event's detail line, in words. A command result names its command and step ("Lock: done", "Install app:

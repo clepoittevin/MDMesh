@@ -6,6 +6,7 @@ import { listConfigurationNames, type ConfigurationSummary } from '../api/config
 import { getAppConfigLinks, updateAppConfigLinks, type AppConfigLink } from '../api/applications';
 import { installApp } from '../api/commands';
 import type { DeployModes, DeploySubject } from '../data/apps';
+import { own } from '../data/own';
 import { useToast } from './toast';
 import { Button } from './Button';
 import { Field } from './Field';
@@ -322,7 +323,7 @@ export function DeployModal({
                   </li>
                 ) : (
                   shown.map((d) => {
-                    const p = (d.statusCode && PRESENCE[d.statusCode]) || UNKNOWN;
+                    const p = (d.statusCode && own(PRESENCE, d.statusCode)) || UNKNOWN;
                     return (
                       <li key={d.id}>
                         <label className="v2-deploy__row">

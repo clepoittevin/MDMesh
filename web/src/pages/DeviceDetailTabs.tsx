@@ -45,6 +45,7 @@ import {
 import { CommandsCard } from './DeviceDetailControl';
 import { LocationMap } from '../ui/LocationMap';
 import { eventDetail, eventLabel } from '../data/deviceActivity';
+import { own } from '../data/own';
 import {
   DASH,
   capitalise,
@@ -259,14 +260,23 @@ const GROUPS: Array<{ title: MessageDescriptor; rows: RowSpec[] }> = [
     title: messages.groupBattery,
     rows: [
       { label: messages.level, keys: [['dynamic', 'batteryPct']], render: (s, f) => (teleNum(s.dynamic.batteryPct) != null && (s.dynamic.batteryPct as number) >= 0 ? f(messages.percent, { value: String(s.dynamic.batteryPct) }) : undefined) },
-      { label: messages.power, keys: [['dynamic', 'chargingSource']], render: (s, f) => (str(s.dynamic.chargingSource) ? (CHARGING[String(s.dynamic.chargingSource)] ? f(CHARGING[String(s.dynamic.chargingSource)]) : String(s.dynamic.chargingSource)) : undefined) },
+      {
+        label: messages.power,
+        keys: [['dynamic', 'chargingSource']],
+        render: (s, f) => {
+          const v = str(s.dynamic.chargingSource);
+          if (!v) return undefined;
+          const known = own(CHARGING, String(v));
+          return known ? f(known) : String(v);
+        },
+      },
       {
         label: messages.health,
         keys: [['dynamic', 'batteryHealth']],
         render: (s, f) => {
           const v = str(s.dynamic.batteryHealth);
           if (!v) return undefined;
-          const known = BATTERY_HEALTH[String(v)];
+          const known = own(BATTERY_HEALTH, String(v));
           return known ? f(known) : capitalise(String(v).replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase());
         },
       },

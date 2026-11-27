@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { CommandHistoryItem } from '../api/commands';
-import { EVENT_LABELS, EVENT_VERBS, eventDetail } from './deviceActivity';
+import { EVENT_LABELS, EVENT_VERBS, eventDetail, eventLabel, eventVerb } from './deviceActivity';
 
 const cmd = (c: Partial<CommandHistoryItem> & { id: number | string; type: string }): CommandHistoryItem => ({ status: 'done', ...c });
 const commands = [
@@ -86,5 +86,13 @@ describe('event labels and verbs', () => {
 
   it('give every labelled event a verb, and the other way round', () => {
     expect(Object.keys(EVENT_VERBS).sort()).toEqual(Object.keys(EVENT_LABELS).sort());
+  });
+});
+
+// The server accepts any event type matching [A-Za-z0-9._-]{1,64}: a name every object inherits is not a known label.
+describe('an event type the console does not know', () => {
+  it.each(['constructor', 'toString', 'valueOf', '__proto__', 'x.custom'])('shows %s as sent', (type) => {
+    expect(eventLabel(type)).toBe(type);
+    expect(eventVerb(type)).toBe(type);
   });
 });

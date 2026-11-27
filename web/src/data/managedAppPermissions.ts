@@ -1,5 +1,6 @@
 import { defineMessage, type IntlShape, type MessageDescriptor } from 'react-intl';
 import { EN_INTL } from './configIntl';
+import { own } from './own';
 
 /**
  * Curated Android runtime permissions that the Device Owner agent can attempt
@@ -46,7 +47,7 @@ export const MANAGED_APP_PERMISSION_LABELS: Record<string, MessageDescriptor> = 
 
 const declared = (requestedPermissions: string | null | undefined): string[] =>
   typeof requestedPermissions === 'string'
-    ? requestedPermissions.split(',').map((permission) => permission.trim()).filter((permission) => permission in MANAGED_APP_PERMISSION_LABELS)
+    ? requestedPermissions.split(',').map((permission) => permission.trim()).filter((permission) => own(MANAGED_APP_PERMISSION_LABELS, permission))
     : [];
 
 /**
@@ -62,6 +63,6 @@ export function manageableAppPermissions(
 
 /** The permission's name in the console's language; one the console doesn't know shows as its Android name. */
 export const managedAppPermissionLabel = (permission: string, intl: IntlShape = EN_INTL): string => {
-  const label = MANAGED_APP_PERMISSION_LABELS[permission];
+  const label = own(MANAGED_APP_PERMISSION_LABELS, permission);
   return label ? intl.formatMessage(label) : permission;
 };

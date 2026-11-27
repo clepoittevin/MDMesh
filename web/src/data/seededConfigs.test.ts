@@ -39,4 +39,11 @@ describe('seeded configurations', () => {
     );
     expect(configName(fr, null)).toBe('');
   });
+
+  it('shows a configuration named like something every object inherits as typed', () => {
+    for (const name of ['constructor', 'toString', '__proto__']) {
+      expect(configName(fr, { id: 4, name })).toBe(name);
+      expect(configDescription(fr, { id: 4, name, description: 'Shared tablets' })).toBe('Shared tablets');
+    }
+  });
 });

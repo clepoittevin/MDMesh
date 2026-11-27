@@ -86,3 +86,9 @@ describe('a configuration out of date on the device', () => {
     expect(staleCause(undefined, { appliedAt })).toBeNull();
   });
 });
+
+describe('staleCause with an event type every object inherits', () => {
+  it.each(['constructor', 'toString', '__proto__'])('does not take %s for a cause', (type) => {
+    expect(staleCause([{ id: 1, type, ts: 5000 }], { appliedAt: 1000 })).toBeNull();
+  });
+});

@@ -1,5 +1,6 @@
 import { defineMessages, type IntlShape, type MessageDescriptor } from 'react-intl';
 import { EN_INTL } from '../data/configIntl';
+import { own } from '../data/own';
 import { apiClient } from './client';
 import type { DeviceEvent } from './events';
 
@@ -104,10 +105,11 @@ export function staleCause(
   const applied = status.lastCommand?.status === 'done' ? status.lastCommand.completedAt : undefined;
   let latest: DeviceEvent | null = null;
   for (const e of events ?? []) {
-    if (!(e.type in STALE_CAUSES) || e.ts < since || (applied != null && e.ts <= applied)) continue;
+    if (!own(STALE_CAUSES, e.type) || e.ts < since || (applied != null && e.ts <= applied)) continue;
     if (!latest || e.ts > latest.ts) latest = e;
   }
-  return latest ? intl.formatMessage(STALE_CAUSES[latest.type]) : null;
+  const cause = latest && own(STALE_CAUSES, latest.type);
+  return cause ? intl.formatMessage(cause) : null;
 }
 
 /** In sync, but the agent skipped some settings on purpose (e.g. Wi-Fi radio Off while Wi-Fi is the only network). */

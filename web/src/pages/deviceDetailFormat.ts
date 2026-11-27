@@ -4,6 +4,7 @@
 import { createIntl, defineMessages, type IntlShape, type MessageDescriptor } from 'react-intl';
 import { DEVICE_RESET_REVISION, type ConfigStatus } from '../api/configSync';
 import type { Outcome } from '../data/configOutcomes';
+import { own } from '../data/own';
 import { LOCATION_HISTORY_LIMIT, type LocationFix } from '../api/deviceLocations';
 import { formatRelative, formatRelativeIntl } from '../ui/RelativeTime';
 import type { StatusKind, StatusTone } from '../ui/Status';
@@ -125,7 +126,7 @@ export function providerLabel(p?: unknown, intl?: IntlShape): string | undefined
     network: messages.network,
     passive: messages.passive,
   };
-  const d = map[p.toLowerCase()];
+  const d = own(map, p.toLowerCase());
   return d ? fm(intl, d) : p;
 }
 

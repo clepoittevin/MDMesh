@@ -44,3 +44,12 @@ describe("the installers' English seed", () => {
     expect(isSeededRole({ id: 3, name: 'User' })).toBe(false);
   });
 });
+
+describe('a role named like something every object inherits', () => {
+  it('shows as typed', () => {
+    for (const name of ['constructor', 'toString', '__proto__']) {
+      expect(roleName(fr, { id: 9, name })).toBe(name);
+      expect(roleDescription(fr, { id: 9, name, description: 'Help desk' })).toBe('Help desk');
+    }
+  });
+});
