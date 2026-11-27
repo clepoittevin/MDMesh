@@ -1,5 +1,5 @@
 // Which language the console speaks. English is the source: its text is the `defaultMessage` beside each use in
-// code, so it needs no catalog and renders synchronously. This fork ships French (locales/fr.json, the same shape as
+// code, so it needs no catalog and renders synchronously. French ships as locales/fr.json (the same shape as
 // en.json); a message missing there shows in English. In dev, `npm run i18n:pseudo` compiles the en-XA
 // pseudo-locale (accented and padded English) into ./pseudo/, and setting `mdmesh-locale` to `en-XA` in
 // localStorage shows it: any text that stays plain English was never extracted.
