@@ -143,7 +143,7 @@ enum AuditBody {
             "timeZone", "allowedClasses", "newServerUrl", "lockSafeSettings", "permissive", "kioskExit", "showWifi",
             "mainAppId", "eventReceivingComponent", "kioskMode", "contentAppId", "wifiSSID", "wifiSecurityType",
             "encryptDevice", "mobileEnrollment", "kioskHome", "kioskRecents", "kioskNotifications", "kioskSystemInfo",
-            "kioskKeyguard", "kioskLockButtons", "kioskScreenOn", "launcherUrl", "restrictions",
+            "kioskKeyguard", "kioskLockButtons", "kioskScreenOn", "launcherUrl", "restrictions", "modifyAccounts",
             "useDefaultDesignSettings", "backgroundColor", "textColor", "backgroundImageUrl", "backgroundImageFileId",
             "backgroundImageSha256", "backgroundImageFit", "backgroundImageFocalX", "backgroundImageFocalY",
             "backgroundImageAction", "iconSize", "desktopHeader", "desktopHeaderTemplate", "displayStatus", "baseUrl",

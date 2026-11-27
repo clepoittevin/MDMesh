@@ -147,6 +147,7 @@ public final class DesiredConfigBuilder {
         putIfManaged(p, "screenshots", cfg.getDisableScreenshots() == null ? null : !cfg.getDisableScreenshots());
         putIfManaged(p, "factoryReset", cfg.getDisableFactoryReset() == null ? null : !cfg.getDisableFactoryReset());
         putIfManaged(p, "safeBoot", safeBootAllowed(cfg));
+        putIfManaged(p, "modifyAccounts", cfg.getModifyAccounts());
         return p;
     }
 

@@ -9,7 +9,7 @@ an interface here; feature code never touches DPM directly.
   (currently `wifi`).
 - Policies, one directory each: `wifi/` (`wifi`, and `wifiRadio`), `bluetooth/`, `camera/`, `location/`
   (`locationServices`), `usb/` (`usbStorage`), `screenshots/`, `factoryreset/` (`factoryReset`), `safeboot/`
-  (`safeBoot`). These are the keys `CapabilityRegistry` can advertise.
+  (`safeBoot`), `accounts/` (`modifyAccounts`). These are the keys `CapabilityRegistry` can advertise.
 - `PolicyStrategy` — base for SDK-gated implementations. `isSupported()` carries the
   `Build.VERSION.SDK_INT` (+ Device-Owner) check, evaluated once at selection.
 - `TogglePolicy` — the sub-interface for every on/off policy (Wi-Fi, camera, Bluetooth,

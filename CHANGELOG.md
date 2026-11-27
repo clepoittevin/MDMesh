@@ -20,6 +20,9 @@ New
   provisioning entries in **Extra QR parameters** (each with a value of its type; others are left out, and said so). Entries naming the agent, its download or its enrollment extras, and MDMesh's
   defaults (system apps stay enabled, no encryption step), are never replaced; Wi-Fi comes from the setup Wi-Fi and
   the Enroll page only. The Enroll page sums up what the code adds.
+- Configuration → Security → **Accounts** blocks adding and removing accounts on Device Owner devices, such as a
+  second Google account that the first one's Play Store restrictions don't cover. Accounts already on the device
+  stay. Needs agent 0.7.0; the database adds `configurations.modifyAccounts` on start (#141).
 
 Fixes
 - Console: on Settings and the configuration editor, the section menu no longer floats over the cards when the

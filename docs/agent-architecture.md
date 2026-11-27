@@ -64,13 +64,13 @@ it. It asks first, says so when that kiosk has no exit on the device, enters onl
 finishes the entry even if the screen goes away (a rotation); once in kiosk it queues a check-in. A newer delivered kiosk-off configuration removes the option even if another policy failed; a remote
 `kiosk.exit` leaves it available while the configuration still enables kiosk.
 
-**The 26 enforced fields**
+**The 27 enforced fields**
 
 | Area | Fields |
 |------|--------|
 | Kiosk | `mainAppId`, `kioskMode`, `kioskExit`, `kioskHome`, `kioskRecents`, `kioskNotifications`, `kioskSystemInfo`, `kioskKeyguard`, `kioskLockButtons`, `kioskLockVolume`, `password` (exit PIN: 6 to 12 digits; one saved before 0.5.0 may be any text and is applied as stored) |
 | Launcher look | `backgroundColor`, `textColor`, `iconSize` (colours: see below); also the kiosk background image (`backgroundImageFileId`, set in the Kiosk section, agent 0.5.0; see below) |
-| Device policy | `wifi`, `wifiRadio`, `locationServices`, `bluetooth`, `camera`, `usbStorage`, `disableScreenshots`, `disableFactoryReset`, `disableSafeBoot` |
+| Device policy | `wifi`, `wifiRadio`, `locationServices`, `bluetooth`, `camera`, `usbStorage`, `disableScreenshots`, `disableFactoryReset`, `disableSafeBoot`, `modifyAccounts` |
 | Location | `requestUpdates` (location capture mode) |
 | Connectivity | `connectivityMode` (live-connection mode, 1.5) |
 | App permissions | `managedAppPermissions` (per installed app: Grant or Deny a runtime permission, 1.7) |
@@ -120,6 +120,10 @@ agents use both colours as sent.
   agent applies its rules as soon as its `app.install` succeeds, also after an update. Only agents that advertise
   `app.runtimePermissions` get the section; the others get the document without it, under that document's revision,
   and show as out of sync while the configuration has a rule.
+- **1.13:** the `modifyAccounts` policy key: Device Owners block (`false`) or allow (`true`) adding and removing
+  accounts (`DISALLOW_MODIFY_ACCOUNTS`); accounts already on the device stay. Not managed (NULL, the upgrade value)
+  leaves the key out, so the device keeps what it had: set Allow to lift a block. Agents without it report
+  `unsupported`.
 
 **Kiosk background image.** A configuration's managed image is an uploaded file (`backgroundImageFileId`). On
 save the server refuses anything but a PNG, JPEG or WebP of at most 10 MB and 16 megapixels (read from the header),

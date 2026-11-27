@@ -1,6 +1,8 @@
 package com.mdmesh.policy
 
 import android.util.Log
+import com.mdmesh.policy.accounts.ModifyAccountsPolicy
+import com.mdmesh.policy.accounts.ModifyAccountsPolicyFactory
 import com.mdmesh.policy.bluetooth.BluetoothPolicy
 import com.mdmesh.policy.bluetooth.BluetoothPolicyFactory
 import com.mdmesh.policy.camera.CameraPolicy
@@ -74,6 +76,7 @@ class CapabilityRegistry(
             UsbStoragePolicy.CAPABILITY_KEY to { UsbStoragePolicyFactory.create(handle) },
             FactoryResetPolicy.CAPABILITY_KEY to { FactoryResetPolicyFactory.create(handle, wipeHold, kioskHold) },
             SafeBootPolicy.CAPABILITY_KEY to { SafeBootPolicyFactory.create(handle) },
+            ModifyAccountsPolicy.CAPABILITY_KEY to { ModifyAccountsPolicyFactory.create(handle) },
             WifiRadioPolicy.CAPABILITY_KEY to { WifiRadioPolicyFactory.create(handle, wifiRadio, wifiRadioState) },
         ),
         onProbeError = probeLog::failed,

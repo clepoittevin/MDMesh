@@ -13,6 +13,8 @@ import com.mdmesh.policy.PolicyOutcome
 import com.mdmesh.policy.ReleasablePolicy
 import com.mdmesh.policy.TogglePolicy
 import com.mdmesh.policy.UserRestrictions
+import com.mdmesh.policy.accounts.ModifyAccountsPolicy
+import com.mdmesh.policy.accounts.ModifyAccountsPolicyFactory
 import com.mdmesh.policy.camera.CameraPolicy
 import com.mdmesh.policy.factoryreset.FactoryResetPolicy
 import com.mdmesh.policy.factoryreset.FactoryResetPolicyFactory
@@ -105,6 +107,10 @@ class DevicePolicyEffectTest {
             SafeBootPolicy.CAPABILITY_KEY in toggles,
         )
         assertTrue(
+            "a Device Owner must advertise modifyAccounts; the server gates on this token",
+            ModifyAccountsPolicy.CAPABILITY_KEY in toggles,
+        )
+        assertTrue(
             "a Device Owner must advertise the other DO-gated toggles too",
             "camera" in toggles && "screenshots" in toggles,
         )
@@ -141,6 +147,20 @@ class DevicePolicyEffectTest {
             toggle = policy,
             describe = "safeBoot",
             isBlockedOnDevice = { restrictionActive(UserRestrictions.DISALLOW_SAFE_BOOT) },
+        )
+    }
+
+    @Test
+    fun modifyAccountsFalseBlocksAccountChangesAndTrueReleasesIt() {
+        val policy = requireNotNull(ModifyAccountsPolicyFactory.create(handle)) {
+            "modifyAccounts resolved no strategy on a Device Owner — the probe chain is broken"
+        }
+
+        // Read back the real OS state, not the agent's own report of it.
+        assertTogglesDeviceState(
+            toggle = policy,
+            describe = ModifyAccountsPolicy.CAPABILITY_KEY,
+            isBlockedOnDevice = { restrictionActive(UserRestrictions.DISALLOW_MODIFY_ACCOUNTS) },
         )
     }
 
@@ -216,6 +236,10 @@ class DevicePolicyEffectTest {
             restrictionKey(UserRestrictions.DISALLOW_SAFE_BOOT),
             restrictionActive(UserRestrictions.DISALLOW_SAFE_BOOT),
         )
+        put(
+            restrictionKey(UserRestrictions.DISALLOW_MODIFY_ACCOUNTS),
+            restrictionActive(UserRestrictions.DISALLOW_MODIFY_ACCOUNTS),
+        )
         put("cameraDisabled", dpm.getCameraDisabled(handle.admin))
         put("screenCaptureDisabled", dpm.getScreenCaptureDisabled(handle.admin))
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -236,6 +260,8 @@ class DevicePolicyEffectTest {
                 ?.setEnabled(state.getValue(restrictionKey(UserRestrictions.DISALLOW_FACTORY_RESET)).not())
             toggles[SafeBootPolicy.CAPABILITY_KEY]
                 ?.setEnabled(state.getValue(restrictionKey(UserRestrictions.DISALLOW_SAFE_BOOT)).not())
+            toggles[ModifyAccountsPolicy.CAPABILITY_KEY]
+                ?.setEnabled(state.getValue(restrictionKey(UserRestrictions.DISALLOW_MODIFY_ACCOUNTS)).not())
             toggles[CameraPolicy.CAPABILITY_KEY]?.setEnabled(state.getValue("cameraDisabled").not())
             toggles[ScreenshotsPolicy.CAPABILITY_KEY]?.setEnabled(state.getValue("screenCaptureDisabled").not())
             state["locationEnabled"]?.let { enabled ->

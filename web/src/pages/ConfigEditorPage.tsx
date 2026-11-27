@@ -335,7 +335,7 @@ const LAYOUT: Record<'kiosk' | 'network' | 'security' | 'enrollment', Item[]> = 
     'iconSize',
   ],
   network: ['wifi', 'wifiRadio', 'bluetooth', 'locationServices', 'requestUpdates', 'connectivityMode'],
-  security: ['camera', 'usbStorage', 'disableScreenshots', 'disableFactoryReset', 'disableSafeBoot'],
+  security: ['camera', 'usbStorage', 'disableScreenshots', 'disableFactoryReset', 'disableSafeBoot', 'modifyAccounts'],
   enrollment: [
     'wifiSSID',
     'wifiPassword',

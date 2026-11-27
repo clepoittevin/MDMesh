@@ -24,6 +24,7 @@ Advertised only when the device has a working strategy for it (`CapabilityRegist
 | `screenshots` | disable screenshots | 24 | |
 | `factoryReset` | block/restore the user-initiated factory reset | 24 | `UserManager.DISALLOW_FACTORY_RESET`; Device Owner only; does **not** cover a wipe from recovery mode or fastboot. `device.wipe` lifts it first, since some vendor recoveries enforce it (#222). Not to be confused with `factoryResetProtection` below. |
 | `safeBoot` | block/restore rebooting into Safe Mode | 24 | `UserManager.DISALLOW_SAFE_BOOT` (API 23); Device Owner only. Closes the Safe-Mode escape from a kiosk. From agent 0.3.7 the kiosk also blocks Safe Mode itself while in kiosk unless the configuration sends `true`, and every `config.apply` re-checks it last, so a block nothing asks for is lifted (a `policy.apply` block lasts until the next `config.apply`, which includes the re-apply at boot). |
+| `modifyAccounts` | block/restore adding and removing accounts | 24 | `UserManager.DISALLOW_MODIFY_ACCOUNTS` (API 18); Device Owner only. Accounts already on the device stay. Closes the "second Google account" route around Play Store restrictions, and keeps an account a managed app depends on from being removed. |
 | `gps` | legacy location toggle | 24 | Planned: not advertised. Use `locationServices` for the modern Android Location-services policy. |
 | `mobileData` | mobile data toggle | 24 | Planned: not advertised yet. |
 | `kioskLockTask` | COSU lock-task kiosk | 24 | Planned: not advertised; kiosk commands are ungated (see below). |

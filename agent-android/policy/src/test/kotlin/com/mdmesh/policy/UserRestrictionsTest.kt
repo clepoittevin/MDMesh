@@ -40,6 +40,7 @@ class UserRestrictionsTest {
         assertEquals("no_factory_reset", UserRestrictions.DISALLOW_FACTORY_RESET)
         assertEquals("no_safe_boot", UserRestrictions.DISALLOW_SAFE_BOOT)
         assertEquals("no_config_location", UserRestrictions.DISALLOW_CONFIG_LOCATION)
+        assertEquals("no_modify_accounts", UserRestrictions.DISALLOW_MODIFY_ACCOUNTS)
     }
 
     @Test
@@ -55,6 +56,14 @@ class UserRestrictionsTest {
         assertEquals(
             setOf(UserRestrictions.DISALLOW_FACTORY_RESET),
             UserRestrictions.forKey("factoryReset"),
+        )
+    }
+
+    @Test
+    fun `modifyAccounts maps to the single DISALLOW_MODIFY_ACCOUNTS restriction`() {
+        assertEquals(
+            setOf(UserRestrictions.DISALLOW_MODIFY_ACCOUNTS),
+            UserRestrictions.forKey("modifyAccounts"),
         )
     }
 
@@ -94,6 +103,13 @@ class UserRestrictionsTest {
         val min = UserRestrictions.minSdkForKey("safeBoot")
         assertEquals(23, min)
         assertTrue("safeBoot min SDK must be <= module minSdk (24)", min!! <= 24)
+    }
+
+    @Test
+    fun `modifyAccounts requires API 18 so the module floor is sufficient`() {
+        val min = UserRestrictions.minSdkForKey("modifyAccounts")
+        assertEquals(18, min)
+        assertTrue("modifyAccounts min SDK must be <= module minSdk (24)", min!! <= 24)
     }
 
     @Test

@@ -3340,4 +3340,12 @@
         <rollback>ALTER TABLE device_state DROP COLUMN reportedImeis;</rollback>
     </changeSet>
 
+    <changeSet id="26.11.26-configurations-modifyAccounts" author="clepoittevin" context="common">
+        <comment>Column,new: configurations#modifyAccounts (sent as policies.modifyAccounts): false blocks adding and
+            removing accounts (DISALLOW_MODIFY_ACCOUNTS), true lifts the block. No DEFAULT: NULL = unmanaged, so
+            existing configurations keep their revision.</comment>
+        <sql>ALTER TABLE configurations ADD COLUMN modifyAccounts BOOLEAN;</sql>
+        <rollback>ALTER TABLE configurations DROP COLUMN modifyAccounts;</rollback>
+    </changeSet>
+
 </databaseChangeLog>
