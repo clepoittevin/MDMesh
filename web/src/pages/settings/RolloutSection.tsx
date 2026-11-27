@@ -206,11 +206,12 @@ const ROLLOUT_ERRORS: Record<string, MessageDescriptor> = {
   'error.rollout.stage': messages.errorStage,
   'error.permission.denied': messages.errorPermission,
 };
-const rolloutError = (e: unknown, intl: IntlShape) => {
-  const m = apiErrorText(intl, e);
+/** A failure's text (an error key, or words already) as shown. */
+const rolloutErrorText = (m: string, intl: IntlShape) => {
   if (!m) return intl.formatMessage(messages.errorUnknown);
   return Object.prototype.hasOwnProperty.call(ROLLOUT_ERRORS, m) ? intl.formatMessage(ROLLOUT_ERRORS[m]) : m;
 };
+const rolloutError = (e: unknown, intl: IntlShape) => rolloutErrorText(apiErrorText(intl, e), intl);
 
 const eligibleOf = (c: RolloutCounts) => Math.max(0, c.total - c.ineligible);
 const cohortDone = (c: RolloutCounts) => eligibleOf(c) > 0 && c.pending === 0 && c.outstanding === 0;
@@ -621,7 +622,7 @@ export function RolloutSection({
       ) : null}
       {loadError ? (
         <Callout tone="warn" icon={<IconAlert />}>
-          {intl.formatMessage(m.refreshFailed, { error: rolloutError({ message: loadError }, intl) })}
+          {intl.formatMessage(m.refreshFailed, { error: rolloutErrorText(loadError, intl) })}
         </Callout>
       ) : null}
       {err ? (
