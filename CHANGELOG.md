@@ -21,6 +21,11 @@ New
   defaults (system apps stay enabled, no encryption step), are never replaced; Wi-Fi comes from the setup Wi-Fi and
   the Enroll page only. The Enroll page sums up what the code adds.
 
+Fixes
+- Console: on Settings and the configuration editor, the section menu no longer floats over the cards when the
+  window is wide but the page column is narrow (around 1024px with the sidebar open); it becomes the row of
+  sections shown on small screens.
+
 ## v0.6.0 — 2026-11-27
 
 Upgrading
